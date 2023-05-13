@@ -1,0 +1,9 @@
+./AsyncElegantOTA/library.properties:2:version=2.2.7
+./AsyncTCP/library.properties:2:version=1.1.4
+./DallasTemperature/library.properties:2:version=3.9.0
+./EMailSender/library.properties:2:version=3.0.11
+./ESPAsyncTCP/library.properties:2:version=1.2.4
+./ESP_Async_WebServer/library.properties:2:version=1.2.3
+./ModbusMaster/library.properties:2:version=2.0.1
+./OneWire/library.properties:2:version=2.3.7
+./U8g2/library.properties:2:version=2.33.15

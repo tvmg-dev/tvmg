@@ -1,0 +1,148 @@
+#include "PowerModule.h"
+
+#include "hwconfig.h"
+#include "config.h"
+
+void preTransmission()
+{
+  digitalWrite( MODBUS_485EN_GPIO,1 );
+}
+
+void postTransmission()
+{
+  digitalWrite( MODBUS_485EN_GPIO,0 );
+}
+
+PowerModule::PowerModule()
+           : m_serial( new HardwareSerial( MODBUS_SERIAL ) ),
+             m_master( new ModbusMaster ),
+             m_sensors(),
+             m_masterStarted( false )
+{
+   PW_DEBUG( "PowerModule::PowerModule()" );
+   PW_MSG( "Power Module Startup" );
+
+   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+   {
+      m_sensors[ i ].m_isValid = false;
+   }
+
+   PW_MSG( "Starting MODBUS port %u",MODBUS_SERIAL );
+   PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",MODBUS_BAUD_RATE,MODBUS_RX_GPIO,MODBUS_TX_GPIO );
+
+   // setup the MAX3485 device, need to set the device enable high for transmit to slaves
+   // and low for receive.  The ModbusMaster has callbacks to facilitate that.
+
+   pinMode( MODBUS_485EN_GPIO,OUTPUT );
+   m_master->preTransmission( preTransmission );
+   m_master->postTransmission( postTransmission );
+
+   m_serial->begin( MODBUS_BAUD_RATE,MODBUS_SERIAL_FORMAT,MODBUS_RX_GPIO,MODBUS_TX_GPIO );
+}
+
+PowerModule::~PowerModule()
+{
+   PW_DEBUG( "PowerModule::~PowerModule()" );
+
+   delete m_master;
+   delete m_serial;
+}
+
+void  PowerModule::registerSensor( uint8_t index, uint8_t addr, char *name )
+{
+   if ( index > MAX_POWER_SENSORS - 1 )
+   {
+      PW_WARN( "Not registering sensor - out of range" );
+      return;
+   }
+   else if ( m_sensors[ index ].m_isValid == true )
+   {
+      PW_WARN( "Not registering sensor - index in use" );
+      return;
+   }
+
+   strncpy( m_sensors[ index ].m_name,name,MAX_POWER_NAME );
+   m_sensors[ index ].m_address = addr;
+   m_sensors[ index ].m_power = POWER_INVALID;
+   m_sensors[ index ].m_energy = ENERGY_INVALID;
+   m_sensors[ index ].m_isValid = true;
+
+   PW_MSG( "Added sensor '%s' at index %u",name,index );
+}
+
+void PowerModule::initialise( void )
+{
+   PW_DEBUG( "PowerModule::initialise()" );
+}
+
+/*
+  RegAddr Description                 Resolution
+  0x0000  Voltage value               1LSB correspond to 0.1V
+  0x0001  Current value low 16 bits   1LSB correspond to 0.001A
+  0x0002  Current value high 16 bits
+  0x0003  Power value low 16 bits     1LSB correspond to 0.1W
+  0x0004  Power value high 16 bits
+  0x0005  Energy value low 16 bits    1LSB correspond to 1Wh
+  0x0006  Energy value high 16 bits
+  0x0007  Frequency value             1LSB correspond to 0.1Hz
+  0x0008  Power factor value          1LSB correspond to 0.01
+  0x0009  Alarm status  0xFFFF is alarm，0x0000is not alarm
+*/
+
+bool PowerModule::getPower( uint8_t index,float_t *power,float_t *energy )
+{
+   uint8_t  modbusResult;
+
+   if ( index < MAX_POWER_SENSORS && m_sensors[ index ].m_isValid )
+   {
+      if ( !m_masterStarted )
+      {
+         PW_MSG( "Starting MODBUS master" );
+         m_master->begin( m_sensors[ index ].m_address, *m_serial );
+         m_masterStarted = true;
+      }
+      // force a short delay
+      delay( MODBUS_MSG_DELAY );
+
+      m_master->setSlaveId( m_sensors[ index ].m_address );
+
+      // Read the 9 registers of the PZEM-16
+      modbusResult = m_master->readInputRegisters( 0x0,9 );
+
+      if ( modbusResult != ModbusMaster::ku8MBSuccess )
+      {
+         PW_WARN( "Failed to obtain power info for %s",m_sensors[ index ].m_name );
+      }
+      else
+      {
+         uint32_t reg32;
+
+         float voltage = m_master->getResponseBuffer( 0 ) / 10.0;  //get the 16bit value for the voltage, divide it by 10 and cast in the float variable
+
+         reg32 =  (m_master->getResponseBuffer( 2 ) << 16) + m_master->getResponseBuffer( 1 );  // Get the 2 16bits registers and combine them to an unsigned 32bit
+         float current = reg32 / 1000.0;   // Divide the unsigned 32bit by 1000 and put in the current float variable
+
+         reg32 =  (m_master->getResponseBuffer( 4 ) << 16) + m_master->getResponseBuffer( 3 );
+         *power = reg32 / 10.0;
+
+         reg32 =  (m_master->getResponseBuffer( 6 ) << 16) + m_master->getResponseBuffer( 5 );
+         *energy = reg32;
+
+         float hz = m_master->getResponseBuffer( 7 ) / 10.0;
+         float pf = m_master->getResponseBuffer( 8 ) / 100.00;
+
+         PW_MSG( "%s : %.0f W : %.0f Whr",m_sensors [ index ].m_name,*power,*energy );
+
+         m_sensors[ index ].m_power = *power;
+         m_sensors[ index ].m_energy = *energy;
+
+         PW_DEBUG( "I [%.1f] : V [%.1f] : Freq [%.1f] : PowerFactor [%.1f]",current, voltage, hz, pf );
+         return true;
+      }
+   }
+
+   *power = POWER_INVALID;
+   *energy = ENERGY_INVALID;
+
+   return false;
+}

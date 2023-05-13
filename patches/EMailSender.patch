@@ -1,0 +1,42 @@
+--- C:\Users\trial\Desktop\EMailSender-3.0.11\EMailSender.cpp
++++ C:\Users\trial\Documents\Arduino\libraries\EMailSender\EMailSender.cpp
+@@ -734,9 +734,16 @@
+ //  client.println(F("Mime-Version: 1.0"));
+ 
+   client.println(F("MIME-Version: 1.0"));
++
++#ifdef PJW_ORIG
+   client.println(F("Content-Type: Multipart/mixed; boundary=frontier"));
+ 
+   client.println(F("--frontier"));
++#else
++  client.println(F("Content-Type: Multipart/mixed; boundary=frontier"));
++  client.println();
++  client.println(F("--frontier"));
++#endif
+ 
+     client.print(F("Content-Type: "));
+     client.print(email.mime);
+@@ -984,7 +991,10 @@
+ 
+ 	  } // Close attachment cycle
+ 	  client.println();
++#ifdef PJW_ORIG
+ 	  client.println(F("--frontier--"));
++#endif
++
+ #ifdef STORAGE_EXTERNAL_ENABLED
+ 	  #ifdef OPEN_CLOSE_SD
+ 		  if (sdActive){
+@@ -1013,6 +1023,10 @@
+ #endif
+ 	  } // Close attachement enable
+ 
++#ifndef PJW_ORIG
++	  client.println(F("--frontier--"));
++#endif
++
+ #endif
+   DEBUG_PRINTLN(F("Message end"));
+   client.println(F("."));
+
