@@ -29,7 +29,7 @@
 
 // Touch
 
-#define  TOUCH_BUTTON_1       T2
-#define  TOUCH_BUTTON_2       T3
+#define  TOUCH_BUTTON_1       T6
+#define  TOUCH_BUTTON_2       T5
 
 #endif
