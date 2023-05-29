@@ -3,9 +3,9 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v6.0a"
+#define VERSION_STR        "v6.0"
 
-#define PW_WIFI            1
+#define PW_WIFI            0
 #define NO_EMONCMS_UPDATE  1
 #define NO_EMAIL           0
 #define CONFIG_FILE_PRECENDENCE 0
