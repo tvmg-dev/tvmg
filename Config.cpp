@@ -3,7 +3,8 @@
 #include "Storage.h"
 
 #include <SD.h>
-#include <FS.h>
+
+Config   *s_instance = nullptr;
 
 uint8_t Config::numRegistryEntries = 0;
 
@@ -30,19 +31,17 @@ void  stripOutQuotes( char *str )
    }
 }
 
-void  setRegistryEntry( char *key,char *value )
+int findKey( char *key )
 {
-   if ( Config::numRegistryEntries < MAX_REGISTRY_ENTRIES -1 )
+   for ( int i = 0; i < Config::numRegistryEntries; i++ )
    {
-      strcpy( Config::m_entries[ Config::numRegistryEntries ].key,key );
-      strcpy( Config::m_entries[ Config::numRegistryEntries ].value,value );
-
-      stripOutQuotes( Config::m_entries[ Config::numRegistryEntries ].value );
-
-      PW_MSG( "New Registry : %s : %s",key,Config::m_entries[ Config::numRegistryEntries ].value );
-
-      Config::numRegistryEntries++;
+      if ( !strcmp( Config::m_entries[ i ].key,key ) )
+      {
+         return i;
+      }
    }
+
+   return -1;
 }
 
 void  replaceRegistryValue( uint8_t index,char *value )
@@ -56,17 +55,25 @@ void  replaceRegistryValue( uint8_t index,char *value )
    }
 }
 
-int findKey( char *key )
+void  setRegistryEntry( char *key,char *value )
 {
-   for ( int i = 0; i < Config::numRegistryEntries; i++ )
-   {
-      if ( !strcmp( Config::m_entries[ i ].key,key ) )
-      {
-         return i;
-      }
-   }
+   int index = findKey( key );
 
-   return -1;
+   if ( index > -1 )
+   {
+      replaceRegistryValue( index,value );
+   }
+   else if ( Config::numRegistryEntries < MAX_REGISTRY_ENTRIES -1 )
+   {
+      strcpy( Config::m_entries[ Config::numRegistryEntries ].key,key );
+      strcpy( Config::m_entries[ Config::numRegistryEntries ].value,value );
+
+      stripOutQuotes( Config::m_entries[ Config::numRegistryEntries ].value );
+
+      PW_MSG( "New Registry : %s : %s",key,Config::m_entries[ Config::numRegistryEntries ].value );
+
+      Config::numRegistryEntries++;
+   }
 }
 
 int32_t getRegistryInt( char *key )
@@ -99,10 +106,26 @@ char *getRegistryString( char *key )
    }
 }
 
-Config::Config( char *fileName,Storage *storage )
-      : m_configFileName(),
-        m_storageModule( storage )
+Config::Config( char *fileName )
+      : m_spiffs( new SPIFFSFS() ),
+        m_configFileName()
 {
+   // Nothing in the registry yet...
+
+   Config::numRegistryEntries = 0;
+
+   // Instantiate spiffs for config file
+   if ( !m_spiffs )
+   {
+      PW_WARN( "No SPIFFS instantiated" );
+   }
+   else
+   {
+      m_spiffs->begin( true );
+      PW_MSG( "Config() SPIFFS : %d %d",m_spiffs->totalBytes(),m_spiffs->usedBytes() );
+      PW_MSG( "Config() Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
+   }
+
    strncpy( m_configFileName,fileName,MAX_FILENAME );
 }
 
@@ -110,14 +133,35 @@ Config::~Config()
 {
 }
 
+Config   *Config::instance()
+{
+   if ( !s_instance )
+   {
+      s_instance = new Config( "/config.dat" );
+      s_instance->initialise();
+   }
+
+   return( s_instance );
+}
+
+
 void Config::initialise( void )
 {
-   populateRegistry();
-   readFromFile();
+   if ( !readRegistryFromFile() )
+   {
+      populateRegistry();
+   }
+}
+
+fs::SPIFFSFS *Config::getSPIFFS()
+{
+   return( m_spiffs );
 }
 
 void Config::populateRegistry( void )
 {
+   PW_WARN( "Populating Default Registry" );
+
    // Need to populate the registry, clear it first
 
    for ( int i = 0; i < MAX_REGISTRY_ENTRIES; i++ )
@@ -141,15 +185,54 @@ void Config::populateRegistry( void )
    SET_REGISTRY( ACCOUNT_EMAIL,"heatpump@dyllysplace.com" );
    SET_REGISTRY( ACCOUNT_PASSWORD,"***REMOVED***" );
    SET_REGISTRY( RECIPIENT_EMAIL,"heatpump@dyllysplace.com" );
+
+   writeRegistryToFile();
 }
 
-void  Config::readFromFile( void )
+void  Config::writeRegistryToFile( void )
 {
-   File file = SD.open( m_configFileName,FILE_READ );
+   if ( !m_spiffs )
+   {
+      PW_WARN( "writeRegistryToFile() : No SPIFFS !" );
+      return;
+   }
+
+   File file = m_spiffs->open( m_configFileName,FILE_WRITE );
+   if ( !file )
+   {
+      PW_WARN( "Cannot write to %s",m_configFileName );
+      return;
+   }
+
+   PW_MSG( "Writing registry to %s",m_configFileName );
+
+   for ( int i = 0; i < Config::numRegistryEntries; i++ )
+   {
+      char msg[ 128 ];
+      sprintf( msg,"%s \"%s\"",Config::m_entries[ i ].key,Config::m_entries[ i ].value );
+
+      if ( ! file.println( msg ) )
+      {
+         PW_WARN( "Failed to write to config : %s",msg );
+      }
+   }
+
+   file.close();
+}
+
+bool  Config::readRegistryFromFile( void )
+{
+   if ( !m_spiffs )
+   {
+      PW_WARN( "readFromFile() : No SPIFFS !" );
+      return false;
+   }
+
+   File file = m_spiffs->open( m_configFileName,FILE_READ );
    if ( !file )
    {
       PW_WARN( "%s not present, using registry defaults",m_configFileName );
-      return;
+      return false;
    }
 
    bool     fileOk = true;
@@ -174,25 +257,8 @@ void  Config::readFromFile( void )
 
             if ( sscanf( line,"%s %s",keyVal.key,keyVal.value ) == 2 )
             {
-               int index;
-
                stripOutQuotes( keyVal.value );
-
-               index = findKey( keyVal.key );
-
-               if ( index >= -1 )
-               {
-#if CONFIG_FILE_PRECENDENCE == 1
-                  replaceRegistryValue( index,keyVal.value );
-#else
-                  setRegistryEntry( keyVal.key,keyVal.value );
-#endif
-               }
-               else
-               {
-                  setRegistryEntry( keyVal.key,keyVal.value );
-               }
-
+               setRegistryEntry( keyVal.key,keyVal.value );
                numLines++;
             }
          }
@@ -209,6 +275,8 @@ void  Config::readFromFile( void )
    {
       PW_WARN( "Read maximum %d entries from %s",numLines,m_configFileName );
    }
+
+   return( numLines > 0 );
 }
 
 bool  Config::getInt( char *key,int32_t *intValue )

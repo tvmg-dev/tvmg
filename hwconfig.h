@@ -24,8 +24,8 @@
 
 // OLED display, needs I2C clk & data
 
-#define OLED_I2C_CLK_GPIO     32
-#define OLED_I2C_DATA_GPIO    33
+#define OLED_I2C_CLK_GPIO     4
+#define OLED_I2C_DATA_GPIO    5
 
 // Touch
 

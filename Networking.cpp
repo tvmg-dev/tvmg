@@ -1,18 +1,17 @@
+#include <WiFi.h>
+#include <EMailSender.h>
+
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+
 #include "utils.h"
 #include "config.h"
 
 #include "Networking.h"
 #include "Measurement.h"
 
-#include <WiFi.h>
-#include <EMailSender.h>
+#include "WebServer.h"
 
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
-
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
 
 const char* ntpServer = "pool.ntp.org";
 
@@ -249,15 +248,8 @@ void Networking::initialise(void)
       m_emailer = new Emailer;
       m_emailer->initialise();
 
-      m_webServer = new AsyncWebServer( 80 );
-      m_webServer->on( "/", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-               String versionStr( VERSION_STR );
-               request->send(200, "text/plain", "Heat Pump WebServer : " + versionStr );
-            } );
-
-      AsyncElegantOTA.begin( m_webServer );
-      m_webServer->begin();
+      m_webServer = new WebStuff();
+      m_webServer->initialise();
 
       // And now for the emoncms client...
 

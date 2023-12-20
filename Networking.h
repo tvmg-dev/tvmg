@@ -3,7 +3,7 @@
 
 #include "utils.h"
 
-class AsyncWebServer;
+class WebStuff;
 class Emailer;
 class WiFiClientSecure;
 
@@ -32,7 +32,7 @@ public:
 
 private:
    Emailer           *m_emailer;
-   AsyncWebServer    *m_webServer;
+   WebStuff          *m_webServer;
    WiFiClientSecure  *m_emoncmsClient;
 
    Status  m_status;

@@ -1,4 +1,7 @@
 #include <time.h>
+#include <FS.h>
+#include <SD.h>
+#include <SPIFFS.h>
 
 #include "utils.h"
 #include "hwconfig.h"
@@ -9,9 +12,6 @@
 #include "Config.h"
 #include "Storage.h"
 #include "Networking.h"
-
-#include <FS.h>
-#include <SD.h>
 
 // ----------------------------------------------------------------------
 
@@ -76,18 +76,20 @@ void setup(void)
 
    Serial.begin( 115200 );
 
-   Serial.println( "start" );
-   delay( 200 );
+   delay( 1000 );
 
-  // Instantiate the storage module, and initialise it.  If the SD card
-  // is not operational the storage module will not save data but at least
-  // the system will continue to operate.
+   Serial.println( "start" );
+
+   // Initialise our configuration
+
+   config = Config::instance();
+
+   // Instantiate the storage module, and initialise it.  If the SD card
+   // is not operational the storage module will not save data but at least
+   // the system will continue to operate.
 
    storageModule = new Storage();
    storageModule->initialise();
-
-   config = new Config( "/config.dat",storageModule );
-   config->initialise();
 
    // Instantiate the temperature collecting module
 
@@ -243,12 +245,14 @@ void setup(void)
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                   "Heat Pump Monitoring - Startup",initialMsg );
+
 }
 
 #define LOOP_PERIOD_MS  5000
 
 void loop(void)
 {
+#if 0
    // TODO, wrap millis !
 
    /* Design decisions needed to build on the basics.
@@ -335,4 +339,7 @@ void loop(void)
    deltaMillis = targetMillis - currentMillis;
 
    delay( deltaMillis );
+#endif
+   PW_MSG( "loop" );
+   delay( 60 * 1000 );
 }

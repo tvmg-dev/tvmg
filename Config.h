@@ -1,9 +1,12 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <FS.h>
+#include <SPIFFS.h>
+
 #include "utils.h"
 
-#define VERSION_STR        "v6.0a"
+#define VERSION_STR        "v7.0C"
 
 #define PW_WIFI            1
 #define NO_EMONCMS_UPDATE  1
@@ -41,8 +44,6 @@ extern char    *getRegistryString( char *key );
 
 #define SAMPLING_PERIOD_MS    30000
 
-class Storage;
-
 typedef struct {
    uint8_t  keyInt;
    char     key[ MAX_KEY_LENGTH ];
@@ -52,22 +53,25 @@ typedef struct {
 class Config
 {
 public:
-   Config( char *fileName,Storage *storage );
+   Config( char *fileName );
    ~Config();
    void initialise( void );
 
    bool  getInt( char *key,int32_t *intValue );
    bool  getString( char *key,char *strValue );
+   fs::SPIFFSFS   *getSPIFFS();
 
+   static Config     *instance();
    static uint8_t    numRegistryEntries;
    static KeyValue   m_entries[ MAX_REGISTRY_ENTRIES ];
 
 private:
    void populateRegistry( void );
-   void readFromFile( void );
+   void writeRegistryToFile( void );
+   bool readRegistryFromFile( void );
 
-   Storage   *m_storageModule;
-   char      m_configFileName[ MAX_FILENAME + 1 ];
+   fs::SPIFFSFS  *m_spiffs;
+   char           m_configFileName[ MAX_FILENAME + 1 ];
 };
 
 #endif
