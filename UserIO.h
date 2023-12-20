@@ -22,9 +22,10 @@ public:
       NONE
    };
 
-   UserIO( Measurement *measurement );
+   UserIO();
    ~UserIO();
    void  initialise( void );
+   void  setMeasurement( Measurement *measurement );
    void  updateLine( uint8_t lineNum,char *line,bool isForLog = true );
    void  clear( void );
    void  showNext( void );

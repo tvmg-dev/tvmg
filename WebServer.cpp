@@ -17,9 +17,6 @@
 
 fs::SPIFFSFS *s_spiffs;
 
-const char* ssid = "SSID";
-const char* password = "password";
-
 const char* http_username = "admin";
 const char* http_password = "admin";
 
@@ -27,7 +24,6 @@ const char* host = "esp32-filemanager";
 
 String allowedExtensionsForEdit = "txt, h, htm, html, css, cpp, js, dat";
 
-const char* jquery = "/jquery-3.6.3.min.js";
 String filesDropdownOptions = "";
 String textareaContent = "";
 String savePath = "";
@@ -37,8 +33,6 @@ const char* param_delete_path = "delete_path";
 const char* param_edit_path = "edit_path";
 const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
-
-bool rebooting = false;
 
 String convertFileSize(const size_t bytes)
 {
@@ -243,91 +237,33 @@ void uploadFile(AsyncWebServerRequest *request, String filename, size_t index, u
   }
 }
 
-
-void setup_wifi()
-{
-  WiFi.mode(WIFI_STA);
-
-  WiFi.begin(ssid, password);
-  Serial.print("Connection to WLAN network.");
-  int i = 0;
-  while (true)
-  {
-    if(WiFi.status() != WL_CONNECTED)
-    {
-      delay(500);
-      Serial.print(".");
-      i++;
-      if(i > 30)
-      {
-        Serial.println();
-        Serial.println("Cannot connect to WLAN network.");
-        break;
-      }
-    }
-    else
-    {
-      Serial.println();
-      Serial.println("Connection established!");
-      Serial.print("Ip address: ");
-      Serial.println(WiFi.localIP());
-      Serial.println();
-      break;
-    }
-  }
-}
-
-#if 0
-
-void setup()
-{
-  //pinMode(ledPin, OUTPUT);
-
-  Serial.begin(115200);
-
-  if(!s_spiffs->begin(FORMAT_SPIFFS_IF_FAILED))
-  {
-    Serial.println("SPIFFS mount failed!");
-    return;
-  }
-
-  setup_wifi();
-
-  MDNS.begin(host);
-  Serial.printf("Host: http://%s.local/manager\n", host);
-
-  setupAsyncServer();
-}
-
-#endif
-
-
-WebStuff::WebStuff()
+WebServer::WebServer()
         : m_webServer( nullptr )
 
 {
-   PW_DEBUG( "WebStuff() %s" );
+   PW_DEBUG( "WebServer()" );
 
    Config   *config = Config::instance();
    s_spiffs = config->getSPIFFS();
 
    assert( s_spiffs != 0 );
+
    PW_DEBUG( "Got spiffs, %d",s_spiffs->totalBytes() );
 }
 
-WebStuff::~WebStuff()
+WebServer::~WebServer()
 {
-   PW_DEBUG( "~WebStuff()" );
+   PW_DEBUG( "~WebServer()" );
 }
 
-void WebStuff::initialise()
+void WebServer::initialise()
 {
-   PW_DEBUG( "WebStuff::initialise" );
+   PW_DEBUG( "WebServer::initialise" );
 
    setupAsyncServer();
 }
 
-void WebStuff::setupAsyncServer()
+void WebServer::setupAsyncServer()
 {
    m_webServer = new AsyncWebServer( 80 );
 
@@ -342,7 +278,7 @@ void WebStuff::setupAsyncServer()
 
    m_webServer->on("/update", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      rebooting = !Update.hasError();
+      bool rebooting = !Update.hasError();
       AsyncWebServerResponse *response = request->beginResponse(200, "text/html", rebooting ? ok_html : failed_html);
 
       response->addHeader("Connection", "close");

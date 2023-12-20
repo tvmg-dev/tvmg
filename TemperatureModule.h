@@ -6,12 +6,6 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-#include "hwconfig.h"
-
-#ifndef ONE_WIRE_GPIO
-#error "Must define ONE_WIRE_GPIO"
-#endif
-
 //---------------------------------------------------------------------
 // Temperature monitoring
 

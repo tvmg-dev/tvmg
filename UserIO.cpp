@@ -1,9 +1,3 @@
-#include "hwconfig.h"
-#include "utils.h"
-
-#include "UserIO.h"
-#include "Storage.h"
-
 #include <U8g2lib.h>
 #include <Wire.h>
 
@@ -11,17 +5,23 @@
 
 #include <time.h>
 
-UserIO::UserIO( Measurement *measurement )
+#include "hwconfig.h"
+#include "utils.h"
+
+#include "UserIO.h"
+#include "Storage.h"
+
+UserIO::UserIO()
       : m_display( nullptr ),
         m_currentScreen( NONE ),
         m_currentLines(),
-        m_measurement( measurement ),
+        m_measurement( nullptr ),
         m_sample()
 {
    PW_DEBUG( "UserIO::UserIO()" );
    PW_MSG( "UserIO Module Startup" );
 
-   m_display = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C( U8G2_R0,U8X8_PIN_NONE,OLED_I2C_CLK_GPIO,OLED_I2C_DATA_GPIO );
+   m_display = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C( U8G2_R0,U8X8_PIN_NONE,hwConfig->OLEDClkGPIO,hwConfig->OLEDDataGPIO );
 
    for ( int i = 1; i < MAX_OLED_ROWS; i++ )
    {
@@ -47,6 +47,11 @@ void  UserIO::initialise( void )
    m_display->setDrawColor(1);
    m_display->setFontPosTop();
    m_display->setFontDirection(0);
+}
+
+void  UserIO::setMeasurement( Measurement *measurement )
+{
+   m_measurement = measurement;
 }
 
 void  UserIO::updateLine( uint8_t lineNum,char *line,bool isForLog )
@@ -173,5 +178,8 @@ void  UserIO::showNext( void )
 
 void  UserIO::update( void )
 {
-   m_sample = m_measurement->getLastSample();
+   if ( m_measurement )
+   {
+      m_sample = m_measurement->getLastSample();
+   }
 }

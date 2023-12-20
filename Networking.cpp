@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <ESPmDNS.h>
 #include <EMailSender.h>
 
 #include <WiFiClientSecure.h>
@@ -192,70 +193,102 @@ Networking::~Networking()
    delete m_emailer;
 }
 
-void Networking::initialise(void)
+void Networking::initialise( bool isNewSetup )
 {
+   char  accessPointName[ 24 ];
+
    PW_DEBUG( "Networking::initialise" );
 
-   // now networking...
-
-   uint32_t start;
-
-   PW_DEBUG( "Trying to connect to %s ",GET_REGISTRY_STRING( WIFI_SSID ) );
-
-   start = millis();
-
-   WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
-   while (WiFi.status() != WL_CONNECTED && (millis() - start < GET_REGISTRY_INT( WIFI_CONNECT_TIMEOUT )) )
+   if ( isNewSetup )
    {
-      delay(200);
-   }
-
-   // Now onto NTP
-
-   if ( WiFi.status() != WL_CONNECTED )
-   {
-      PW_WARN( "Network not connected" );
-      m_status.isConnected = false;
+      strncpy( accessPointName,"HeatPump-Monitor",24 );
    }
    else
    {
-      struct tm   timeInfo;
+      strncpy( accessPointName,GET_REGISTRY_STRING( ACCESS_POINT_NAME ),24 );
+   }
 
-      m_status.isConnected = true;
-      m_status.timeToConnect = ( millis() - start ) / 1000;
-      strncpy( m_status.ipAddr,WiFi.localIP().toString().c_str(),16 );
+   // now networking...
 
-      PW_DEBUG( "Acquiring NTP..." );
+   uint32_t start = millis();
 
-      configTzTime( "GMT0BST,M3.5.0/1,M10.5.0",ntpServer );
-      start = millis();
-      while ( !getLocalTime( &timeInfo ) && (millis() - start < GET_REGISTRY_INT( NTP_UPDATE_TIMEOUT) ) )
+   // We want to advertise as an AccessPoint and also act as a station
+
+   WiFi.mode( WIFI_AP_STA );
+   WiFi.softAP( accessPointName );
+
+   PW_MSG( "AP at : %s",WiFi.softAPIP().toString().c_str() );
+
+   // if this has been configured then connect to WiFi & then acquire NTP
+
+   if ( !isNewSetup )
+   {
+      WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
+      while (WiFi.status() != WL_CONNECTED && (millis() - start < GET_REGISTRY_INT( WIFI_CONNECT_TIMEOUT )) )
       {
-         delay( 200 );
+         delay(200);
       }
 
-      if ( !getLocalTime( &timeInfo ) )
+      // Now onto NTP
+
+      if ( WiFi.status() != WL_CONNECTED )
       {
-         PW_WARN( "NTP not available" );
-         m_status.timeToAcquireNTP = -1;
+         PW_WARN( "Network not connected" );
+         m_status.isConnected = false;
       }
       else
       {
-         m_status.timeToAcquireNTP = ( millis() - start ) / 1000;
+         struct tm   timeInfo;
+
+         m_status.isConnected = true;
+         m_status.timeToConnect = ( millis() - start ) / 1000;
+         strncpy( m_status.ipAddr,WiFi.localIP().toString().c_str(),16 );
+
+         PW_DEBUG( "Acquiring NTP..." );
+
+         configTzTime( "GMT0BST,M3.5.0/1,M10.5.0",ntpServer );
+         start = millis();
+         while ( !getLocalTime( &timeInfo ) && (millis() - start < GET_REGISTRY_INT( NTP_UPDATE_TIMEOUT) ) )
+         {
+            delay( 200 );
+         }
+
+         if ( !getLocalTime( &timeInfo ) )
+         {
+            PW_WARN( "NTP not available" );
+            m_status.timeToAcquireNTP = -1;
+         }
+         else
+         {
+            m_status.timeToAcquireNTP = ( millis() - start ) / 1000;
+         }
+
+         // We have connected network, so we can have the emailer
+
+         m_emailer = new Emailer;
+         m_emailer->initialise();
+
+         // And now for the emoncms client...
+
+         m_emoncmsClient = new WiFiClientSecure;
+         m_emoncmsClient->setCACert( emoncmsCertificate );
       }
-
-      // We have connected network, so we can have the emailer & webserver up
-      m_emailer = new Emailer;
-      m_emailer->initialise();
-
-      m_webServer = new WebStuff();
-      m_webServer->initialise();
-
-      // And now for the emoncms client...
-
-      m_emoncmsClient = new WiFiClientSecure;
-      m_emoncmsClient->setCACert( emoncmsCertificate );
    }
+
+   // Start the MDNS service so we can be discovered and configured
+
+   while( !MDNS.begin( accessPointName ) )
+   {
+      PW_WARN( "Failed to setup MDNS responder" );
+      delay( 5000 );
+   }
+
+   // Start our configuration/download server
+
+   m_webServer = new WebServer();
+   m_webServer->initialise();
+
+   MDNS.addService( "http","tcp",80 );
 }
 
 bool  Networking::isConnected( void )

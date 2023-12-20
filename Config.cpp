@@ -131,6 +131,8 @@ Config::Config( char *fileName )
 
 Config::~Config()
 {
+  m_spiffs->end();
+  delete m_spiffs;
 }
 
 Config   *Config::instance()
@@ -145,12 +147,14 @@ Config   *Config::instance()
 }
 
 
-void Config::initialise( void )
+void Config::initialise()
 {
-   if ( !readRegistryFromFile() )
-   {
-      populateRegistry();
-   }
+   readRegistryFromFile();
+}
+
+bool Config::isInitialised()
+{
+   return( Config::numRegistryEntries > 0 );
 }
 
 fs::SPIFFSFS *Config::getSPIFFS()
@@ -158,38 +162,7 @@ fs::SPIFFSFS *Config::getSPIFFS()
    return( m_spiffs );
 }
 
-void Config::populateRegistry( void )
-{
-   PW_WARN( "Populating Default Registry" );
-
-   // Need to populate the registry, clear it first
-
-   for ( int i = 0; i < MAX_REGISTRY_ENTRIES; i++ )
-   {
-      m_entries[ i ].key[ 0 ] = 0;
-      m_entries[ i ].value[ 0 ] = 0;
-   }
-
-   SET_REGISTRY( BOOT_DELAY,3000 );
-#if PW_WIFI == 1
-   SET_REGISTRY( WIFI_SSID,"BTHub6-6P5C-5G" );
-   SET_REGISTRY( WIFI_PASSWORD,"***REMOVED***" );
-#else
-   SET_REGISTRY( WIFI_SSID,"PLUSNET-NSC395" );
-   SET_REGISTRY( WIFI_PASSWORD,"***REMOVED***" );
-#endif
-   SET_REGISTRY( WIFI_CONNECT_TIMEOUT,60000 );
-   SET_REGISTRY( NTP_UPDATE_TIMEOUT,60000 );
-   SET_REGISTRY( SMTP_HOST,"send.one.com" );
-   SET_REGISTRY( SMTP_PORT,465 );
-   SET_REGISTRY( ACCOUNT_EMAIL,"heatpump@dyllysplace.com" );
-   SET_REGISTRY( ACCOUNT_PASSWORD,"***REMOVED***" );
-   SET_REGISTRY( RECIPIENT_EMAIL,"heatpump@dyllysplace.com" );
-
-   writeRegistryToFile();
-}
-
-void  Config::writeRegistryToFile( void )
+void  Config::writeRegistryToFile()
 {
    if ( !m_spiffs )
    {

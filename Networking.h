@@ -3,7 +3,7 @@
 
 #include "utils.h"
 
-class WebStuff;
+class WebServer;
 class Emailer;
 class WiFiClientSecure;
 
@@ -22,7 +22,7 @@ public:
    Networking();
    ~Networking();
 
-   void initialise( void );
+   void initialise( bool isNewSetup );
    bool sendEmail( const char *recipient,const char *subject,const char *msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName );
    bool sendToEmonCMS( uint32_t emonFeedId,float_t value );
@@ -32,7 +32,7 @@ public:
 
 private:
    Emailer           *m_emailer;
-   WebStuff          *m_webServer;
+   WebServer         *m_webServer;
    WiFiClientSecure  *m_emoncmsClient;
 
    Status  m_status;

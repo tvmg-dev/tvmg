@@ -78,11 +78,44 @@ void setup(void)
 
    delay( 1000 );
 
-   Serial.println( "start" );
+   PW_MSG( "Starting..." );
+
+   selectHardware();
 
    // Initialise our configuration
 
    config = Config::instance();
+
+   // prepare the OLED display for output
+
+   userIO = new UserIO();
+   userIO->initialise();
+
+   char line[ MAX_OLED_COLUMNS + 1 ];
+
+   if ( config->isInitialised() )
+   {
+      userIO->updateLine( 0,"Starting Networking..." );
+   }
+   else
+   {
+      userIO->updateLine( 0,"Waiting for config" );
+   }
+
+   networking = new Networking;
+   networking->initialise( ! config->isInitialised() );
+
+   // If we are not initialised then we spin forever waiting to
+   // be configured.
+
+   if ( ! config->isInitialised() )
+   {
+      while( 1 )
+      {
+         PW_DEBUG( "IN debug loop" );
+         delay ( 30 * 1000 );
+      }
+   }
 
    // Instantiate the storage module, and initialise it.  If the SD card
    // is not operational the storage module will not save data but at least
@@ -90,6 +123,51 @@ void setup(void)
 
    storageModule = new Storage();
    storageModule->initialise();
+
+   char ipAddr[ 20 ];
+
+   if ( !networking->isConnected() )
+   {
+      userIO->updateLine( 1,"WiFi not connected" );
+   }
+   else
+   {
+      networking->getIPAddress( ipAddr );
+      snprintf( line,MAX_OLED_COLUMNS,"IP %s",ipAddr );
+      userIO->updateLine( 1,line );
+
+      if ( networking->didAcquireNTP() )
+      {
+         struct tm   timeInfo;
+
+         getLocalTime( &timeInfo );
+
+         strftime( line,MAX_OLED_COLUMNS,"%d/%m/%y : %H:%M:%S",&timeInfo );
+         userIO->updateLine( 2,line );
+      }
+      else
+      {
+         userIO->updateLine( 2,"No NTP !!" );
+      }
+   }
+
+   // If we don't have NTP, then we reboot here if we have
+   // a configuration - ping an email too.  If no configuration then
+   // we assume that a new config will be loaded....
+
+   if ( !networking->didAcquireNTP() )
+   {
+      userIO->updateLine( 5,"Reboot in 5s" );
+
+      char msg[ 128 ];
+      snprintf( msg,128,"Failed to aquire NTP - rebooting",VERSION_STR  );
+
+      networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                  "Heat Pump Monitoring - Startup NTP fault",msg );
+
+      delay( 5000 );
+      ESP.restart();
+   }
 
    // Instantiate the temperature collecting module
 
@@ -113,70 +191,7 @@ void setup(void)
    // Instantiate the measurement module, but don't initialise it just yet
 
    measurement = new Measurement( tempModule,powerModule,storageModule );
-
-   // prepare the OLED display
-
-   userIO = new UserIO( measurement );
-   userIO->initialise();
-
-   char line[ MAX_OLED_COLUMNS + 1 ];
-   char ipAddr[ 20 ];
-
-   strncpy( line,"Initial boot delay...",MAX_OLED_COLUMNS );
-   userIO->updateLine( 0,line );
-
-   delay( GET_REGISTRY_INT( BOOT_DELAY ) );
-
-   // now networking...
-
-   strncpy( line,"Starting Networking...",MAX_OLED_COLUMNS );
-   userIO->updateLine( 1,line );
-
-   networking = new Networking;
-
-   networking->initialise();
-   if ( !networking->isConnected() )
-   {
-      userIO->updateLine( 1,"WiFi not connected",false );
-   }
-   else
-   {
-      networking->getIPAddress( ipAddr );
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",ipAddr );
-      userIO->updateLine( 1,line,false );
-
-      if ( networking->didAcquireNTP() )
-      {
-         struct tm   timeInfo;
-
-         getLocalTime( &timeInfo );
-
-         strftime( line,MAX_OLED_COLUMNS,"%d/%m/%y : %H:%M:%S",&timeInfo );
-         userIO->updateLine( 2,line );
-      }
-      else
-      {
-         strncpy( line,"No NTP !!",MAX_OLED_COLUMNS );
-         userIO->updateLine( 2,line );
-      }
-   }
-
-   // If we don't have NTP, then we reboot here - ping an email too.
-
-   if ( !networking->didAcquireNTP() )
-   {
-      strncpy( line,"Reboot in 5s",MAX_OLED_COLUMNS );
-      userIO->updateLine( 5,line );
-
-      char msg[ 128 ];
-      snprintf( msg,128,"Failed to aquire NTP - rebooting",VERSION_STR  );
-
-      networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                  "Heat Pump Monitoring - Startup NTP fault",msg );
-
-      delay( 5000 );
-      ESP.restart();
-   }
+   userIO->setMeasurement( measurement );
 
    // let's tell storage we have networking available
 
@@ -191,7 +206,6 @@ void setup(void)
 
    if ( networking->isConnected() )
    {
-
       snprintf( line,MAX_OLED_COLUMNS,"IP %s",ipAddr );
    }
    else
@@ -236,7 +250,7 @@ void setup(void)
    // intialise touch
    // Touch ISR will be activated when reading is lower than the threshold
 
-   touchAttachInterrupt( TOUCH_BUTTON_1,gotTouchEvent,threshold );
+   touchAttachInterrupt( hwConfig->TouchButton1,gotTouchEvent,threshold );
    touchInterruptSetThresholdDirection( testingLower );
 
    char initialMsg[ 128 ];

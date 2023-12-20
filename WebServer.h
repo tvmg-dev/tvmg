@@ -3,11 +3,11 @@
 
 #include <ESPAsyncWebServer.h>
 
-class WebStuff
+class WebServer
 {
 public:
-   WebStuff();
-   ~WebStuff();
+   WebServer();
+   ~WebServer();
    void initialise();
 
 private:

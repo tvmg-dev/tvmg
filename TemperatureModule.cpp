@@ -1,12 +1,12 @@
 #include "utils.h"
-
 #include "config.h"
+#include "hwconfig.h"
 
 #include "TemperatureModule.h"
 
 TemperatureModule::TemperatureModule()
-         : m_oneWireController( new OneWire( ONE_WIRE_GPIO ) ),
-           m_dallasController( new DallasTemperature( m_oneWireController ) ),
+         : m_oneWireController( nullptr ),
+           m_dallasController( nullptr ),
            m_isOk( true ),
            m_sensors(),
            m_numSensors( 0 ),
@@ -14,11 +14,6 @@ TemperatureModule::TemperatureModule()
 {
    PW_DEBUG( "TemperatureModule::TemperatureModule()" );
    PW_MSG( "Temperature Module Startup" );
-
-   // start the DallasTemperature object and reset the sensors - until we
-   // register them.
-
-   m_dallasController->begin();
 
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
@@ -75,83 +70,97 @@ void  TemperatureModule::registerSensor( uint8_t index, DeviceAddress deviceAddr
 
 void  TemperatureModule::initialise()
 {
-   PW_DEBUG( "TemperatureModule::initialise()" );
-   PW_MSG( "Initialising temperature sensors" );
-
-   // Confirm all devices located on the bus, and that we have power
-
-   uint8_t devices = m_dallasController->getDeviceCount();
-
-   if ( devices == m_numSensors )
+   if ( hwConfig->OneWireGPIO == -1 )
    {
-      PW_DEBUG( "%u sensors detected on the OneWire bus ",devices );
+      PW_DEBUG( "TemperatureModule::initialise() - fake" );
    }
    else
    {
-      PW_ERROR( "Only located %u of %u sensors.",devices,m_numSensors );
+      PW_DEBUG( "TemperatureModule::initialise()" );
+      PW_MSG( "Initialising temperature sensors" );
 
-      if ( devices == 0 )
+      m_oneWireController = new OneWire( hwConfig->OneWireGPIO );
+      m_dallasController = new DallasTemperature( m_oneWireController );
+
+      // start the DallasTemperature object
+
+      m_dallasController->begin();
+
+      // Confirm all devices located on the bus, and that we have power
+
+      uint8_t devices = m_dallasController->getDeviceCount();
+
+      if ( devices == m_numSensors )
+      {
+         PW_DEBUG( "%u sensors detected on the OneWire bus ",devices );
+      }
+      else
+      {
+         PW_ERROR( "Only located %u of %u sensors.",devices,m_numSensors );
+
+         if ( devices == 0 )
+         {
+            m_isOk = false;
+         }
+      }
+
+      if ( m_isOk && m_dallasController->isParasitePowerMode() )
       {
          m_isOk = false;
-      }
-   }
-
-   if ( m_isOk && m_dallasController->isParasitePowerMode() )
-   {
-      m_isOk = false;
-      PW_ERROR( "DS m_dallasController->operating with no power ?" );
-   }
-
-   // Now check for the sensors being located, this is to find the index
-   // on the bus.
-
-   if( m_isOk )
-   {
-      DeviceAddress  locatedAddresses[ devices ];
-      char           addrString[ TEMP_ADDR_STRLEN ];
-
-      /* Find the device address at bus index values */
-
-      for ( int i = 0; i < devices; i++ )
-      {
-         m_dallasController->getAddress( locatedAddresses[ i ],i );
-         getAddressString( locatedAddresses[ i ],addrString );
-         PW_DEBUG( "On bus : %s",addrString );
+         PW_ERROR( "DS m_dallasController->operating with no power ?" );
       }
 
-      for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+      // Now check for the sensors being located, this is to find the index
+      // on the bus.
+
+      if( m_isOk )
       {
-         if ( m_sensors[ i ].m_isValid )
+         DeviceAddress  locatedAddresses[ devices ];
+         char           addrString[ TEMP_ADDR_STRLEN ];
+
+         /* Find the device address at bus index values */
+
+         for ( int i = 0; i < devices; i++ )
          {
-            PW_DEBUG( "Locating %s",m_sensors[ i ].m_name );
-            for ( int j = 0; j < devices; j++ )
-            {
-               if ( !memcmp( locatedAddresses[ j ],m_sensors[ i ].m_address,sizeof( DeviceAddress ) ) )
-               {
-                  PW_DEBUG( "...at bus index %u",j );
-                  m_sensors[ i ].m_busIndex = j;
-                  break;
-               }
-            }
+            m_dallasController->getAddress( locatedAddresses[ i ],i );
+            getAddressString( locatedAddresses[ i ],addrString );
+            PW_DEBUG( "On bus : %s",addrString );
+         }
 
-            if ( m_sensors[ i ].m_busIndex == MAX_TEMP_SENSORS )
+         for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+         {
+            if ( m_sensors[ i ].m_isValid )
             {
-               PW_ERROR( "Failed to locate %s on the bus",m_sensors[ i ].m_name );
-               m_isOk = false;
+               PW_DEBUG( "Locating %s",m_sensors[ i ].m_name );
+               for ( int j = 0; j < devices; j++ )
+               {
+                  if ( !memcmp( locatedAddresses[ j ],m_sensors[ i ].m_address,sizeof( DeviceAddress ) ) )
+                  {
+                     PW_DEBUG( "...at bus index %u",j );
+                     m_sensors[ i ].m_busIndex = j;
+                     break;
+                  }
+               }
+
+               if ( m_sensors[ i ].m_busIndex == MAX_TEMP_SENSORS )
+               {
+                  PW_ERROR( "Failed to locate %s on the bus",m_sensors[ i ].m_name );
+                  m_isOk = false;
+               }
             }
          }
       }
-   }
 
-   // Globally set the resolution to 9 bit per device
+      // Globally set the resolution to 9 bit per device
 
-   if ( m_isOk )
-   {
-      PW_DEBUG( "Setting %u bit precision for sensors",TEMPERATURE_PRECISION );
+      if ( m_isOk )
+      {
+         PW_DEBUG( "Setting %u bit precision for sensors",TEMPERATURE_PRECISION );
 
-      m_dallasController->setResolution( TEMPERATURE_PRECISION );
+         m_dallasController->setResolution( TEMPERATURE_PRECISION );
 
-      PW_MSG( "Dallas setup completed OK" );
+         PW_MSG( "Dallas setup completed OK" );
+      }
    }
 }
 
@@ -182,6 +191,11 @@ bool TemperatureModule::getTemperature( uint8_t index, float *temp )
 bool TemperatureModule::getTemperatures( void )
 {
    PW_DEBUG( "TemperatureModule::getTemperatures()" );
+
+   if ( !m_dallasController )
+   {
+      return false;
+   }
 
    // Request temperatures of all devices on the bus.  This may block so is not
    // an ideal way to obtain temperatures...

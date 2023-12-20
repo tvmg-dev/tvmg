@@ -6,12 +6,11 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v7.0C"
+#define VERSION_STR        "v7.0d"
 
 #define PW_WIFI            1
 #define NO_EMONCMS_UPDATE  1
-#define NO_EMAIL           0
-#define CONFIG_FILE_PRECENDENCE 0
+#define NO_EMAIL           1
 #define DEBUG_LOGGING      0
 
 #define MAX_REGISTRY_ENTRIES 32
@@ -55,8 +54,9 @@ class Config
 public:
    Config( char *fileName );
    ~Config();
-   void initialise( void );
+   void initialise();
 
+   bool  isInitialised();
    bool  getInt( char *key,int32_t *intValue );
    bool  getString( char *key,char *strValue );
    fs::SPIFFSFS   *getSPIFFS();
@@ -66,9 +66,8 @@ public:
    static KeyValue   m_entries[ MAX_REGISTRY_ENTRIES ];
 
 private:
-   void populateRegistry( void );
-   void writeRegistryToFile( void );
-   bool readRegistryFromFile( void );
+   void writeRegistryToFile();
+   bool readRegistryFromFile();
 
    fs::SPIFFSFS  *m_spiffs;
    char           m_configFileName[ MAX_FILENAME + 1 ];

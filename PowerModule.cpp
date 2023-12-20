@@ -5,17 +5,17 @@
 
 void preTransmission()
 {
-  digitalWrite( MODBUS_485EN_GPIO,1 );
+  digitalWrite( hwConfig->ModBus485EnGPIO,1 );
 }
 
 void postTransmission()
 {
-  digitalWrite( MODBUS_485EN_GPIO,0 );
+  digitalWrite( hwConfig->ModBus485EnGPIO,0 );
 }
 
 PowerModule::PowerModule()
-           : m_serial( new HardwareSerial( MODBUS_SERIAL ) ),
-             m_master( new ModbusMaster ),
+           : m_serial( nullptr ),
+             m_master( nullptr ),
              m_sensors(),
              m_masterStarted( false )
 {
@@ -26,18 +26,6 @@ PowerModule::PowerModule()
    {
       m_sensors[ i ].m_isValid = false;
    }
-
-   PW_MSG( "Starting MODBUS port %u",MODBUS_SERIAL );
-   PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",MODBUS_BAUD_RATE,MODBUS_RX_GPIO,MODBUS_TX_GPIO );
-
-   // setup the MAX3485 device, need to set the device enable high for transmit to slaves
-   // and low for receive.  The ModbusMaster has callbacks to facilitate that.
-
-   pinMode( MODBUS_485EN_GPIO,OUTPUT );
-   m_master->preTransmission( preTransmission );
-   m_master->postTransmission( postTransmission );
-
-   m_serial->begin( MODBUS_BAUD_RATE,MODBUS_SERIAL_FORMAT,MODBUS_RX_GPIO,MODBUS_TX_GPIO );
 }
 
 PowerModule::~PowerModule()
@@ -72,7 +60,29 @@ void  PowerModule::registerSensor( uint8_t index, uint8_t addr, char *name )
 
 void PowerModule::initialise( void )
 {
-   PW_DEBUG( "PowerModule::initialise()" );
+   if ( hwConfig->ModBusSerial != -1 )
+   {
+      PW_DEBUG( "PowerModule::initialise() - h/w" );
+
+      m_serial = new HardwareSerial( hwConfig->ModBusSerial );
+      m_master = new ModbusMaster;
+
+      PW_MSG( "Starting MODBUS port %u",hwConfig->ModBusSerial );
+      PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
+
+      // setup the MAX3485 device, need to set the device enable high for transmit to slaves
+      // and low for receive.  The ModbusMaster has callbacks to facilitate that.
+
+      pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
+      m_master->preTransmission( preTransmission );
+      m_master->postTransmission( postTransmission );
+
+      m_serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
+   }
+   else
+   {
+      PW_DEBUG( "PowerModule::initialise() - fake" );
+   }
 }
 
 /*
@@ -93,7 +103,7 @@ bool PowerModule::getPower( uint8_t index,float_t *power,float_t *energy )
 {
    uint8_t  modbusResult;
 
-   if ( index < MAX_POWER_SENSORS && m_sensors[ index ].m_isValid )
+   if ( index < MAX_POWER_SENSORS && m_sensors[ index ].m_isValid && hwConfig->ModBusSerial != -1 )
    {
       if ( !m_masterStarted )
       {
@@ -102,7 +112,7 @@ bool PowerModule::getPower( uint8_t index,float_t *power,float_t *energy )
          m_masterStarted = true;
       }
       // force a short delay
-      delay( MODBUS_MSG_DELAY );
+      delay( hwConfig->ModBusMsgDelay );
 
       m_master->setSlaveId( m_sensors[ index ].m_address );
 
