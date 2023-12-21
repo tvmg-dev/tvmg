@@ -247,8 +247,6 @@ WebServer::WebServer()
    s_spiffs = config->getSPIFFS();
 
    assert( s_spiffs != 0 );
-
-   PW_DEBUG( "Got spiffs, %d",s_spiffs->totalBytes() );
 }
 
 WebServer::~WebServer()

@@ -18,6 +18,7 @@ public:
       bool     isConnected;
       String   ipAddr;
       String   mdnsName;
+      String   SSID;
       int32_t  timeToConnect;
       int32_t  timeToAcquireNTP;
    } Status;
@@ -25,7 +26,7 @@ public:
    Networking();
    ~Networking();
 
-   void initialise( bool isNewSetup );
+   void initialise();
    bool sendEmail( const char *recipient,const char *subject,const char *msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName );
    bool sendToEmonCMS( uint32_t emonFeedId,float_t value );
@@ -33,6 +34,11 @@ public:
    bool didAcquireNTP();
    String getIPAddress();
    String getMDNSName();
+   String getLocalMDNSName();
+   String getSSID();
+   bool  startAccessPoint();
+   bool  startMDNS();
+   bool  acquireNTP();
 
 private:
    Emailer           *m_emailer;

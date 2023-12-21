@@ -193,105 +193,137 @@ Networking::~Networking()
    delete m_emailer;
 }
 
-void Networking::initialise( bool isNewSetup )
+bool Networking::startAccessPoint()
 {
-   char  accessPointName[ 24 ];
+   String SSID( "HeatPump-Monitor" );
+   WiFi.mode( WIFI_AP );
+   WiFi.softAP( SSID.c_str() );
 
-   PW_DEBUG( "Networking::initialise" );
+   m_status.SSID = SSID;
+   m_status.ipAddr = WiFi.softAPIP().toString();
 
-   if ( isNewSetup )
+   PW_DEBUG( "AP:" );
+   PW_DEBUG( "  SSID : %s",m_status.SSID.c_str() );
+   PW_DEBUG( "  IP   : %s",m_status.ipAddr.c_str() );
+
+   // Start the configuration/download server
+
+   m_webServer = new WebServer();
+   m_webServer->initialise();
+
+   m_status.mdnsName = String( "heatpump-monitor" );
+
+   if ( !startMDNS() )
    {
-      strncpy( accessPointName,"HeatPump-Monitor",24 );
-   }
-   else
-   {
-      strncpy( accessPointName,GET_REGISTRY_STRING( ACCESS_POINT_NAME ),24 );
+      m_status.mdnsName = String();
    }
 
-   // now networking...
+   return( true );
+}
 
-   uint32_t start = millis();
-
-   // We want to advertise as an AccessPoint and also act as a station
-
-   WiFi.mode( WIFI_AP_STA );
-   WiFi.softAP( accessPointName );
-
-   PW_MSG( "AP at : %s",WiFi.softAPIP().toString().c_str() );
-
-   // if this has been configured then connect to WiFi & then acquire NTP
-
-   if ( !isNewSetup )
-   {
-      WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
-      while (WiFi.status() != WL_CONNECTED && (millis() - start < GET_REGISTRY_INT( WIFI_CONNECT_TIMEOUT )) )
-      {
-         delay(200);
-      }
-
-      // Now onto NTP
-
-      if ( WiFi.status() != WL_CONNECTED )
-      {
-         PW_WARN( "Network not connected" );
-         m_status.isConnected = false;
-      }
-      else
-      {
-         struct tm   timeInfo;
-
-         m_status.isConnected = true;
-         m_status.timeToConnect = ( millis() - start ) / 1000;
-         m_status.ipAddr = WiFi.localIP().toString();
-
-         PW_DEBUG( "Acquiring NTP..." );
-
-         configTzTime( "GMT0BST,M3.5.0/1,M10.5.0",ntpServer );
-         start = millis();
-         while ( !getLocalTime( &timeInfo ) && (millis() - start < GET_REGISTRY_INT( NTP_UPDATE_TIMEOUT) ) )
-         {
-            delay( 200 );
-         }
-
-         if ( !getLocalTime( &timeInfo ) )
-         {
-            PW_WARN( "NTP not available" );
-            m_status.timeToAcquireNTP = -1;
-         }
-         else
-         {
-            m_status.timeToAcquireNTP = ( millis() - start ) / 1000;
-         }
-
-         // We have connected network, so we can have the emailer
-
-         m_emailer = new Emailer;
-         m_emailer->initialise();
-
-         // And now for the emoncms client...
-
-         m_emoncmsClient = new WiFiClientSecure;
-         m_emoncmsClient->setCACert( emoncmsCertificate );
-      }
-   }
+bool Networking::startMDNS()
+{
+   bool  mdnsOk = true;
 
    // Start the MDNS service so we can be discovered and configured
 
-   while( !MDNS.begin( accessPointName ) )
+   if ( ! MDNS.begin( m_status.mdnsName.c_str() ) )
    {
       PW_WARN( "Failed to setup MDNS responder" );
-      delay( 5000 );
+      mdnsOk = false;
+   }
+   else
+   {
+      m_status.mdnsName += String( ".local" );
+      PW_MSG( "MDNS :  at %s/manager",m_status.mdnsName.c_str() );
+
+      MDNS.addService( "http","tcp",80 );
    }
 
-   m_status.mdnsName = String( accessPointName ) + String( ".local" );
-   PW_MSG( "Available at %s/manager",m_status.mdnsName.c_str() );
+   return( mdnsOk );
+}
+
+
+void Networking::initialise()
+{
+   PW_DEBUG( "Networking::initialise" );
+
+   WiFi.mode( WIFI_STA );
+
+   uint32_t start = millis();
+
+   // Connect to the WiFi network
+
+   WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
+   while (WiFi.status() != WL_CONNECTED && (millis() - start < GET_REGISTRY_INT( WIFI_CONNECT_TIMEOUT )) )
+   {
+      delay(200);
+   }
+
+   if ( WiFi.status() != WL_CONNECTED )
+   {
+      PW_WARN( "Network not connected" );
+      m_status.isConnected = false;
+      return;
+   }
+
+   m_status.isConnected = true;
+
+   m_status.timeToConnect = ( millis() - start ) / 1000;
+   m_status.ipAddr = WiFi.localIP().toString();
+   m_status.SSID = String( GET_REGISTRY_STRING( WIFI_SSID ) );
+
+   PW_MSG( "Connected to %s",m_status.SSID.c_str() );
+   PW_DEBUG( "  IP : %s",m_status.ipAddr.c_str() );
+
+   acquireNTP();
+
+   // We have connected network, so we can have the emailer
+
+   m_emailer = new Emailer;
+   m_emailer->initialise();
+
+   // And now for the emoncms client...
+
+   m_emoncmsClient = new WiFiClientSecure;
+   m_emoncmsClient->setCACert( emoncmsCertificate );
 
    // Start our configuration/download server
 
    m_webServer = new WebServer();
    m_webServer->initialise();
 
-   MDNS.addService( "http","tcp",80 );
+   // start MDNS
+
+   m_status.mdnsName = String( GET_REGISTRY_STRING( ACCESS_POINT_NAME ) );
+   startMDNS();
+}
+
+bool  Networking::acquireNTP()
+{
+   struct tm   timeInfo;
+   uint32_t    start;
+
+   PW_DEBUG( "Acquiring NTP..." );
+
+   configTzTime( "GMT0BST,M3.5.0/1,M10.5.0",ntpServer );
+   start = millis();
+   while ( !getLocalTime( &timeInfo ) && (millis() - start < GET_REGISTRY_INT( NTP_UPDATE_TIMEOUT) ) )
+   {
+      delay( 2000 );
+   }
+
+   if ( !getLocalTime( &timeInfo ) )
+   {
+      PW_WARN( "NTP not available" );
+      m_status.timeToAcquireNTP = -1;
+   }
+   else
+   {
+      m_status.timeToAcquireNTP = ( millis() - start ) / 1000;
+   }
+
+   return( m_status.timeToAcquireNTP > -1  );
 }
 
 bool  Networking::isConnected()
@@ -309,9 +341,26 @@ String Networking::getMDNSName()
    return( m_status.mdnsName );
 }
 
+String Networking::getLocalMDNSName()
+{
+   String ret = m_status.mdnsName;
+   int    dotPos;
+
+   dotPos = ret.lastIndexOf( '.' );
+   ret.remove( dotPos );
+
+   return( ret );
+}
+
+
+String Networking::getSSID()
+{
+   return( m_status.SSID );
+}
+
 bool Networking::didAcquireNTP()
 {
-   return (m_status.timeToAcquireNTP > -1 );
+   return ( m_status.timeToAcquireNTP > -1 );
 }
 
 bool Networking::sendEmail( const char *recipient,const char *subject,const char *msg )

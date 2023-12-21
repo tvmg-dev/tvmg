@@ -74,13 +74,12 @@ void gotTouchEvent()
 
 void newConfiguration( void )
 {
-   PW_WARN( "Need to configure via HeatPump-Monitor SSID" );
-
    networking = new Networking;
-   networking->initialise( ! config->isRegistryAvailable() );
+   networking->startAccessPoint();
 
-   PW_WARN( "Use heatpump-monitor.local/manager" );
-   PW_WARN( "Or %s/manager",WiFi.softAPIP().toString().c_str() );
+   PW_WARN( "Need to configure via SSID : %s",networking->getSSID().c_str() );
+   PW_WARN( "Use %s/manager",networking->getMDNSName().c_str() );
+   PW_WARN( "Or %s/manager",networking->getIPAddress().c_str() );
 
    while( 1 )
    {
@@ -133,19 +132,7 @@ void setup( void )
    }
 
    networking = new Networking;
-   networking->initialise( ! config->isRegistryAvailable() );
-
-   // If we are not initialised then we spin forever waiting to
-   // be configured.
-
-   if ( ! config->isRegistryAvailable() )
-   {
-      while( 1 )
-      {
-         PW_DEBUG( "IN debug loop" );
-         delay ( 30 * 1000 );
-      }
-   }
+   networking->initialise();
 
    // Instantiate the storage module, and initialise it.  If the SD card
    // is not operational the storage module will not save data but at least
@@ -156,11 +143,14 @@ void setup( void )
 
    if ( !networking->isConnected() )
    {
-      userIO->updateLine( 1,"WiFi not connected" );
+      userIO->updateLine( 0,"WiFi not connected" );
    }
    else
    {
       snprintf( line,MAX_OLED_COLUMNS,"IP %s",networking->getIPAddress().c_str() );
+      userIO->updateLine( 0,line );
+
+      snprintf( line,MAX_OLED_COLUMNS,"%s",networking->getLocalMDNSName().c_str() );
       userIO->updateLine( 1,line );
 
       if ( networking->didAcquireNTP() )
@@ -226,35 +216,6 @@ void setup( void )
 
    // Display status info before starting
 
-   delay( 5000 );
-   userIO->clear();
-
-   PW_MSG( "Boot Summary :-" );
-
-   if ( networking->isConnected() )
-   {
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",networking->getIPAddress().c_str() );
-   }
-   else
-   {
-      strcpy( line,"No Network" );
-   }
-   userIO->updateLine( 0,line );
-
-   if ( networking->didAcquireNTP() )
-   {
-      struct tm   timeInfo;
-
-      getLocalTime( &timeInfo );
-
-      strftime( line,MAX_OLED_COLUMNS,"%d/%m/%y : %H:%M:%S",&timeInfo );
-   }
-   else
-   {
-      strcpy( line,"NTP : Inactive" );
-   }
-   userIO->updateLine( 1,line );
-
    if ( storageModule->isSDCardOk() )
    {
       strcpy( line,"SD Card Ok" );
@@ -263,7 +224,7 @@ void setup( void )
    {
       strcpy( line,"No SD Card" );
    }
-   userIO->updateLine( 2,line );
+   userIO->updateLine( 3,line );
    userIO->updateLine( 5,"Boot complete..." );
 
    delay( 5000 );

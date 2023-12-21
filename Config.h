@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v7.0f"
+#define VERSION_STR        "v7.0i"
 
 #define PW_WIFI            1
 #define NO_EMONCMS_UPDATE  1
