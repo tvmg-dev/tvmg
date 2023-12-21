@@ -70,7 +70,7 @@ void  setRegistryEntry( char *key,char *value )
 
       stripOutQuotes( Config::m_entries[ Config::numRegistryEntries ].value );
 
-      PW_MSG( "New Registry : %s : %s",key,Config::m_entries[ Config::numRegistryEntries ].value );
+      PW_DEBUG( "Set Registry : %s : %s",key,Config::m_entries[ Config::numRegistryEntries ].value );
 
       Config::numRegistryEntries++;
    }
@@ -83,7 +83,7 @@ int32_t getRegistryInt( char *key )
    if ( index == -1 )
    {
       PW_WARN( "No entry found for %s",key );
-      return 0;
+      return -1;
    }
    else
    {
@@ -121,9 +121,13 @@ Config::Config( char *fileName )
    }
    else
    {
+      // Start spiffs, may format filesystem if new board
+
       m_spiffs->begin( true );
-      PW_MSG( "Config() SPIFFS : %d %d",m_spiffs->totalBytes(),m_spiffs->usedBytes() );
-      PW_MSG( "Config() Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
+      PW_MSG( "Config():" );
+      PW_MSG( "  SPIFFS : used %d of %d",m_spiffs->usedBytes(),m_spiffs->totalBytes() );
+      PW_MSG( "  Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
+      PW_MSG( "  Firmware %s",VERSION_STR );
    }
 
    strncpy( m_configFileName,fileName,MAX_FILENAME );
@@ -152,7 +156,7 @@ void Config::initialise()
    readRegistryFromFile();
 }
 
-bool Config::isInitialised()
+bool Config::isRegistryAvailable()
 {
    return( Config::numRegistryEntries > 0 );
 }
@@ -204,7 +208,7 @@ bool  Config::readRegistryFromFile( void )
    File file = m_spiffs->open( m_configFileName,FILE_READ );
    if ( !file )
    {
-      PW_WARN( "%s not present, using registry defaults",m_configFileName );
+      PW_WARN( "Config: %s not present",m_configFileName );
       return false;
    }
 

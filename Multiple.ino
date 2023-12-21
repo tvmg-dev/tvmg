@@ -1,7 +1,9 @@
-#include <time.h>
 #include <FS.h>
 #include <SD.h>
 #include <SPIFFS.h>
+#include <WiFi.h>
+
+#include <time.h>
 
 #include "utils.h"
 #include "hwconfig.h"
@@ -70,7 +72,24 @@ void gotTouchEvent()
   testingLower = !testingLower;
 }
 
-void setup(void)
+void newConfiguration( void )
+{
+   PW_WARN( "Need to configure via HeatPump-Monitor SSID" );
+
+   networking = new Networking;
+   networking->initialise( ! config->isRegistryAvailable() );
+
+   PW_WARN( "Use heatpump-monitor.local/manager" );
+   PW_WARN( "Or %s/manager",WiFi.softAPIP().toString().c_str() );
+
+   while( 1 )
+   {
+      delay( 60 * 1000 );
+      PW_DEBUG( "Waiting for configuration..." );
+   }
+}
+
+void setup( void )
 {
    // start serial port
 
@@ -80,11 +99,22 @@ void setup(void)
 
    PW_MSG( "Starting..." );
 
-   selectHardware();
-
    // Initialise our configuration
 
    config = Config::instance();
+
+   selectHardware();
+
+   // Is registry available, if not then we need to enter configuration
+   // mode, i.e. networking with AP only with SSID HeatPump-Monitor. The
+   // user must download a suitable config.dat to the device.
+
+   if ( ! config->isRegistryAvailable() )
+   {
+      newConfiguration();
+   }
+
+   // Must have a valid configuration at this stage
 
    // prepare the OLED display for output
 
@@ -93,7 +123,7 @@ void setup(void)
 
    char line[ MAX_OLED_COLUMNS + 1 ];
 
-   if ( config->isInitialised() )
+   if ( config->isRegistryAvailable() )
    {
       userIO->updateLine( 0,"Starting Networking..." );
    }
@@ -103,12 +133,12 @@ void setup(void)
    }
 
    networking = new Networking;
-   networking->initialise( ! config->isInitialised() );
+   networking->initialise( ! config->isRegistryAvailable() );
 
    // If we are not initialised then we spin forever waiting to
    // be configured.
 
-   if ( ! config->isInitialised() )
+   if ( ! config->isRegistryAvailable() )
    {
       while( 1 )
       {
@@ -124,16 +154,13 @@ void setup(void)
    storageModule = new Storage();
    storageModule->initialise();
 
-   char ipAddr[ 20 ];
-
    if ( !networking->isConnected() )
    {
       userIO->updateLine( 1,"WiFi not connected" );
    }
    else
    {
-      networking->getIPAddress( ipAddr );
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",ipAddr );
+      snprintf( line,MAX_OLED_COLUMNS,"IP %s",networking->getIPAddress().c_str() );
       userIO->updateLine( 1,line );
 
       if ( networking->didAcquireNTP() )
@@ -206,7 +233,7 @@ void setup(void)
 
    if ( networking->isConnected() )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",ipAddr );
+      snprintf( line,MAX_OLED_COLUMNS,"IP %s",networking->getIPAddress().c_str() );
    }
    else
    {
@@ -255,7 +282,7 @@ void setup(void)
 
    char initialMsg[ 128 ];
 
-   snprintf( initialMsg,128,"Initial boot up completed - [%s]\nIP : [%s]\nStarting monitoring...\n\n\Good luck !",VERSION_STR,ipAddr  );
+   snprintf( initialMsg,128,"Initial boot up completed - [%s]\nIP : [%s]\nStarting monitoring...\n\n\Good luck !",VERSION_STR,networking->getIPAddress().c_str()  );
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                   "Heat Pump Monitoring - Startup",initialMsg );
@@ -309,9 +336,6 @@ void loop(void)
       wasButtonPressed = false;
 
       char  message[ 512 ];
-      char  ipAddr[ 20 ];
-
-      networking->getIPAddress( ipAddr );
 
       Measurement::Sample  sample = measurement->getLastSample();
       sprintf( message,"Button sample\n\n"
@@ -323,7 +347,7 @@ void loop(void)
                        "Heat Pump : Current [ %.0f W ] Total [ %.0f WHr ]\n"
                        "Immersion : Current [ %.0f W ] Total [ %.0f WHr ]\n\n"
                        "Free Bytes : %u\n",
-                       ipAddr,
+                       networking->getIPAddress().c_str(),
                        sample.m_sampleTime,
                        sample.m_flowHP,sample.m_returnHP,( sample.m_flowHP - sample.m_returnHP ),
                        sample.m_flowHeating,sample.m_returnHeating,( sample.m_flowHeating - sample.m_returnHeating ),

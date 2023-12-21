@@ -98,11 +98,8 @@ void  Storage::setNetworking( Networking *network )
    if ( ! m_sdCardOk )
    {
       char subject[ 128 ];
-      char ipAddr[ 20 ];
 
-      m_networking->getIPAddress( ipAddr );
-
-      snprintf( subject,128,"SD Card Init Fault [%s]",ipAddr );
+      snprintf( subject,128,"SD Card Init Fault [%s]",m_networking->getIPAddress().c_str() );
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"No message" );
    }
@@ -133,9 +130,6 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       m_dailyUpdate = true;
 
       char updateMsg[ 512 ];
-      char ipAddr[ 32 ];
-
-      m_networking->getIPAddress( ipAddr );
 
       snprintf( updateMsg,512,"Version [%s]\n"
                               "IP Address : %s\n\n"
@@ -144,7 +138,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
                               "Immersion :  Power [ %.1f ] W, Energy [ %.1f ] kWhr\n"
                               "Outside : [ %.1f] \n\n",
                               VERSION_STR,
-                              ipAddr,
+                              m_networking->getIPAddress().c_str(),
                               sample.m_flowHP,sample.m_returnHP,sample.m_powerHP,sample.m_energyHP / 1000,
                               sample.m_flowHeating,sample.m_returnHeating,
                               sample.m_powerImmersion,sample.m_energyImmersion / 1000,
@@ -248,11 +242,8 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    if ( ! m_sdCardOk && m_networking )
    {
       char subject[ 128 ];
-      char ipAddr[ 20 ];
 
-      m_networking->getIPAddress( ipAddr );
-
-      snprintf( subject,128,"SD Card Failure [%s]",ipAddr );
+      snprintf( subject,128,"SD Card Failure [%s]",m_networking->getIPAddress().c_str() );
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Preventing further writes" );
    }

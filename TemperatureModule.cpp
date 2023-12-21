@@ -58,7 +58,7 @@ void  TemperatureModule::registerSensor( uint8_t index, DeviceAddress deviceAddr
 
    PW_MSG( "Added sensor '%s' at index %u",name,index );
 
-#if DEBUG_ENABLED == 1
+#if DEBUG_LEVEL_ENABLED == 1
    char addrString[ TEMP_ADDR_STRLEN ];
 
    getAddressString( deviceAddress,addrString );
@@ -200,7 +200,7 @@ bool TemperatureModule::getTemperatures( void )
    // Request temperatures of all devices on the bus.  This may block so is not
    // an ideal way to obtain temperatures...
 
-#if DEBUG_ENABLED == 1
+#if DEBUG_LEVEL_ENABLED == 1
    unsigned long start;
    start = millis();
 #endif
@@ -228,7 +228,7 @@ bool TemperatureModule::getTemperatures( void )
    // Using %ul as format specifier fails - can Serial.println to see value too
    // It appears to take ~ 520 ms if only code running
 
-#if DEBUG_ENABLED == 1
+#if DEBUG_LEVEL_ENABLED == 1
    PW_DEBUG( "Took %u ms to request temperatures", millis() - start );
 #endif
 

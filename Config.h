@@ -1,12 +1,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <FS.h>
 #include <SPIFFS.h>
 
 #include "utils.h"
 
-#define VERSION_STR        "v7.0d"
+#define VERSION_STR        "v7.0f"
 
 #define PW_WIFI            1
 #define NO_EMONCMS_UPDATE  1
@@ -56,7 +55,7 @@ public:
    ~Config();
    void initialise();
 
-   bool  isInitialised();
+   bool  isRegistryAvailable();
    bool  getInt( char *key,int32_t *intValue );
    bool  getString( char *key,char *strValue );
    fs::SPIFFSFS   *getSPIFFS();

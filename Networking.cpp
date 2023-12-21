@@ -13,7 +13,6 @@
 
 #include "WebServer.h"
 
-
 const char* ntpServer = "pool.ntp.org";
 
 // emoncms.org certificate is signed by 'ZeroSSL RSA Domain Secure Site CA'
@@ -69,7 +68,7 @@ public:
    Emailer();
    ~Emailer();
 
-   void initialise( void );
+   void initialise();
    bool sendEmail( const char *recipient,const char *subject,const char *msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName );
 
@@ -90,7 +89,7 @@ Emailer::~Emailer()
    delete m_sender;
 }
 
-void  Emailer::initialise( void )
+void  Emailer::initialise()
 {
    PW_MSG( "Emailer initialise" );
 
@@ -178,7 +177,8 @@ Networking::Networking()
 
    // set status to defaults, not connected etc.
 
-   strcpy( m_status.ipAddr,"" );
+   m_status.ipAddr = "";
+   m_status.mdnsName = "";
    m_status.isConnected = false;
    m_status.timeToAcquireNTP = -1;
    m_status.timeToConnect = 0;
@@ -242,7 +242,7 @@ void Networking::initialise( bool isNewSetup )
 
          m_status.isConnected = true;
          m_status.timeToConnect = ( millis() - start ) / 1000;
-         strncpy( m_status.ipAddr,WiFi.localIP().toString().c_str(),16 );
+         m_status.ipAddr = WiFi.localIP().toString();
 
          PW_DEBUG( "Acquiring NTP..." );
 
@@ -283,6 +283,9 @@ void Networking::initialise( bool isNewSetup )
       delay( 5000 );
    }
 
+   m_status.mdnsName = String( accessPointName ) + String( ".local" );
+   PW_MSG( "Available at %s/manager",m_status.mdnsName.c_str() );
+
    // Start our configuration/download server
 
    m_webServer = new WebServer();
@@ -291,20 +294,22 @@ void Networking::initialise( bool isNewSetup )
    MDNS.addService( "http","tcp",80 );
 }
 
-bool  Networking::isConnected( void )
+bool  Networking::isConnected()
 {
    return m_status.isConnected;
 }
 
-void Networking::getIPAddress( char *addrStr )
+String Networking::getIPAddress()
 {
-   if ( addrStr )
-   {
-      strcpy( addrStr,m_status.ipAddr );
-   }
+   return( m_status.ipAddr );
 }
 
-bool Networking::didAcquireNTP( void )
+String Networking::getMDNSName()
+{
+   return( m_status.mdnsName );
+}
+
+bool Networking::didAcquireNTP()
 {
    return (m_status.timeToAcquireNTP > -1 );
 }

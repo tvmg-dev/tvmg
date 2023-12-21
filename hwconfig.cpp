@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "Config.h"
 
 #include "hwconfig.h"
 
@@ -43,18 +44,23 @@ HardwareConfig TemperatureNode =
    -1              // TouchButton2
 };
 
+#define TEMPERATURE_BOARD  1
+#define MASTER_BOARD       2
+
 HardwareConfig *hwConfig;
 
 void  selectHardware()
 {
-   if ( strcmp( ESP.getChipModel(),"ESP32-D0WD-V3" ) == 0 )
-   {
-      PW_MSG( "Temperature Module Detected" );
-      hwConfig = &TemperatureNode;
-   }
-   else
+   int boardType = GET_REGISTRY_INT( BOARD_TYPE );
+
+   if ( boardType == MASTER_BOARD )
    {
       PW_MSG( "Master Device Detected" );
       hwConfig = &MasterDevice;
+   }
+   else
+   {
+      PW_MSG( "Temperature Module Detected" );
+      hwConfig = &TemperatureNode;
    }
 }
