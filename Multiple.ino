@@ -96,8 +96,6 @@ void setup( void )
 
    delay( 1000 );
 
-   PW_MSG( "Starting..." );
-
    // Initialise our configuration
 
    config = Config::instance();

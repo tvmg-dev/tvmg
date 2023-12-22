@@ -396,6 +396,13 @@ void WebServer::setupAsyncServer()
       ESP.restart();
    });
 
+   m_webServer->on("/reboot", HTTP_POST, [](AsyncWebServerRequest *request)
+   {
+      request->send(200);
+      delay( 2 * 1000 );
+      ESP.restart();
+   });
+
    m_webServer->onNotFound(notFound);
 
    m_webServer->begin();

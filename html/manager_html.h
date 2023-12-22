@@ -217,6 +217,22 @@ const char manager_html[] PROGMEM = R"rawliteral(
           <div id="spacer_20"></div>
       </fieldset>
 
+      <div id="spacer_20"></div>
+
+      <fieldset>
+        <legend>Reboot</legend>
+          <div id="spacer_20"></div>
+          <form method="POST" action="/reboot" target="self_page">
+            <table><tr><td id="first_td_th">
+            <p>Soft Reboot the device</p>
+            </td><td>
+            <input type="submit" id="submit" value="Reboot">
+            </td></tr></table>
+          </form>
+          <div id="spacer_20"></div>
+      </fieldset>
+
+
       <div id="spacer_50"></div>
 
       <iframe style="display:none" name="self_page"></iframe>

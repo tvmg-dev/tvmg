@@ -1,11 +1,11 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef __CONFIG_H
+#define __CONFIG_H
 
 #include <SPIFFS.h>
 
 #include "utils.h"
 
-#define VERSION_STR        "v7.0i"
+#define VERSION_STR        "v7.0j"
 
 #define PW_WIFI            1
 #define NO_EMONCMS_UPDATE  1
@@ -53,7 +53,6 @@ class Config
 public:
    Config( char *fileName );
    ~Config();
-   void initialise();
 
    bool  isRegistryAvailable();
    bool  getInt( char *key,int32_t *intValue );
@@ -65,11 +64,13 @@ public:
    static KeyValue   m_entries[ MAX_REGISTRY_ENTRIES ];
 
 private:
+   void initialise();
    void writeRegistryToFile();
    bool readRegistryFromFile();
 
    fs::SPIFFSFS  *m_spiffs;
    char           m_configFileName[ MAX_FILENAME + 1 ];
+   bool           m_registryAvailable;
 };
 
 #endif

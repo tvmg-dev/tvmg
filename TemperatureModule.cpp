@@ -1,5 +1,5 @@
 #include "utils.h"
-#include "config.h"
+#include "Config.h"
 #include "hwconfig.h"
 
 #include "TemperatureModule.h"
@@ -58,14 +58,15 @@ void  TemperatureModule::registerSensor( uint8_t index, DeviceAddress deviceAddr
 
    PW_MSG( "Added sensor '%s' at index %u",name,index );
 
-#if DEBUG_LEVEL_ENABLED == 1
-   char addrString[ TEMP_ADDR_STRLEN ];
+   if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
+   {
+      char addrString[ TEMP_ADDR_STRLEN ];
 
-   getAddressString( deviceAddress,addrString );
+      getAddressString( deviceAddress,addrString );
 
-   PW_DEBUG( "   Address [%s]",addrString );
-   PW_DEBUG( "   Calibration offset %.2f",calibrationOffset );
-#endif
+      PW_DEBUG( "   Address [%s]",addrString );
+      PW_DEBUG( "   Calibration offset %.2f",calibrationOffset );
+   }
 }
 
 void  TemperatureModule::initialise()
@@ -197,13 +198,15 @@ bool TemperatureModule::getTemperatures( void )
       return false;
    }
 
+   unsigned long start;
+   if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
+   {
+      start = millis();
+   }
+
    // Request temperatures of all devices on the bus.  This may block so is not
    // an ideal way to obtain temperatures...
 
-#if DEBUG_LEVEL_ENABLED == 1
-   unsigned long start;
-   start = millis();
-#endif
    m_dallasController->requestTemperatures();
 
    // Now get the temperatures from the scratch pad used by the Dallas library
@@ -228,9 +231,10 @@ bool TemperatureModule::getTemperatures( void )
    // Using %ul as format specifier fails - can Serial.println to see value too
    // It appears to take ~ 520 ms if only code running
 
-#if DEBUG_LEVEL_ENABLED == 1
-   PW_DEBUG( "Took %u ms to request temperatures", millis() - start );
-#endif
+   if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
+   {
+      PW_DEBUG( "Took %u ms to request temperatures", millis() - start );
+   }
 
    return true;
 }

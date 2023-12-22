@@ -108,7 +108,8 @@ char *getRegistryString( char *key )
 
 Config::Config( char *fileName )
       : m_spiffs( new SPIFFSFS() ),
-        m_configFileName()
+        m_configFileName(),
+        m_registryAvailable( false )
 {
    // Nothing in the registry yet...
 
@@ -131,6 +132,8 @@ Config::Config( char *fileName )
    }
 
    strncpy( m_configFileName,fileName,MAX_FILENAME );
+
+   initialise();
 }
 
 Config::~Config()
@@ -141,10 +144,17 @@ Config::~Config()
 
 Config   *Config::instance()
 {
-   if ( !s_instance )
+   // prevent recursion as the logging uses the Config registry to
+   // determine whether to o/p anything.
+
+   static bool isCreating = false;
+
+   if ( !s_instance && !isCreating )
    {
+      isCreating = true;
       s_instance = new Config( "/config.dat" );
-      s_instance->initialise();
+
+      isCreating = false;
    }
 
    return( s_instance );
@@ -154,6 +164,7 @@ Config   *Config::instance()
 void Config::initialise()
 {
    readRegistryFromFile();
+   m_registryAvailable = true;
 }
 
 bool Config::isRegistryAvailable()
