@@ -5,7 +5,10 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v7.0j"
+#define VERSION_STR        "v7.0k"
+
+#define TEMPERATURE_BOARD  1
+#define MASTER_BOARD       2
 
 #define PW_WIFI            1
 #define DEBUG_LOGGING      0
@@ -25,18 +28,6 @@ extern char    *getRegistryString( char *key );
 #define GET_REGISTRY_STRING( x ) getRegistryString( CONFIG_DEF_TO_STR( x ) )
 
 // Our definitions for temperature & energy
-
-#define HEATPUMP_FLOW_THERM   0
-#define HEATPUMP_RETURN_THERM 1
-#define HEATING_FLOW_THERM    2
-#define HEATING_RETURN_THERM  3
-#define OUTSIDE_THERM         4
-#define TEMPERATURE_INVALID   -100
-
-#define HEATPUMP_POWER        0
-#define IMMERSION_POWER       1
-#define POWER_INVALID         -1
-#define ENERGY_INVALID        -1
 
 #define SAMPLING_PERIOD_MS    30000
 

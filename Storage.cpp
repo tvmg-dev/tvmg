@@ -1,11 +1,14 @@
+#include <SD.h>
+#include <FS.h>
+
+//#include <EMailSender.h>
+
 #include "Storage.h"
 #include "Networking.h"
 #include "Config.h"
 
-#include <SD.h>
-#include <FS.h>
-
-#include <EMailSender.h>
+#include "TemperatureModule.h"
+#include "PowerModule.h"
 
 #define WRITE_TEST_FILE "/test.dat"
 

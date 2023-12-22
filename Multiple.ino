@@ -1,8 +1,3 @@
-#include <FS.h>
-#include <SD.h>
-#include <SPIFFS.h>
-#include <WiFi.h>
-
 #include <time.h>
 
 #include "utils.h"
@@ -26,23 +21,6 @@
 #define MODBUS_HEATPUMP_ADDR     0x1
 #define MODBUS_IMMERSION_ADDR    0x5
 #endif
-
-#if PW_WIFI == 1
-DeviceAddress heatpumpFlowThermometer = { 0x28,0x48,0xFB,0x81,0xE3,0x71,0x3C,0x06 };
-#else
-DeviceAddress heatpumpFlowThermometer = { 0x28,0x30,0x21,0x94,0x97,0x0D,0x03,0x10 };
-#endif
-
-DeviceAddress heatpumpReturnThermometer = { 0x28,0x26,0x11,0x94,0x97,0x0A,0x03,0x13 };
-DeviceAddress heatingFlowThermometer = { 0x28,0x9A,0x11,0x94,0x97,0x02,0x03,0x1F };
-DeviceAddress heatingReturnThermometer = { 0x28,0xD4,0x39,0x94,0x97,0x03,0x03,0x7B };
-DeviceAddress outsideThermometer = { 0x28,0x4E,0X5F,0x94,0x97,0x03,0x03,0x88 };
-
-#define  HEATPUMP_FLOW_THERM_CAL    0.12
-#define  HEATPUMP_RETURN_THERM_CAL  0.38
-#define  HEATING_FLOW_THERM_CAL     0.25
-#define  HEATING_RETURN_THERM_CAL   0.12
-#define  OUTSIDE_THERM_CAL          0.0
 
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
@@ -187,12 +165,6 @@ void setup( void )
    // Instantiate the temperature collecting module
 
    tempModule = new TemperatureModule;
-   tempModule->registerSensor( HEATPUMP_FLOW_THERM,heatpumpFlowThermometer,"Heat Pump Flow",HEATPUMP_FLOW_THERM_CAL );
-   tempModule->registerSensor( HEATPUMP_RETURN_THERM,heatpumpReturnThermometer,"Heat Pump Return",HEATPUMP_RETURN_THERM_CAL );
-   tempModule->registerSensor( HEATING_FLOW_THERM,heatingFlowThermometer,"Heating Flow",HEATING_FLOW_THERM_CAL );
-   tempModule->registerSensor( HEATING_RETURN_THERM,heatingReturnThermometer,"Heating Return",HEATING_RETURN_THERM_CAL );
-   tempModule->registerSensor( OUTSIDE_THERM,outsideThermometer,"Outside",OUTSIDE_THERM_CAL );
-
    tempModule->initialise();
 
    // Instantiate the power collecting module
@@ -245,7 +217,6 @@ void setup( void )
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                   "Heat Pump Monitoring - Startup",initialMsg );
-
 }
 
 #define LOOP_PERIOD_MS  5000

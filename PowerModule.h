@@ -8,6 +8,11 @@
 #define MAX_POWER_SENSORS  2
 #define MAX_POWER_NAME     32
 
+#define HEATPUMP_POWER        0
+#define IMMERSION_POWER       1
+#define POWER_INVALID         -1
+#define ENERGY_INVALID        -1
+
 class PowerModule
 {
 public:

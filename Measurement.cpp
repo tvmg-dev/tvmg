@@ -54,14 +54,19 @@ void  Measurement::takeSample( void )
 
    start = millis();
    time( &m_lastSample.m_sampleTime );
-   m_tempModule->getTemperature( HEATPUMP_FLOW_THERM,&m_lastSample.m_flowHP );
-   m_tempModule->getTemperature( HEATPUMP_RETURN_THERM,&m_lastSample.m_returnHP );
+
    m_tempModule->getTemperature( HEATING_FLOW_THERM,&m_lastSample.m_flowHeating );
    m_tempModule->getTemperature( HEATING_RETURN_THERM,&m_lastSample.m_returnHeating );
-   m_tempModule->getTemperature( OUTSIDE_THERM,&m_lastSample.m_outside );
 
-   m_powerModule->getPower( HEATPUMP_POWER,&m_lastSample.m_powerHP,&m_lastSample.m_energyHP );
-   m_powerModule->getPower( IMMERSION_POWER,&m_lastSample.m_powerImmersion,&m_lastSample.m_energyImmersion );
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   {
+      m_tempModule->getTemperature( HEATPUMP_FLOW_THERM,&m_lastSample.m_flowHP );
+      m_tempModule->getTemperature( HEATPUMP_RETURN_THERM,&m_lastSample.m_returnHP );
+      m_tempModule->getTemperature( OUTSIDE_THERM,&m_lastSample.m_outside );
+
+      m_powerModule->getPower( HEATPUMP_POWER,&m_lastSample.m_powerHP,&m_lastSample.m_energyHP );
+      m_powerModule->getPower( IMMERSION_POWER,&m_lastSample.m_powerImmersion,&m_lastSample.m_energyImmersion );
+   }
 
    // We only store data at the sample period, we may be taking measurements
    // more often than that.

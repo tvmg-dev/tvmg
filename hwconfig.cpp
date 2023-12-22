@@ -44,9 +44,6 @@ HardwareConfig TemperatureNode =
    -1              // TouchButton2
 };
 
-#define TEMPERATURE_BOARD  1
-#define MASTER_BOARD       2
-
 HardwareConfig *hwConfig;
 
 void  selectHardware()

@@ -1,8 +1,31 @@
+#include <cJSON.h>
+
 #include "utils.h"
 #include "Config.h"
 #include "hwconfig.h"
 
 #include "TemperatureModule.h"
+
+uint8_t toHex( char a )
+{
+   int8_t n;
+
+   if ( a < 48 )
+      goto error;
+
+   n = a - 48;
+   if ( n <= 9 )
+      return static_cast<uint8_t>( n );
+
+   if ( n < 17 | n > 23 )
+      goto error;
+
+   return static_cast<uint8_t>( n - 7 );
+
+error:
+   PW_ERROR( "Invalid char %c",a );
+   return 17;
+}
 
 TemperatureModule::TemperatureModule()
          : m_oneWireController( nullptr ),
@@ -20,6 +43,68 @@ TemperatureModule::TemperatureModule()
       m_sensors[ i ].m_isValid = false;
       m_sensors[ i ].m_busIndex = MAX_TEMP_SENSORS;
    }
+
+   // Parse the /sensors.dat file for thermometers
+
+   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+   File file = spiffs->open( "/sensors.dat",FILE_READ );
+   if ( !file )
+   {
+      PW_WARN( "/sensors.dat is missing" );
+   }
+   else
+   {
+      String data = file.readStringUntil( '@' );
+
+      cJSON *root = cJSON_Parse( data.c_str() );
+      cJSON *sensor;
+
+      if ( cJSON_IsArray( root ) )
+      {
+         cJSON_ArrayForEach( sensor,root )
+         {
+            if ( strcmp( "THERM",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            {
+               strncpy( m_sensors[ m_numSensors ].m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_TEMP_NAME );
+               strncpy( m_sensors[ m_numSensors ].m_addressStr,cJSON_GetObjectItem( sensor,"address" )->valuestring,sizeof( m_sensors[ m_numSensors ].m_addressStr ) - 1 );
+               m_sensors[ m_numSensors ].m_calibrationOffset = static_cast<float_t> (cJSON_GetObjectItem( sensor,"calibration" )->valuedouble );
+               m_sensors[ m_numSensors ].m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
+               m_sensors[ m_numSensors ].m_temp = DEVICE_DISCONNECTED_C;
+               m_sensors[ m_numSensors ].m_isValid = true;
+
+               for ( int i = 0; i < 8; i++ )
+               {
+                  uint8_t  byte;
+                  byte = toHex( m_sensors[ m_numSensors ].m_addressStr[ i * 2 ] );
+                  byte <<= 4;
+                  byte |= toHex( m_sensors[ m_numSensors ].m_addressStr[ (i * 2) + 1 ] );
+                  m_sensors[ m_numSensors ].m_address[ i ] = byte;
+               }
+               char addr[ 32 ];
+               getAddressString( m_sensors[ m_numSensors ].m_address,addr );
+
+               PW_DEBUG( "Therm: name %s address %s",m_sensors[ m_numSensors ].m_name,addr );
+               PW_DEBUG( "cal %f feed %u",m_sensors[ m_numSensors ].m_calibrationOffset,m_sensors[ m_numSensors ].m_emonFeedId );
+               m_numSensors++;
+            }
+            (void) toHex( 'a' );
+            (void) toHex( '+' );
+
+         }
+      }
+
+      cJSON_Delete( root );
+      close( file );
+
+      if ( m_numSensors )
+      {
+         PW_MSG( "Registered %d thermometers",m_numSensors );
+      }
+      else
+      {
+         PW_ERROR( "No thermometers registered !" );
+      }
+   }
 }
 
 TemperatureModule::~TemperatureModule()
@@ -28,45 +113,6 @@ TemperatureModule::~TemperatureModule()
 
    delete m_dallasController;
    delete m_oneWireController;
-}
-
-void  TemperatureModule::registerSensor( uint8_t index, DeviceAddress deviceAddress,char *name, float calibrationOffset )
-
-{
-   if ( index > MAX_TEMP_SENSORS - 1 )
-   {
-      PW_WARN( "Not registering sensor - out of range" );
-      return;
-   }
-   else if ( m_sensors[ index ].m_isValid == true )
-   {
-      PW_WARN( "Not registering sensor - index in use" );
-      return;
-   }
-
-   for ( int i = 0; i < sizeof( DeviceAddress ); i++ )
-   {
-      m_sensors[ index ].m_address[ i ] = deviceAddress[ i ];
-   }
-
-   strncpy( m_sensors[ index ].m_name,name,MAX_TEMP_NAME );
-   m_sensors[ index ].m_temp = DEVICE_DISCONNECTED_C;
-   m_sensors[ index ].m_calibrationOffset = calibrationOffset;
-   m_sensors[ index ].m_isValid = true;
-
-   m_numSensors++;
-
-   PW_MSG( "Added sensor '%s' at index %u",name,index );
-
-   if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
-   {
-      char addrString[ TEMP_ADDR_STRLEN ];
-
-      getAddressString( deviceAddress,addrString );
-
-      PW_DEBUG( "   Address [%s]",addrString );
-      PW_DEBUG( "   Calibration offset %.2f",calibrationOffset );
-   }
 }
 
 void  TemperatureModule::initialise()
@@ -152,7 +198,7 @@ void  TemperatureModule::initialise()
          }
       }
 
-      // Globally set the resolution to 9 bit per device
+      // Globally set the resolution to 11 bits per device
 
       if ( m_isOk )
       {
@@ -165,28 +211,30 @@ void  TemperatureModule::initialise()
    }
 }
 
-bool TemperatureModule::getTemperature( uint8_t index, float *temp )
+bool TemperatureModule::getTemperature( char *name, float *temp )
 {
-   if ( index < MAX_TEMP_SENSORS && m_sensors[ index ].m_isValid )
+   // Resample if we need to
+
+   if ( millis() - m_millisLastAquisition > TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
    {
-      if ( millis() - m_millisLastAquisition > TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
-      {
-         getTemperatures();
-         m_millisLastAquisition = millis();
-      }
+      getTemperatures();
+      m_millisLastAquisition = millis();
+   }
 
-      PW_MSG( "%s : %.2f",m_sensors[ index ].m_name,m_sensors[ index ].m_temp );
+   // Find the temperature for the given named thermometer
 
-      if ( m_sensors[ index ].m_temp > DEVICE_DISCONNECTED_C )
+   for ( int i = 0; i < m_numSensors; i++ )
+   {
+      if ( strcmp( name,m_sensors[ i ].m_name ) == 0 && m_sensors[ i ].m_temp > DEVICE_DISCONNECTED_C )
       {
-         *temp = m_sensors[ index ].m_temp;
+         *temp = m_sensors[ i ].m_temp;
+         PW_MSG( "%s : %.2f",m_sensors[ i ].m_name,m_sensors[ i ].m_temp );
          return true;
       }
    }
 
    *temp = TEMPERATURE_INVALID;
    return false;
-
 }
 
 bool TemperatureModule::getTemperatures( void )

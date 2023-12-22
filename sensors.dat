@@ -1,0 +1,52 @@
+[
+{
+   "type": "THERM",
+   "name": "HP-FLOW",
+   "address": "28302194970D0310",
+   "calibration": 0.12,
+   "emonFeedId": 476741
+},
+{
+   "type": "THERM",
+   "name": "HP-RETURN",
+   "address": "28261194970A0313",
+   "calibration": 0.38,
+   "emonFeedId": 476740
+},
+{
+   "type": "THERM",
+   "name": "UFH-FLOW",
+   "address": "289A11949702031F",
+   "calibration": 0.25,
+   "emonFeedId": 476738
+},
+{
+   "type": "THERM",
+   "name": "UFH-RETURN",
+   "address": "28D439949703037B",
+   "calibration": 0.12,
+   "emonFeedId": 476739
+},
+{
+   "type": "THERM",
+   "name": "OUTSIDE",
+   "address": "284E5F9497030388",
+   "calibration": 0.0,
+   "emonFeedId": 476990
+},
+{
+   "type": "POWER",
+   "name": "HP",
+   "address": 1,
+   "calibration": 0,
+   "emonFeedId": 476995
+},
+{
+   "type": "POWER",
+   "name": "IMMERSION",
+   "address": 5,
+   "calibration": 0,
+   "emonFeedId": 476997
+}
+]
+@
