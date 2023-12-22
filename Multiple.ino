@@ -170,9 +170,6 @@ void setup( void )
    // Instantiate the power collecting module
 
    powerModule = new PowerModule;
-   powerModule->registerSensor( HEATPUMP_POWER,MODBUS_HEATPUMP_ADDR,"Heatpump" );
-   powerModule->registerSensor( IMMERSION_POWER,MODBUS_IMMERSION_ADDR,"Immersion" );
-
    powerModule->initialise();
 
    // Instantiate the measurement module, but don't initialise it just yet

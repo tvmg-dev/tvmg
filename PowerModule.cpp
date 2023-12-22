@@ -1,3 +1,5 @@
+#include <cJSON.h>
+
 #include "PowerModule.h"
 
 #include "hwconfig.h"
@@ -17,6 +19,7 @@ PowerModule::PowerModule()
            : m_serial( nullptr ),
              m_master( nullptr ),
              m_sensors(),
+             m_numSensors( 0 ),
              m_masterStarted( false )
 {
    PW_DEBUG( "PowerModule::PowerModule()" );
@@ -26,6 +29,54 @@ PowerModule::PowerModule()
    {
       m_sensors[ i ].m_isValid = false;
    }
+
+   // Parse the /sensors.dat file for thermometers
+
+   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+   File file = spiffs->open( "/sensors.dat",FILE_READ );
+   if ( !file )
+   {
+      PW_WARN( "/sensors.dat is missing" );
+   }
+   else
+   {
+      String data = file.readStringUntil( '@' );
+
+      cJSON *root = cJSON_Parse( data.c_str() );
+      cJSON *sensor;
+
+      if ( cJSON_IsArray( root ) )
+      {
+         cJSON_ArrayForEach( sensor,root )
+         {
+            if ( strcmp( "POWER",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            {
+               strncpy( m_sensors[ m_numSensors ].m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_POWER_NAME );
+               m_sensors[ m_numSensors ].m_address = cJSON_GetObjectItem( sensor,"address" )->valueint;
+               m_sensors[ m_numSensors ].m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
+               m_sensors[ m_numSensors ].m_power = POWER_INVALID;
+               m_sensors[ m_numSensors ].m_energy = ENERGY_INVALID;
+               m_sensors[ m_numSensors ].m_isValid = true;
+
+               PW_DEBUG( "Power: name %s address %u",m_sensors[ m_numSensors ].m_name,m_sensors[ m_numSensors ].m_address );
+               PW_DEBUG( "feed %u",m_sensors[ m_numSensors ].m_emonFeedId );
+               m_numSensors++;
+            }
+         }
+      }
+
+      cJSON_Delete( root );
+      close( file );
+
+      if ( m_numSensors )
+      {
+         PW_MSG( "Registered %d power sensors",m_numSensors );
+      }
+      else
+      {
+         PW_ERROR( "No power sensors registered !" );
+      }
+   }
 }
 
 PowerModule::~PowerModule()
@@ -34,28 +85,6 @@ PowerModule::~PowerModule()
 
    delete m_master;
    delete m_serial;
-}
-
-void  PowerModule::registerSensor( uint8_t index, uint8_t addr, char *name )
-{
-   if ( index > MAX_POWER_SENSORS - 1 )
-   {
-      PW_WARN( "Not registering sensor - out of range" );
-      return;
-   }
-   else if ( m_sensors[ index ].m_isValid == true )
-   {
-      PW_WARN( "Not registering sensor - index in use" );
-      return;
-   }
-
-   strncpy( m_sensors[ index ].m_name,name,MAX_POWER_NAME );
-   m_sensors[ index ].m_address = addr;
-   m_sensors[ index ].m_power = POWER_INVALID;
-   m_sensors[ index ].m_energy = ENERGY_INVALID;
-   m_sensors[ index ].m_isValid = true;
-
-   PW_MSG( "Added sensor '%s' at index %u",name,index );
 }
 
 void PowerModule::initialise( void )
@@ -99,11 +128,20 @@ void PowerModule::initialise( void )
   0x0009  Alarm status  0xFFFF is alarm，0x0000is not alarm
 */
 
-bool PowerModule::getPower( uint8_t index,float_t *power,float_t *energy )
+bool PowerModule::getPower( char *name,float_t *power,float_t *energy )
 {
    uint8_t  modbusResult;
+   uint8_t  index = 0;
 
-   if ( index < MAX_POWER_SENSORS && m_sensors[ index ].m_isValid && hwConfig->ModBusSerial != -1 )
+   for ( int index = 0; index < m_numSensors; index++ )
+   {
+      if ( strcmp( name,m_sensors[ index ].m_name ) == 0 )
+      {
+         break;
+      }
+   }
+
+   if ( index < m_numSensors && m_sensors[ index ].m_isValid && hwConfig->ModBusSerial != -1 )
    {
       if ( !m_masterStarted )
       {

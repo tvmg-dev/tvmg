@@ -87,9 +87,6 @@ TemperatureModule::TemperatureModule()
                PW_DEBUG( "cal %f feed %u",m_sensors[ m_numSensors ].m_calibrationOffset,m_sensors[ m_numSensors ].m_emonFeedId );
                m_numSensors++;
             }
-            (void) toHex( 'a' );
-            (void) toHex( '+' );
-
          }
       }
 

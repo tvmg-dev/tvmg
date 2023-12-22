@@ -5,13 +5,12 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v7.0k"
+#define VERSION_STR        "v7.0m"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
 
-#define PW_WIFI            1
-#define DEBUG_LOGGING      0
+#define SAMPLING_PERIOD_MS 30000
 
 #define MAX_REGISTRY_ENTRIES 32
 #define MAX_KEY_LENGTH       64
@@ -26,10 +25,6 @@ extern char    *getRegistryString( char *key );
 #define SET_REGISTRY( x,y )      setRegistryEntry( CONFIG_DEF_TO_STR( x ),CONFIG_DEF_TO_STR( y ) )
 #define GET_REGISTRY_INT( x )    getRegistryInt( CONFIG_DEF_TO_STR( x ) )
 #define GET_REGISTRY_STRING( x ) getRegistryString( CONFIG_DEF_TO_STR( x ) )
-
-// Our definitions for temperature & energy
-
-#define SAMPLING_PERIOD_MS    30000
 
 typedef struct {
    uint8_t  keyInt;
