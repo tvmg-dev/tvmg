@@ -8,8 +8,6 @@
 #define VERSION_STR        "v7.0j"
 
 #define PW_WIFI            1
-#define NO_EMONCMS_UPDATE  1
-#define NO_EMAIL           1
 #define DEBUG_LOGGING      0
 
 #define MAX_REGISTRY_ENTRIES 32

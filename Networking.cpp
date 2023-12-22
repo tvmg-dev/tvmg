@@ -365,43 +365,47 @@ bool Networking::didAcquireNTP()
 
 bool Networking::sendEmail( const char *recipient,const char *subject,const char *msg )
 {
-#if NO_EMAIL != 1
+   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
+   {
+      PW_WARN( "Would send email %s",subject );
+      return true;
+   }
+
    if ( m_emailer )
    {
       return m_emailer->sendEmail( recipient,subject,msg );
    }
    return false;
-#else
-   PW_WARN( "Would send email %s",subject );
-   return true;
-#endif
 }
 
 bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName )
 {
-#if NO_EMAIL != 1
+   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
+   {
+      PW_WARN( "Would send email %s",subject );
+      return true;
+   }
+
    if ( m_emailer )
    {
       return m_emailer->sendEmailWithAttachment( recipient,subject,msg,fileName );
    }
    return false;
-#else
-   PW_WARN( "Would send email %s",subject );
-   return true;
-#endif
 }
 
 // https://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
 
 bool Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
 {
-#if NO_EMONCMS_UPDATE == 1
-   (void) emonFeedId;
-   (void) value;
+   if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) != 1 )
+   {
+      (void) emonFeedId;
+      (void) value;
 
-   PW_WARN( "Would send to emon {%u : %.2f]",emonFeedId,value );
-   return true;
-#else
+      PW_WARN( "Would send to emon {%u : %.2f]",emonFeedId,value );
+      return true;
+   }
+
    bool        retOk = false;
    char        url[ 256 ];
    time_t      utc;
@@ -439,6 +443,5 @@ bool Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
       https.end();
    }
 
-   return retOk;
-#endif
+return retOk;
 }
