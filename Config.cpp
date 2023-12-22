@@ -1,9 +1,5 @@
 #include "Config.h"
 
-#include "Storage.h"
-
-#include <SD.h>
-
 Config   *s_instance = nullptr;
 
 uint8_t Config::numRegistryEntries = 0;
@@ -107,7 +103,7 @@ char *getRegistryString( char *key )
 }
 
 Config::Config( char *fileName )
-      : m_spiffs( new SPIFFSFS() ),
+      : m_spiffs( new fs::SPIFFSFS() ),
         m_configFileName(),
         m_registryAvailable( false )
 {
