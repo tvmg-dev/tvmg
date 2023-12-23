@@ -110,14 +110,19 @@ void  Storage::setNetworking( Networking *network )
 
 void  Storage::saveSampleToSD( const Measurement::Sample &sample )
 {
-   bool  isNewFile = false;
-
    // we won't store if the card isn't ok
 
    if ( !m_sdCardOk )
    {
       return;
    }
+
+   bool  isNewFile = false;
+   struct tm timeInfo;
+   char   fileName[ MAX_FILENAME + 1 ];
+
+   localtime_r( &sample.m_sampleTime,&timeInfo );
+   strftime( fileName,MAX_FILENAME,"/%Y%m%d.dat",&timeInfo );
 
    // If the filename is new, then we send out the existing file.  If we
    // fail to write to the file then the SD card status is set false to
@@ -201,12 +206,10 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    }
 
    struct tm timeInfo;
-   char   fileName[ MAX_FILENAME + 1 ];
 
    // Before we try and store, send emoncms & perform daily update mail if needed
 
    localtime_r( &sample.m_sampleTime,&timeInfo );
-   strftime( fileName,MAX_FILENAME,"/%Y%m%d.dat",&timeInfo );
 
    // if the dailyUpdate has been sent and the time is no longer in the
    // 5pm hour, then reset the update flag for next time
