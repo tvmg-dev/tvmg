@@ -69,7 +69,7 @@ public:
    ~Emailer();
 
    void initialise();
-   bool sendEmail( const char *recipient,const char *subject,const char *msg );
+   bool sendEmail( const char *recipient,const char *subject,const String &msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName );
 
 private:
@@ -109,14 +109,14 @@ void  Emailer::initialise()
    m_sender->setPublicIpDescriptor( "dyllysplace.com" );
 }
 
-bool Emailer::sendEmail( const char *recipient,const char *subject,const char *msg )
+bool Emailer::sendEmail( const char *recipient,const char *subject,const String &msg )
 {
    if ( m_sender )
    {
       EMailSender::EMailMessage message;
 
       message.subject = subject;
-      message.message = msg;
+      message.message = msg.c_str();
       message.mime = "text/plain";
 
       PW_DEBUG( "Sending to %s [%s]",recipient,subject );
@@ -363,7 +363,7 @@ bool Networking::didAcquireNTP()
    return ( m_status.timeToAcquireNTP > -1 );
 }
 
-bool Networking::sendEmail( const char *recipient,const char *subject,const char *msg )
+bool Networking::sendEmail( const char *recipient,const char *subject,const String &msg )
 {
    if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
    {

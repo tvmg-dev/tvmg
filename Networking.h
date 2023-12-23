@@ -27,7 +27,7 @@ public:
    ~Networking();
 
    void initialise();
-   bool sendEmail( const char *recipient,const char *subject,const char *msg );
+   bool sendEmail( const char *recipient,const char *subject,const String &msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName );
    bool sendToEmonCMS( uint32_t emonFeedId,float_t value );
    bool isConnected();

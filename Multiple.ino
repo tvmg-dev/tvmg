@@ -220,7 +220,6 @@ void setup( void )
 
 void loop(void)
 {
-#if 0
    // TODO, wrap millis !
 
    /* Design decisions needed to build on the basics.
@@ -304,7 +303,4 @@ void loop(void)
    deltaMillis = targetMillis - currentMillis;
 
    delay( deltaMillis );
-#endif
-   PW_MSG( "loop" );
-   delay( 60 * 1000 );
 }

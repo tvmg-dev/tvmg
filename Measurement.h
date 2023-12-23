@@ -4,17 +4,24 @@
 #include <time.h>
 
 #include "utils.h"
+#include "TemperatureModule.h"
+#include "PowerModule.h"
 
-class TemperatureModule;
 class PowerModule;
 class Storage;
 class Networking;
+
+#define  MAX_SENSOR_NAME
+
+class MeasurementSensor;
 
 class Measurement
 {
 public:
    typedef struct {
       time_t   m_sampleTime;
+      TempSensor  m_tempSensors[ MAX_TEMP_SENSORS ];
+      PowerSensor m_powerSensors[ MAX_POWER_SENSORS ];
       float_t  m_flowHP,m_returnHP;
       float_t  m_flowHeating,m_returnHeating;
       float_t  m_outside;

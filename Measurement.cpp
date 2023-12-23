@@ -55,17 +55,41 @@ void  Measurement::takeSample( void )
    start = millis();
    time( &m_lastSample.m_sampleTime );
 
-   m_tempModule->getTemperature( HEATING_FLOW_THERM,&m_lastSample.m_flowHeating );
-   m_tempModule->getTemperature( HEATING_RETURN_THERM,&m_lastSample.m_returnHeating );
+   // Clear down our sample
 
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
-      m_tempModule->getTemperature( HEATPUMP_FLOW_THERM,&m_lastSample.m_flowHP );
-      m_tempModule->getTemperature( HEATPUMP_RETURN_THERM,&m_lastSample.m_returnHP );
-      m_tempModule->getTemperature( OUTSIDE_THERM,&m_lastSample.m_outside );
+      m_lastSample.m_tempSensors[ i ].m_temp = TEMPERATURE_INVALID;
+   }
+   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+   {
+      m_lastSample.m_powerSensors[ i ].m_power = POWER_INVALID;
+   }
 
-      m_powerModule->getPower( HEATPUMP_POWER,&m_lastSample.m_powerHP,&m_lastSample.m_energyHP );
-      m_powerModule->getPower( IMMERSION_POWER,&m_lastSample.m_powerImmersion,&m_lastSample.m_energyImmersion );
+   // Get all temperature sensor data, then power.
+
+   uint8_t     i = 0;
+   TempSensor *tempSensor;
+   while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
+   {
+      m_lastSample.m_tempSensors[ i ] = *tempSensor;
+
+      tempSensor = &m_lastSample.m_tempSensors[ i ];
+      PW_DEBUG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
+
+      i++;
+   }
+
+   i = 0;
+   PowerSensor *powerSensor;
+   while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) != nullptr )
+   {
+      m_lastSample.m_powerSensors[ i ] = *powerSensor;
+
+      powerSensor = &m_lastSample.m_powerSensors[ i ];
+      PW_DEBUG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
+
+      i++;
    }
 
    // We only store data at the sample period, we may be taking measurements

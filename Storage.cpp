@@ -108,94 +108,9 @@ void  Storage::setNetworking( Networking *network )
    }
 }
 
-void  Storage::storeSample( const Measurement::Sample &sample )
+void  Storage::saveSampleToSD( const Measurement::Sample &sample )
 {
-   struct tm timeInfo;
-   char   fileName[ MAX_FILENAME + 1 ];
-
-   // Before we try and store, let's send to emoncms & a daily update
-
-   localtime_r( &sample.m_sampleTime,&timeInfo );
-   strftime( fileName,MAX_FILENAME,"/%Y%m%d.dat",&timeInfo );
-
-   // if the dailyUpdate has been sent and the time is no longer in the
-   // 5pm hour, then reset the update flag for next time
-
-   if ( m_dailyUpdate && timeInfo.tm_hour != 17 )
-   {
-      PW_DEBUG( "Resetting daily update flag" );
-      m_dailyUpdate = false;
-   }
-   else if ( timeInfo.tm_hour == 17 && !m_dailyUpdate && m_networking )
-   {
-      PW_MSG( "Sending daily update" );
-
-      m_dailyUpdate = true;
-
-      char updateMsg[ 512 ];
-
-      snprintf( updateMsg,512,"Version [%s]\n"
-                              "IP Address : %s\n\n"
-                              "Heat Pump : Flow [ %.1f ] Return [ %.1f ] Power [ %.1f ] W, Energy [ %.1f ] kWhr\n"
-                              "Heating : Flow [ %.1f ] Return [ %.1f ]\n"
-                              "Immersion :  Power [ %.1f ] W, Energy [ %.1f ] kWhr\n"
-                              "Outside : [ %.1f] \n\n",
-                              VERSION_STR,
-                              m_networking->getIPAddress().c_str(),
-                              sample.m_flowHP,sample.m_returnHP,sample.m_powerHP,sample.m_energyHP / 1000,
-                              sample.m_flowHeating,sample.m_returnHeating,
-                              sample.m_powerImmersion,sample.m_energyImmersion / 1000,
-                              sample.m_outside );
-
-      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-               "Heat Pump Monitoring - Daily Update",updateMsg );
-   }
-
-   uint32_t hpFlowFeedId = 476741;
-   uint32_t hpReturnFeedId = 476740;
-   uint32_t heatingFlowFeedId = 476738;
-   uint32_t heatingReturnFeedId = 476739;
-   uint32_t outsideFeedId = 476990;
-   uint32_t hpPowerFeedId = 476995;
-   uint32_t immersionPowerFeedId = 476997;
-
-   if ( m_networking )
-   {
-      if ( sample.m_flowHP > TEMPERATURE_INVALID )
-      {
-         m_networking->sendToEmonCMS( hpFlowFeedId,sample.m_flowHP );
-      }
-
-      if ( sample.m_returnHP > TEMPERATURE_INVALID )
-      {
-         m_networking->sendToEmonCMS( hpReturnFeedId,sample.m_returnHP );
-      }
-
-      if ( sample.m_flowHeating > TEMPERATURE_INVALID )
-      {
-         m_networking->sendToEmonCMS( heatingFlowFeedId,sample.m_flowHeating );
-      }
-
-      if ( sample.m_returnHeating > TEMPERATURE_INVALID )
-      {
-         m_networking->sendToEmonCMS( heatingReturnFeedId,sample.m_returnHeating );
-      }
-
-      if ( sample.m_outside > TEMPERATURE_INVALID )
-      {
-         m_networking->sendToEmonCMS( outsideFeedId,sample.m_outside );
-      }
-
-      if ( sample.m_powerHP > POWER_INVALID )
-      {
-         m_networking->sendToEmonCMS( hpPowerFeedId,sample.m_powerHP );
-      }
-
-      if ( sample.m_powerImmersion > POWER_INVALID )
-      {
-         m_networking->sendToEmonCMS( immersionPowerFeedId,sample.m_powerImmersion );
-      }
-   }
+   bool  isNewFile = false;
 
    // we won't store if the card isn't ok
 
@@ -210,6 +125,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
    if ( !SD.exists( fileName ) )
    {
+      isNewFile = true;
       PW_MSG( "Will be creating %s",fileName );
 
       // As this is a new file, let's send previous file onwards ...
@@ -250,6 +166,77 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Preventing further writes" );
    }
+}
+
+void  Storage::storeSample( const Measurement::Sample &sample )
+{
+   char     line[ 128 ];
+   String   thermometerStr, powerStr;
+
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+   {
+      const TempSensor  *sensor;
+      sensor = &sample.m_tempSensors[ i ];
+
+      if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 && m_networking )
+      {
+         snprintf( line,128,"%30s : %4.1f\n",sensor->m_name,sensor->m_temp );
+         thermometerStr += line;
+
+         m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_temp );
+      }
+   }
+
+   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+   {
+      const PowerSensor  *sensor;
+      sensor = &sample.m_powerSensors[ i ];
+      if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 && m_networking )
+      {
+         snprintf( line,128,"%30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
+         powerStr += line;
+
+         m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_power );
+      }
+   }
+
+   struct tm timeInfo;
+   char   fileName[ MAX_FILENAME + 1 ];
+
+   // Before we try and store, send emoncms & perform daily update mail if needed
+
+   localtime_r( &sample.m_sampleTime,&timeInfo );
+   strftime( fileName,MAX_FILENAME,"/%Y%m%d.dat",&timeInfo );
+
+   // if the dailyUpdate has been sent and the time is no longer in the
+   // 5pm hour, then reset the update flag for next time
+
+   if ( m_dailyUpdate && timeInfo.tm_hour != 17 )
+   {
+      PW_DEBUG( "Resetting daily update flag" );
+      m_dailyUpdate = false;
+   }
+   else if ( timeInfo.tm_hour == 17 && !m_dailyUpdate && m_networking )
+   {
+      PW_MSG( "Sending daily update" );
+
+      m_dailyUpdate = true;
+      String updateStr;
+
+      char subject[ 128 ], line[ 128 ];
+
+      snprintf( subject,128,"Daily Update : %s [%s]",m_networking->getLocalMDNSName().c_str(),m_networking->getIPAddress().c_str() );
+      snprintf( line,128,"Version : %s\n\n",VERSION_STR );
+
+      updateStr += line;
+      updateStr += thermometerStr;
+      updateStr += powerStr;
+      updateStr += "\n\n";
+
+      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
+   }
+
+   saveSampleToSD( sample );
 }
 
 char  *Storage::getCurrentFileName()

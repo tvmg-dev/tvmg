@@ -28,6 +28,9 @@ PowerModule::PowerModule()
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
       m_sensors[ i ].m_isValid = false;
+      m_sensors[ i ].m_sensor.m_name = nullptr;
+      m_sensors[ i ].m_sensor.m_power = POWER_INVALID;
+      m_sensors[ i ].m_sensor.m_energy = ENERGY_INVALID;
    }
 
    // Parse the /sensors.dat file for thermometers
@@ -51,15 +54,20 @@ PowerModule::PowerModule()
          {
             if ( strcmp( "POWER",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
             {
-               strncpy( m_sensors[ m_numSensors ].m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_POWER_NAME );
-               m_sensors[ m_numSensors ].m_address = cJSON_GetObjectItem( sensor,"address" )->valueint;
-               m_sensors[ m_numSensors ].m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
-               m_sensors[ m_numSensors ].m_power = POWER_INVALID;
-               m_sensors[ m_numSensors ].m_energy = ENERGY_INVALID;
-               m_sensors[ m_numSensors ].m_isValid = true;
+               PrivateSensor *pwrSensor;
 
-               PW_DEBUG( "Power: name %s address %u",m_sensors[ m_numSensors ].m_name,m_sensors[ m_numSensors ].m_address );
-               PW_DEBUG( "feed %u",m_sensors[ m_numSensors ].m_emonFeedId );
+               pwrSensor = &m_sensors[ m_numSensors ];
+               strncpy( pwrSensor->m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_POWER_NAME );
+               pwrSensor->m_address = cJSON_GetObjectItem( sensor,"address" )->valueint;
+               pwrSensor->m_sensor.m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
+               pwrSensor->m_sensor.m_id = cJSON_GetObjectItem( sensor,"id" )->valueint;
+               pwrSensor->m_sensor.m_name = pwrSensor->m_name;
+               pwrSensor->m_sensor.m_power = POWER_INVALID;
+               pwrSensor->m_sensor.m_energy = ENERGY_INVALID;
+               pwrSensor->m_isValid = true;
+
+               PW_DEBUG( "Power: name %s address %u",pwrSensor->m_name,pwrSensor->m_address );
+               PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_sensor.m_id,pwrSensor->m_sensor.m_emonFeedId );
                m_numSensors++;
             }
          }
@@ -114,6 +122,17 @@ void PowerModule::initialise( void )
    }
 }
 
+PowerSensor  *PowerModule::readNextSensor( uint8_t index )
+{
+   if ( index < m_numSensors )
+   {
+      getPower( index );
+      return( &m_sensors[ index ].m_sensor );
+   }
+
+   return( nullptr );
+}
+
 /*
   RegAddr Description                 Resolution
   0x0000  Voltage value               1LSB correspond to 0.1V
@@ -128,18 +147,9 @@ void PowerModule::initialise( void )
   0x0009  Alarm status  0xFFFF is alarm，0x0000is not alarm
 */
 
-bool PowerModule::getPower( char *name,float_t *power,float_t *energy )
+bool PowerModule::getPower( uint8_t index )
 {
    uint8_t  modbusResult;
-   uint8_t  index = 0;
-
-   for ( int index = 0; index < m_numSensors; index++ )
-   {
-      if ( strcmp( name,m_sensors[ index ].m_name ) == 0 )
-      {
-         break;
-      }
-   }
 
    if ( index < m_numSensors && m_sensors[ index ].m_isValid && hwConfig->ModBusSerial != -1 )
    {
@@ -164,6 +174,7 @@ bool PowerModule::getPower( char *name,float_t *power,float_t *energy )
       else
       {
          uint32_t reg32;
+         float_t  power, energy;
 
          float voltage = m_master->getResponseBuffer( 0 ) / 10.0;  //get the 16bit value for the voltage, divide it by 10 and cast in the float variable
 
@@ -171,26 +182,23 @@ bool PowerModule::getPower( char *name,float_t *power,float_t *energy )
          float current = reg32 / 1000.0;   // Divide the unsigned 32bit by 1000 and put in the current float variable
 
          reg32 =  (m_master->getResponseBuffer( 4 ) << 16) + m_master->getResponseBuffer( 3 );
-         *power = reg32 / 10.0;
+         power = reg32 / 10.0;
 
          reg32 =  (m_master->getResponseBuffer( 6 ) << 16) + m_master->getResponseBuffer( 5 );
-         *energy = reg32;
+         energy = reg32;
 
          float hz = m_master->getResponseBuffer( 7 ) / 10.0;
          float pf = m_master->getResponseBuffer( 8 ) / 100.00;
 
-         PW_MSG( "%s : %.0f W : %.0f Whr",m_sensors [ index ].m_name,*power,*energy );
+         PW_MSG( "%s : %.0f W : %.0f Whr",m_sensors [ index ].m_name,power,energy );
 
-         m_sensors[ index ].m_power = *power;
-         m_sensors[ index ].m_energy = *energy;
+         m_sensors[ index ].m_sensor.m_energy = energy;
+         m_sensors[ index ].m_sensor.m_power = power;
 
          PW_DEBUG( "I [%.1f] : V [%.1f] : Freq [%.1f] : PowerFactor [%.1f]",current, voltage, hz, pf );
          return true;
       }
    }
-
-   *power = POWER_INVALID;
-   *energy = ENERGY_INVALID;
 
    return false;
 }
