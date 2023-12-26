@@ -19,7 +19,8 @@ UserIO::UserIO()
         m_currentLines(),
         m_measurement( nullptr ),
         m_networking( nullptr ),
-        m_sample()
+        m_sample(),
+        m_firmwareUpdateInProgress( false )
 {
    PW_DEBUG( "UserIO::UserIO()" );
    PW_MSG( "UserIO Module Startup" );
@@ -283,6 +284,12 @@ void  UserIO::show( ScreenType type )
 
 void  UserIO::showNext()
 {
+   if ( m_firmwareUpdateInProgress )
+   {
+      PW_DEBUG( "Update in progres.." );
+      return;
+   }
+
    switch ( m_currentScreen )
    {
       case NETWORK_STATUS:
@@ -318,4 +325,9 @@ void  UserIO::update()
    {
       m_sample = m_measurement->getLastSample();
    }
+}
+
+void  UserIO::setFirmwareUpdateInProgress( bool progress )
+{
+   m_firmwareUpdateInProgress = progress;
 }

@@ -9,18 +9,9 @@
 #include "Config.h"
 #include "Storage.h"
 #include "Networking.h"
+#include "WebServer.h"
 
 // ----------------------------------------------------------------------
-
-// The following are the device addresses - we should read this from a file
-
-#if PW_WIFI == 1
-#define MODBUS_HEATPUMP_ADDR     11
-#define MODBUS_IMMERSION_ADDR    12
-#else
-#define MODBUS_HEATPUMP_ADDR     0x1
-#define MODBUS_IMMERSION_ADDR    0x5
-#endif
 
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
@@ -30,13 +21,14 @@ Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
 
+// Initially testingLower which triggers when < threshold, i.e. 'key down'
+// When we receive that then need to get next event when it goes above the
+// threshold which we use to set buttin pressed.
+
 int threshold = 40;
 bool testingLower = true;
 bool wasButtonPressed = false;
 
-// Initially testingLower which triggers when < threshold, i.e. 'key down'
-// When we receive that then need to get next event when it goes above the
-// threshold which we use to set buttin pressed.
 
 void gotTouchEvent()
 {
@@ -187,6 +179,10 @@ void setup( void )
       delay( 5000 );
       ESP.restart();
    }
+
+   // Give webserver access to userIO
+
+   networking->getWebServer()->setUserIO( userIO );
 
    // Instantiate the temperature collecting module
 

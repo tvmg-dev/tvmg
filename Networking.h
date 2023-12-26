@@ -39,6 +39,7 @@ public:
    bool  startAccessPoint();
    bool  startMDNS();
    bool  acquireNTP();
+   WebServer   *getWebServer();
 
 private:
    Emailer           *m_emailer;

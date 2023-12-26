@@ -22,6 +22,14 @@ NOTES:
 The file rollover means the SD card is filling with no control over it
 As we email the file then no need to actually save it.
 
+
+HOW TO GET TO AP MODE ??
+========================
+
+CALIBRATION
+===========
+
+
 TODO
 ====
 Delete old files from SD card.

@@ -275,6 +275,7 @@ void Networking::initialise()
 
    PW_MSG( "Connected to %s",m_status.SSID.c_str() );
    PW_DEBUG( "  IP : %s",m_status.ipAddr.c_str() );
+   PW_DEBUG( "  Autoreconnect : %u", WiFi.getAutoReconnect() );
 
    acquireNTP();
 
@@ -444,4 +445,9 @@ bool Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
    }
 
 return retOk;
+}
+
+WebServer   *Networking::getWebServer()
+{
+   return( m_webServer );
 }

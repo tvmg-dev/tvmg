@@ -37,6 +37,7 @@ public:
    void  showNext();
    void  show( ScreenType type );
    void  update();
+   void  setFirmwareUpdateInProgress( bool inProgress );
 
 private:
    void  show( OLEDDisplayLine lines[] );
@@ -55,6 +56,7 @@ private:
    Measurement          *m_measurement;
    Networking           *m_networking;
    Measurement::Sample  m_sample;
+   bool                 m_firmwareUpdateInProgress;
 };
 
 #endif

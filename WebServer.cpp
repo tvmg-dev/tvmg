@@ -15,6 +15,8 @@
 #include "Config.h"
 #include "utils.h"
 
+#include "UserIO.h"
+
 fs::SPIFFSFS *s_spiffs;
 
 const char* http_username = "admin";
@@ -22,7 +24,7 @@ const char* http_password = "admin";
 
 const char* host = "esp32-filemanager";
 
-String allowedExtensionsForEdit = "txt, h, htm, html, css, cpp, js, dat";
+String allowedExtensionsForEdit = "txt, dat";
 
 String filesDropdownOptions = "";
 String textareaContent = "";
@@ -238,7 +240,8 @@ void uploadFile(AsyncWebServerRequest *request, String filename, size_t index, u
 }
 
 WebServer::WebServer()
-        : m_webServer( nullptr )
+        : m_webServer( nullptr ),
+          m_userIO( nullptr )
 
 {
    PW_DEBUG( "WebServer()" );
@@ -274,29 +277,69 @@ void WebServer::setupAsyncServer()
       request->send_P(200, "text/html", manager_html, processor);
    });
 
-   m_webServer->on("/update", HTTP_POST, [](AsyncWebServerRequest *request)
+   m_webServer->on("/update", HTTP_POST, [&](AsyncWebServerRequest *request)
    {
       bool rebooting = !Update.hasError();
+
       AsyncWebServerResponse *response = request->beginResponse(200, "text/html", rebooting ? ok_html : failed_html);
 
       response->addHeader("Connection", "close");
       request->send(response);
+
+      if ( rebooting )
+      {
+         PW_DEBUG( "PW 2s to restart" );
+         delay( 2 * 1000 );
+         ESP.restart();
+      }
    },
-   [](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+   [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
    {
+//      PW_DEBUG( "on update: %d %d %u",index,len,final );
       if(!index)
       {
-         Serial.print("Updating: ");
-         Serial.println(filename.c_str());
-
-         if(!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000))
+         if ( m_userIO )
          {
-            Update.printError(Serial);
+            m_userIO->setFirmwareUpdateInProgress( true );
+            m_userIO->clear();
+            m_userIO->updateLine( 0,"Updating..." );
+
+            char line[ 128 ];
+            snprintf( line,MAX_OLED_COLUMNS," %s",filename.c_str() );
+            m_userIO->updateLine( 1,line );
+         }
+
+         PW_MSG( "Updating with %s",filename.c_str() );
+
+         if ( !Update.begin(UPDATE_SIZE_UNKNOWN,U_FLASH) )
+         {
+            PW_ERROR( "Failed to start update" );
+
+            if ( m_userIO )
+            {
+               m_userIO->updateLine( 5,"FAILED !!" );
+               delay( 2000 );
+               m_userIO->setFirmwareUpdateInProgress( false );
+            }
+
+            return request->send(400, "text/plain", "OTA could not begin");
          }
       }
 
       if(!Update.hasError())
       {
+         if ( m_userIO )
+         {
+            static int i = 0;
+            char  progress[] = ".oOo";
+            char  line[ 2 ];
+
+            line[ 0 ] = progress[ i++ % 4 ];
+            line[ 1 ] = 0;
+
+            m_userIO->updateLine( 3,line,false );
+         }
+
          if(Update.write(data, len) != len)
          {
             Update.printError(Serial);
@@ -307,10 +350,13 @@ void WebServer::setupAsyncServer()
       {
          if(Update.end(true))
          {
+            if ( m_userIO )
+            {
+               m_userIO->updateLine( 3,"Completed Ok" );
+            }
+
             PW_MSG( "Finished update");
             Serial.println(convertFileSize(index + len));
-            delay( 2 * 1000 );
-            ESP.restart();
          }
       else
       {
@@ -408,5 +454,9 @@ void WebServer::setupAsyncServer()
    m_webServer->begin();
 }
 
+void WebServer::setUserIO( UserIO *userIO )
+{
+   m_userIO = userIO;
+}
 
 
