@@ -149,17 +149,61 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
    }
    else
    {
-      char  message[ 256 ];
-      char  timeStr[ 32 ];
+      char  line[ 128 ];
+      String  hdrString = "Date,Time";
+      String  dataString;
 
-      strcpy( m_currentFileName,fileName );
+      strftime( line,32,"%Y%m%d,%H:%M:%S",&timeInfo );
+      dataString = line;
 
-      strftime( timeStr,32,"%Y%m%d,%H:%M:%S",&timeInfo );
-      sprintf( message,"%s,%.1f,%.1f,%.1f,%.1f,%.1f,%.0f,%.0f,%.0f,%.0f",
-                  timeStr,
-                  sample.m_flowHP,sample.m_returnHP,sample.m_flowHeating,sample.m_returnHeating,sample.m_outside,
-                  sample.m_powerHP,sample.m_powerImmersion,sample.m_energyHP,sample.m_energyImmersion );
-      m_sdCardOk = file.println( message );
+      // Output header line if a new file
+
+      for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+      {
+         const TempSensor  *sensor;
+         sensor = sample.m_tempSensors[ i ];
+
+         if ( !sensor )
+         {
+            break;
+         }
+
+         if ( isNewFile )
+         {
+            snprintf( line,128,",%s",sensor->m_name );
+            hdrString += line;
+         }
+         snprintf( line,128,",%.1f",sensor->m_temp );
+         dataString += line;
+      }
+
+      for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+      {
+         const PowerSensor  *sensor;
+         sensor = sample.m_powerSensors[ i ];
+
+         if ( !sensor )
+         {
+            break;
+         }
+
+         if ( isNewFile )
+         {
+            snprintf( line,128,",%s (power),%s (energy)",sensor->m_name,sensor->m_name );
+            hdrString += line;
+         }
+         snprintf( line,128,",%.1f,%.1f",sensor->m_power,sensor->m_energy );
+         dataString += line;
+      }
+
+      if ( isNewFile )
+      {
+         PW_DEBUG( hdrString.c_str() );
+         m_sdCardOk = file.println( hdrString.c_str() );
+      }
+
+      PW_DEBUG( dataString.c_str() );
+      m_sdCardOk = file.println( dataString.c_str() );
       file.close();
    }
 
@@ -178,10 +222,11 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    char     line[ 128 ];
    String   thermometerStr, powerStr;
 
-   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+   int i = 0;
+   while ( sample.m_tempSensors[ i ] )
    {
       const TempSensor  *sensor;
-      sensor = &sample.m_tempSensors[ i ];
+      sensor = sample.m_tempSensors[ i ];
 
       if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 && m_networking )
       {
@@ -190,12 +235,16 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
          m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_temp );
       }
+
+      i++;
    }
 
-   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+   i = 0;
+   while ( sample.m_powerSensors[ i ] )
    {
       const PowerSensor  *sensor;
-      sensor = &sample.m_powerSensors[ i ];
+      sensor = sample.m_powerSensors[ i ];
+
       if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 && m_networking )
       {
          snprintf( line,128,"%30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
@@ -203,6 +252,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
          m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_power );
       }
+      i++;
    }
 
    struct tm timeInfo;

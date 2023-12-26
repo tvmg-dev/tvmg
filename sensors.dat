@@ -1,52 +1,60 @@
 [
 {
    "type": "THERM",
-   "name": "HP-FLOW",
+   "name": "HP Flow",
+   "id": 1,
    "address": "28302194970D0310",
    "calibration": 0.12,
    "emonFeedId": 476741
 },
 {
    "type": "THERM",
-   "name": "HP-RETURN",
+   "name": "HP Return",
+   "id": 2,
    "address": "28261194970A0313",
    "calibration": 0.38,
    "emonFeedId": 476740
 },
 {
    "type": "THERM",
-   "name": "UFH-FLOW",
+   "name": "UFH Flow",
+   "id": 5,
    "address": "289A11949702031F",
    "calibration": 0.25,
    "emonFeedId": 476738
 },
 {
    "type": "THERM",
-   "name": "UFH-RETURN",
+   "name": "UFH Return",
+   "id": 6,
    "address": "28D439949703037B",
    "calibration": 0.12,
    "emonFeedId": 476739
 },
 {
    "type": "THERM",
-   "name": "OUTSIDE",
+   "name": "Outside",
+   "id": 10,
    "address": "284E5F9497030388",
    "calibration": 0.0,
    "emonFeedId": 476990
 },
 {
    "type": "POWER",
-   "name": "HP",
+   "name": "Heat Pump",
+   "id": 100,
    "address": 1,
    "calibration": 0,
    "emonFeedId": 476995
 },
 {
    "type": "POWER",
-   "name": "IMMERSION",
+   "name": "Heating",
+   "id": 101,
    "address": 5,
    "calibration": 0,
    "emonFeedId": 476997
 }
 ]
 @
+

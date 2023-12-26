@@ -1,0 +1,49 @@
+=======
+
+With the current build, re-enable the measurement loop & then configure
+the master board with this new firmware
+
+So master will be re-programmed and then need the local AP to download
+the config.dat and the sensors.dat files.
+
+when 1st doing it, have emon disabled just to be sure its ok...
+
+========
+
+Storage - if we don't have an SD card then simply the data isn't
+saved.  The warnings about no SD card should be surpressed for the
+remote board.
+
+For the remote then we don't instantiate storage module then the
+measurement's saveLastSample would be a null operation.  We would push
+out to master at this point, or we simply respond to polls from the master.
+
+NOTES:
+The file rollover means the SD card is filling with no control over it
+As we email the file then no need to actually save it.
+
+TODO
+====
+Delete old files from SD card.
+
+========================>> COVID :(
+
+Remotes
+   Name <DT>
+   Flow Return
+
+All
+   HP  14.5 22.5 : 10.5
+   UFH
+   GND
+   1ST
+   TOP
+
+
+
+
+
+
+
+
+

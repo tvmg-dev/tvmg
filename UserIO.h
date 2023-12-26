@@ -4,6 +4,7 @@
 #include "utils.h"
 
 #include "Measurement.h"
+#include "Networking.h"
 
 class U8G2_SSD1306_128X64_NONAME_F_HW_I2C;
 
@@ -16,29 +17,43 @@ public:
    typedef char  OLEDDisplayLine[ MAX_OLED_COLUMNS + 1 ];
 
    enum  ScreenType {
-      TEMPERATURES,
+      NETWORK_STATUS,
+      STORAGE_STATUS,
       ENERGY,
-      STATUS,
+      LOCAL_TEMP,
+      REMOTE_TEMP,
+      ALL_TEMP,
       NONE
    };
 
    UserIO();
    ~UserIO();
-   void  initialise( void );
+   void  initialise();
    void  setMeasurement( Measurement *measurement );
+   void  setNetworking( Networking *network );
+
    void  updateLine( uint8_t lineNum,char *line,bool isForLog = true );
    void  clear( void );
-   void  showNext( void );
-   void  update( void );
+   void  showNext();
+   void  show( ScreenType type );
+   void  update();
 
 private:
    void  show( OLEDDisplayLine lines[] );
-   void  show( ScreenType type );
+   void  storeLine( uint8_t lineNum,char *line );
+   void  showNetwork();
+   void  showStorage();
+   void  showEnergy();
+   void  showLocalTemps();
+   void  showRemoteTemps();
+   void  showAllTemps();
+   TempSensor *findTempSensor( uint8_t id );
 
    U8G2_SSD1306_128X64_NONAME_F_HW_I2C *m_display;
    ScreenType           m_currentScreen;
    OLEDDisplayLine      m_currentLines[ MAX_OLED_ROWS ];
    Measurement          *m_measurement;
+   Networking           *m_networking;
    Measurement::Sample  m_sample;
 };
 

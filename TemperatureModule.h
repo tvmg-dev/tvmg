@@ -14,11 +14,25 @@
 
 #define TEMPERATURE_INVALID   -100
 
+// The ID's should be matched in the sensors.dat file
+
+#define  HEAT_PUMP_FLOW    1
+#define  HEAT_PUMP_RETURN  2
+#define  UFH_FLOW          5
+#define  UFH_RETURN        6
+#define  OUTSIDE           10
+#define  GND_FLOW          20
+#define  GND_RETURN        21
+#define  FIRST_FLOW        30
+#define  FIRST_RETURN      31
+#define  LOFT_FLOW         40
+#define  LOFT_RETURN       41
+
 typedef struct {
    uint8_t  m_id;          // should be unique ID
    uint32_t m_emonFeedId;  // Feed ID for emonCMS
    float_t  m_temp;        // temperature
-   char    *m_name;        // name (don't store the name here to keep the structure size to minimum
+   char    *m_name;        // name (don't store the name here to keep the structure size to minimum)
 } TempSensor;
 
 class TemperatureModule

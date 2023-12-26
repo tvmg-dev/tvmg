@@ -11,6 +11,11 @@
 #define POWER_INVALID         -1
 #define ENERGY_INVALID        -1
 
+// The ID's should be matched in the sensors.dat file
+
+#define  HEAT_PUMP_ID         100
+#define  HEATING_CIRCUITS_ID  101
+
 typedef struct {
    uint8_t  m_id;          // should be unique ID
    uint32_t m_emonFeedId;  // Feed ID for emonCMS

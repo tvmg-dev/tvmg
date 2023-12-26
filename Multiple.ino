@@ -40,7 +40,6 @@ bool wasButtonPressed = false;
 
 void gotTouchEvent()
 {
-
   if ( !testingLower )
   {
      wasButtonPressed = true;
@@ -64,6 +63,54 @@ void newConfiguration( void )
       delay( 60 * 1000 );
       PW_DEBUG( "Waiting for configuration..." );
    }
+}
+
+void  handleTouch1()
+{
+   PW_MSG( "Button-1 was pressed" );
+
+   wasButtonPressed = false;
+
+   String   msgString;
+   char     message[ 128 ];
+
+   Measurement::Sample  sample = measurement->getLastSample();
+   snprintf( message,128,"Button sample\n\n"
+                    "IP : %s [%s]\n"
+                    "Free Bytes : %u\n\n"
+                    "Time signature %u\n",
+                    networking->getLocalMDNSName().c_str(),
+                    networking->getIPAddress().c_str(),
+                    sample.m_sampleTime,
+                    ESP.getFreeHeap() );
+
+   msgString = message;
+
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+   {
+      if ( sample.m_tempSensors[ i ] )
+      {
+         snprintf( message,128,"%30s,%.1f\n",sample.m_tempSensors[ i ]->m_name,sample.m_tempSensors[ i ]->m_temp );
+         msgString += message;
+      }
+   }
+
+   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+   {
+      if ( sample.m_powerSensors[ i ] )
+      {
+         snprintf( message,128,"%30s,%.1f\n",sample.m_powerSensors[ i ]->m_name,sample.m_powerSensors[ i ]->m_power,sample.m_powerSensors[ i ]->m_energy );
+         msgString += message;
+      }
+   }
+
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","No content",storageModule->getCurrentFileName() );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","No content","/debug.log" );
+   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
+
+   userIO->updateLine( 1, "BT pressed" );
+   delay( 2000 );
+
 }
 
 void setup( void )
@@ -110,6 +157,8 @@ void setup( void )
    networking = new Networking;
    networking->initialise();
 
+   userIO->setNetworking( networking );
+
    // Instantiate the storage module, and initialise it.  If the SD card
    // is not operational the storage module will not save data but at least
    // the system will continue to operate.
@@ -117,32 +166,9 @@ void setup( void )
    storageModule = new Storage();
    storageModule->initialise();
 
-   if ( !networking->isConnected() )
-   {
-      userIO->updateLine( 0,"WiFi not connected" );
-   }
-   else
-   {
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",networking->getIPAddress().c_str() );
-      userIO->updateLine( 0,line );
+   // show network status
 
-      snprintf( line,MAX_OLED_COLUMNS,"%s",networking->getLocalMDNSName().c_str() );
-      userIO->updateLine( 1,line );
-
-      if ( networking->didAcquireNTP() )
-      {
-         struct tm   timeInfo;
-
-         getLocalTime( &timeInfo );
-
-         strftime( line,MAX_OLED_COLUMNS,"%d/%m/%y : %H:%M:%S",&timeInfo );
-         userIO->updateLine( 2,line );
-      }
-      else
-      {
-         userIO->updateLine( 2,"No NTP !!" );
-      }
-   }
+   userIO->show( UserIO::NETWORK_STATUS );
 
    // If we don't have NTP, then we reboot here if we have
    // a configuration - ping an email too.  If no configuration then
@@ -180,19 +206,6 @@ void setup( void )
    // let's tell storage we have networking available
 
    storageModule->setNetworking( networking );
-
-   // Display status info before starting
-
-   if ( storageModule->isSDCardOk() )
-   {
-      strcpy( line,"SD Card Ok" );
-   }
-   else
-   {
-      strcpy( line,"No SD Card" );
-   }
-   userIO->updateLine( 3,line );
-   userIO->updateLine( 5,"Boot complete..." );
 
    delay( 5000 );
 
@@ -253,42 +266,10 @@ void loop(void)
    userIO->update();
    userIO->showNext();
 
-//   measurement->dumpMeasurements();
-
    // was a button pressed ?
    if ( wasButtonPressed )
    {
-      PW_WARN( "Button was pressed" );
-      wasButtonPressed = false;
-
-      char  message[ 512 ];
-
-      Measurement::Sample  sample = measurement->getLastSample();
-      sprintf( message,"Button sample\n\n"
-                       "IP : %s\n\n"
-                       "Time signature %u\n\n"
-                       "Heat Pump : Flow [ %.1f ] Return [ %.1f ] DT [ %.1f ]\n"
-                       "Heating   : Flow [ %.1f ] Return [ %.1f ] DT [ %.1f ]\n"
-                       "Outside   : [ %.1f ]\n\n"
-                       "Heat Pump : Current [ %.0f W ] Total [ %.0f WHr ]\n"
-                       "Immersion : Current [ %.0f W ] Total [ %.0f WHr ]\n\n"
-                       "Free Bytes : %u\n",
-                       networking->getIPAddress().c_str(),
-                       sample.m_sampleTime,
-                       sample.m_flowHP,sample.m_returnHP,( sample.m_flowHP - sample.m_returnHP ),
-                       sample.m_flowHeating,sample.m_returnHeating,( sample.m_flowHeating - sample.m_returnHeating ),
-                       sample.m_outside,
-                       sample.m_powerHP,sample.m_energyHP,
-                       sample.m_powerImmersion,sample.m_energyImmersion,
-                       ESP.getFreeHeap() );
-
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data",message,storageModule->getCurrentFileName() );
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log",message,"/debug.log" );
-      networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",message );
-
-      userIO->updateLine( 1, "BT pressed" );
-      delay( 2000 );
-
+      handleTouch1();
    }
 
    currentMillis = millis();
