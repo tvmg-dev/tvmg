@@ -12,14 +12,14 @@ NOTES:
 The file rollover means the SD card is filling with no control over it
 As we email the file then no need to actually save it.
 
+
+===  RECURSDION IN CONFIG AT START ====
+
+
 === STATUS ===
 Add version to the storage status screen
 
-=== CONFIG ===
-
-Look again at config.dat - when not present and trying to get to AP
-was a disaster. Also zero length lines caused problems. (is lenght zero
-when reading blank line ?)
+=== OVERNIGHT FILE GEN ===
 
 
 HOW TO GET TO AP MODE ??

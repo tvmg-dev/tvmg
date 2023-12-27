@@ -196,6 +196,9 @@ Networking::~Networking()
 bool Networking::startAccessPoint()
 {
    String SSID( "HeatPump-Monitor" );
+
+   WiFi.disconnect();
+
    WiFi.mode( WIFI_AP );
    WiFi.softAP( SSID.c_str() );
 

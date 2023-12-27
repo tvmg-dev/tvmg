@@ -21,24 +21,51 @@ Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
 
-// Initially testingLower which triggers when < threshold, i.e. 'key down'
-// When we receive that then need to get next event when it goes above the
-// threshold which we use to set buttin pressed.
+#define REBOOT_COUNTER_FILE      "/failedreboot.dat"
+#define MAX_FAILED_WIFI_ATTEMPTS 3
 
-int threshold = 40;
-bool testingLower = true;
-bool wasButtonPressed = false;
+uint32_t failedReboots = 0;
 
-
-void gotTouchEvent()
+void  clearFailedRebootCount()
 {
-  if ( !testingLower )
-  {
-     wasButtonPressed = true;
-  }
+   fs::SPIFFSFS *spiffs = config->getSPIFFS();
+   if ( spiffs->exists( REBOOT_COUNTER_FILE ) )
+   {
+      spiffs->remove( REBOOT_COUNTER_FILE );
+   }
+   failedReboots = 0;
+}
 
-  touchInterruptSetThresholdDirection( !testingLower );
-  testingLower = !testingLower;
+uint32_t getFailedRebootCount()
+{
+   uint32_t current = 0;
+   fs::SPIFFSFS *spiffs = config->getSPIFFS();
+   File file = spiffs->open( REBOOT_COUNTER_FILE,FILE_READ );
+
+   if ( file )
+   {
+      current = file.parseInt();
+      file.close();
+   }
+
+   PW_DEBUG( "reboot count %d",current );
+   return( current );
+}
+
+void  bumpFailedRebootCount( uint32_t count )
+{
+   count++;
+
+   fs::SPIFFSFS *spiffs = config->getSPIFFS();
+   File file = spiffs->open( REBOOT_COUNTER_FILE,FILE_WRITE );
+
+   if ( file )
+   {
+      file.println( count );
+      file.close();
+   }
+
+   PW_DEBUG( "New reboot count %d",count );
 }
 
 void newConfiguration( void )
@@ -50,11 +77,48 @@ void newConfiguration( void )
    PW_WARN( "Use %s/manager",networking->getMDNSName().c_str() );
    PW_WARN( "Or %s/manager",networking->getIPAddress().c_str() );
 
+   if ( userIO )
+   {
+      char line[ MAX_OLED_COLUMNS ];
+
+      userIO->clear();
+
+      snprintf( line,MAX_OLED_COLUMNS,"Failed %d reboots",failedReboots );
+      userIO->updateLine( 0,line );
+
+      snprintf( line,MAX_OLED_COLUMNS,"SSID %s",networking->getSSID().c_str() );
+      userIO->updateLine( 2,line );
+      snprintf( line,MAX_OLED_COLUMNS,"Use %s",networking->getMDNSName().c_str() );
+      userIO->updateLine( 3,line );
+      snprintf( line,MAX_OLED_COLUMNS,"Use %s",networking->getIPAddress().c_str() );
+      userIO->updateLine( 4,line );
+   }
+
    while( 1 )
    {
       delay( 60 * 1000 );
       PW_DEBUG( "Waiting for configuration..." );
    }
+}
+
+
+// Initially testingLower which triggers when < threshold, i.e. 'key down'
+// When we receive that then need to get next event when it goes above the
+// threshold which we use to set button pressed.
+
+int threshold = 40;
+bool testingLower = true;
+bool wasButtonPressed = false;
+
+void gotTouchEvent()
+{
+  if ( !testingLower )
+  {
+     wasButtonPressed = true;
+  }
+
+  touchInterruptSetThresholdDirection( !testingLower );
+  testingLower = !testingLower;
 }
 
 void  handleTouch1()
@@ -135,21 +199,44 @@ void setup( void )
    userIO = new UserIO();
    userIO->initialise();
 
-   char line[ MAX_OLED_COLUMNS + 1 ];
-
-   if ( config->isRegistryAvailable() )
-   {
-      userIO->updateLine( 0,"Starting Networking..." );
-   }
-   else
-   {
-      userIO->updateLine( 0,"Waiting for config" );
-   }
+   userIO->updateLine( 0,"Starting Networking..." );
+   userIO->updateLine( 1,"SSID :-" );
+   userIO->updateLine( 2,GET_REGISTRY_STRING( WIFI_SSID ) );
 
    networking = new Networking;
    networking->initialise();
 
    userIO->setNetworking( networking );
+
+   if ( !networking->isConnected() )
+   {
+      failedReboots = getFailedRebootCount();
+      char     line[ MAX_OLED_COLUMNS ];
+
+      bumpFailedRebootCount( failedReboots );
+      failedReboots++;
+      snprintf( line,MAX_OLED_COLUMNS," Failure %u",failedReboots );
+      userIO->updateLine( 4,line );
+
+      if ( failedReboots >= MAX_FAILED_WIFI_ATTEMPTS )
+      {
+         delay( 5000 );
+
+         // If we've had X failures to acquire WiFi, then revert to AP mode
+         // and new configuration attempt
+
+         newConfiguration();
+      }
+
+      userIO->updateLine( 5," Rebooting in 5s" );
+      delay( 5000 );
+      ESP.restart();
+   }
+   else
+   {
+      clearFailedRebootCount();
+   }
+
 
    // Instantiate the storage module, and initialise it.  If the SD card
    // is not operational the storage module will not save data but at least
