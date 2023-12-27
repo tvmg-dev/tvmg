@@ -214,44 +214,35 @@ bool  Config::readRegistryFromFile( void )
       return false;
    }
 
-   if ( !m_spiffs->exists( m_configFileName ) )
+   File file = m_spiffs->open( m_configFileName,FILE_READ );
+
+   if ( !file )
    {
-      PW_WARN( "Config: %s not present",m_configFileName );
+      PW_WARN( "%s doesn't exist",m_configFileName );
       return false;
    }
 
- {
-   File file = m_spiffs->open(m_configFileName);
-    if(!file || file.isDirectory()){
-        Serial.println("- failed to open file for reading");
-    }
-
-    Serial.println("- read from file:");
-    while(file.available()){
-        Serial.write(file.read());
-    }
-    file.close();
- }
-
-   File file = m_spiffs->open( m_configFileName,FILE_READ );
-
-   bool     fileOk = true;
    char     line[ 128 ];
    KeyValue keyVal;
    uint8_t  numLines = 0;
    uint8_t  length;
+   uint32_t size = file.size();
 
    // scan the configuration file, replace any default values for keys
    // found that have already been registered - or create a new registry entry
 
-   while ( fileOk && numLines < MAX_REGISTRY_ENTRIES )
+   while ( file.position() < size && numLines < MAX_REGISTRY_ENTRIES )
    {
       length = file.readBytesUntil( '\n',line,128 );
-      if ( length && length < 127 )
-      {
-         // we skip lines of single length or that start with / or #
 
-         if ( length > 1 && ( line [ 0 ] != '#' && line [ 0 ] != '/') )
+      // The length would be zero if not CRLF, whilst 1 if just CR,
+      // editing a file via HTML form editor will ensure CRLF endings,
+      // so we skip lines of length less than 2.
+      if ( length > 1 && length < 127 )
+      {
+         // skip lines that start with / or #
+
+         if ( ( line [ 0 ] != '#' && line [ 0 ] != '/') )
          {
             line[ length ] = 0;
             if ( sscanf( line,"%s %s",keyVal.key,keyVal.value ) == 2 )
@@ -261,11 +252,6 @@ bool  Config::readRegistryFromFile( void )
                numLines++;
             }
          }
-      }
-      else
-      {
-         PW_WARN( "bad file ? %d",length );
-         fileOk = false;
       }
    }
 
