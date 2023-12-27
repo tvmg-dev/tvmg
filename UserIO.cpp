@@ -149,9 +149,12 @@ void  UserIO::showStorage()
 {
    char  line[ MAX_OLED_COLUMNS ];
 
+   snprintf( line,MAX_OLED_COLUMNS,"Version : %s",VERSION_STR );
+   storeLine( 0,line );
+
    if ( !Storage::isSDCardOk() )
    {
-      storeLine( 0,"SD Card Fault" );
+      storeLine( 1,"SD Card Fault" );
    }
    else
    {
@@ -160,7 +163,7 @@ void  UserIO::showStorage()
       usedMiB = SD.usedBytes() / (1024 * 1024);
 
       snprintf( line,MAX_OLED_COLUMNS,"SD Used %u of %u MiB",usedMiB,totalMiB );
-      storeLine( 0,line );
+      storeLine( 1,line );
    }
 
    uint32_t freeHeap = ESP.getFreeHeap();

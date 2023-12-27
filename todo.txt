@@ -15,15 +15,7 @@ As we email the file then no need to actually save it.
 
 ===  RECURSDION IN CONFIG AT START ====
 
-
-=== STATUS ===
-Add version to the storage status screen
-
 === OVERNIGHT FILE GEN ===
-
-
-HOW TO GET TO AP MODE ??
-========================
 
 CALIBRATION
 ===========
