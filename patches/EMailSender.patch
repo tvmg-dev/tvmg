@@ -1,6 +1,8 @@
---- C:\Users\trial\Desktop\EMailSender-3.0.11\EMailSender.cpp
-+++ C:\Users\trial\Documents\Arduino\libraries\EMailSender\EMailSender.cpp
-@@ -734,9 +734,16 @@
+diff --git a/EMailSender.cpp b/EMailSender.cpp
+index 64e2907..e269732 100644
+--- a/EMailSender.cpp
++++ b/EMailSender.cpp
+@@ -734,9 +734,16 @@ EMailSender::Response EMailSender::send(const char* to[], byte sizeOfTo,  byte s
  //  client.println(F("Mime-Version: 1.0"));
  
    client.println(F("MIME-Version: 1.0"));
@@ -17,7 +19,7 @@
  
      client.print(F("Content-Type: "));
      client.print(email.mime);
-@@ -984,7 +991,10 @@
+@@ -984,7 +991,10 @@ EMailSender::Response EMailSender::send(const char* to[], byte sizeOfTo,  byte s
  
  	  } // Close attachment cycle
  	  client.println();
@@ -28,7 +30,7 @@
  #ifdef STORAGE_EXTERNAL_ENABLED
  	  #ifdef OPEN_CLOSE_SD
  		  if (sdActive){
-@@ -1013,6 +1023,10 @@
+@@ -1013,6 +1023,10 @@ EMailSender::Response EMailSender::send(const char* to[], byte sizeOfTo,  byte s
  #endif
  	  } // Close attachement enable
  
@@ -39,4 +41,3 @@
  #endif
    DEBUG_PRINTLN(F("Message end"));
    client.println(F("."));
-

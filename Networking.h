@@ -1,9 +1,11 @@
 #ifndef NETWORKING_H
 #define NETWORKING_H
 
+#include <String.h>
+
 #include "utils.h"
 
-class AsyncWebServer;
+class WebServer;
 class Emailer;
 class WiFiClientSecure;
 
@@ -14,7 +16,9 @@ public:
    typedef struct
    {
       bool     isConnected;
-      char     ipAddr[ 16 ];
+      String   ipAddr;
+      String   mdnsName;
+      String   SSID;
       int32_t  timeToConnect;
       int32_t  timeToAcquireNTP;
    } Status;
@@ -22,17 +26,24 @@ public:
    Networking();
    ~Networking();
 
-   void initialise( void );
-   bool sendEmail( const char *recipient,const char *subject,const char *msg );
+   void initialise();
+   bool sendEmail( const char *recipient,const char *subject,const String &msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName );
    bool sendToEmonCMS( uint32_t emonFeedId,float_t value );
-   bool isConnected( void );
-   bool didAcquireNTP( void );
-   void getIPAddress( char *addrStr );
+   bool isConnected();
+   bool didAcquireNTP();
+   String getIPAddress();
+   String getMDNSName();
+   String getLocalMDNSName();
+   String getSSID();
+   bool  startAccessPoint();
+   bool  startMDNS();
+   bool  acquireNTP();
+   WebServer   *getWebServer();
 
 private:
    Emailer           *m_emailer;
-   AsyncWebServer    *m_webServer;
+   WebServer         *m_webServer;
    WiFiClientSecure  *m_emoncmsClient;
 
    Status  m_status;

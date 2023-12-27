@@ -1,15 +1,16 @@
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef __CONFIG_H
+#define __CONFIG_H
+
+#include <SPIFFS.h>
 
 #include "utils.h"
 
-#define VERSION_STR        "v6.0"
+#define VERSION_STR        "v7.1b"
 
-#define PW_WIFI            0
-#define NO_EMONCMS_UPDATE  0
-#define NO_EMAIL           0
-#define CONFIG_FILE_PRECENDENCE 0
-#define DEBUG_LOGGING      0
+#define TEMPERATURE_BOARD  1
+#define MASTER_BOARD       2
+
+#define SAMPLING_PERIOD_MS 30000
 
 #define MAX_REGISTRY_ENTRIES 32
 #define MAX_KEY_LENGTH       64
@@ -25,24 +26,6 @@ extern char    *getRegistryString( char *key );
 #define GET_REGISTRY_INT( x )    getRegistryInt( CONFIG_DEF_TO_STR( x ) )
 #define GET_REGISTRY_STRING( x ) getRegistryString( CONFIG_DEF_TO_STR( x ) )
 
-// Our definitions for temperature & energy
-
-#define HEATPUMP_FLOW_THERM   0
-#define HEATPUMP_RETURN_THERM 1
-#define HEATING_FLOW_THERM    2
-#define HEATING_RETURN_THERM  3
-#define OUTSIDE_THERM         4
-#define TEMPERATURE_INVALID   -100
-
-#define HEATPUMP_POWER        0
-#define IMMERSION_POWER       1
-#define POWER_INVALID         -1
-#define ENERGY_INVALID        -1
-
-#define SAMPLING_PERIOD_MS    30000
-
-class Storage;
-
 typedef struct {
    uint8_t  keyInt;
    char     key[ MAX_KEY_LENGTH ];
@@ -52,22 +35,25 @@ typedef struct {
 class Config
 {
 public:
-   Config( char *fileName,Storage *storage );
+   Config( char *fileName );
    ~Config();
-   void initialise( void );
 
+   bool  isRegistryAvailable();
    bool  getInt( char *key,int32_t *intValue );
    bool  getString( char *key,char *strValue );
+   fs::SPIFFSFS   *getSPIFFS();
 
+   static Config     *instance();
    static uint8_t    numRegistryEntries;
    static KeyValue   m_entries[ MAX_REGISTRY_ENTRIES ];
 
 private:
-   void populateRegistry( void );
-   void readFromFile( void );
+   void initialise();
+   void writeRegistryToFile();
+   bool readRegistryFromFile();
 
-   Storage   *m_storageModule;
-   char      m_configFileName[ MAX_FILENAME + 1 ];
+   fs::SPIFFSFS  *m_spiffs;
+   char           m_configFileName[ MAX_FILENAME + 1 ];
 };
 
 #endif

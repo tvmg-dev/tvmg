@@ -3,7 +3,8 @@
 #include <SD.h>
 #include <FS.h>
 
-#include "Utils.h"
+#include "utils.h"
+#include "Config.h"
 
 #define  LOG_TIMESTAMP  1
 
@@ -11,6 +12,21 @@ static char buffer[ 4096 ];
 
 void msgLog( LOGGING_LEVEL level,const char *format,... )
 {
+   // check for early returns, but we need to have config available otherwise
+   // there will be recursion as Config class itself wants to output debug
+
+   if ( Config::instance() )
+   {
+      if ( GET_REGISTRY_INT( DISABLED_SERIAL_LOGGING ) == 1 )
+      {
+         return;
+      }
+      else if ( level == LOGGING_LEVEL::DEBUG && GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) != 1 )
+      {
+         return;
+      }
+   }
+
   va_list args;
 
 #if LOG_TIMESTAMP == 1

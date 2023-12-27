@@ -1,0 +1,58 @@
+========
+
+Storage - if we don't have an SD card then simply the data isn't
+saved.  The warnings about no SD card should be surpressed for the
+remote board.
+
+For the remote then we don't instantiate storage module then the
+measurement's saveLastSample would be a null operation.  We would push
+out to master at this point, or we simply respond to polls from the master.
+
+NOTES:
+The file rollover means the SD card is filling with no control over it
+As we email the file then no need to actually save it.
+
+=== STATUS ===
+Add version to the storage status screen
+
+=== CONFIG ===
+
+Look again at config.dat - when not present and trying to get to AP
+was a disaster. Also zero length lines caused problems. (is lenght zero
+when reading blank line ?)
+
+
+HOW TO GET TO AP MODE ??
+========================
+
+CALIBRATION
+===========
+
+==== STATUS SCREENS =====
+
+Remotes
+   Name <DT>
+   Flow Return
+
+All
+   HP  14.5 22.5 : 10.5
+   UFH
+   GND
+   1ST
+   TOP
+
+==== POWER ESTIMATOR ? ===
+Input flow rates for each floor to config
+Generate mass-flow power generation for consideration ?
+
+==== REMOTE DEBUGGING ===
+
+Instead of serial log, how about a websocket maybe ?
+
+
+
+
+
+
+
+

@@ -1,18 +1,17 @@
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#include <EMailSender.h>
+
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+
 #include "utils.h"
 #include "config.h"
 
 #include "Networking.h"
 #include "Measurement.h"
 
-#include <WiFi.h>
-#include <EMailSender.h>
-
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
-
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
+#include "WebServer.h"
 
 const char* ntpServer = "pool.ntp.org";
 
@@ -69,8 +68,8 @@ public:
    Emailer();
    ~Emailer();
 
-   void initialise( void );
-   bool sendEmail( const char *recipient,const char *subject,const char *msg );
+   void initialise();
+   bool sendEmail( const char *recipient,const char *subject,const String &msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName );
 
 private:
@@ -90,7 +89,7 @@ Emailer::~Emailer()
    delete m_sender;
 }
 
-void  Emailer::initialise( void )
+void  Emailer::initialise()
 {
    PW_MSG( "Emailer initialise" );
 
@@ -110,14 +109,14 @@ void  Emailer::initialise( void )
    m_sender->setPublicIpDescriptor( "dyllysplace.com" );
 }
 
-bool Emailer::sendEmail( const char *recipient,const char *subject,const char *msg )
+bool Emailer::sendEmail( const char *recipient,const char *subject,const String &msg )
 {
    if ( m_sender )
    {
       EMailSender::EMailMessage message;
 
       message.subject = subject;
-      message.message = msg;
+      message.message = msg.c_str();
       message.mime = "text/plain";
 
       PW_DEBUG( "Sending to %s [%s]",recipient,subject );
@@ -178,7 +177,8 @@ Networking::Networking()
 
    // set status to defaults, not connected etc.
 
-   strcpy( m_status.ipAddr,"" );
+   m_status.ipAddr = "";
+   m_status.mdnsName = "";
    m_status.isConnected = false;
    m_status.timeToAcquireNTP = -1;
    m_status.timeToConnect = 0;
@@ -193,17 +193,66 @@ Networking::~Networking()
    delete m_emailer;
 }
 
-void Networking::initialise(void)
+bool Networking::startAccessPoint()
+{
+   String SSID( "HeatPump-Monitor" );
+   WiFi.mode( WIFI_AP );
+   WiFi.softAP( SSID.c_str() );
+
+   m_status.SSID = SSID;
+   m_status.ipAddr = WiFi.softAPIP().toString();
+
+   PW_DEBUG( "AP:" );
+   PW_DEBUG( "  SSID : %s",m_status.SSID.c_str() );
+   PW_DEBUG( "  IP   : %s",m_status.ipAddr.c_str() );
+
+   // Start the configuration/download server
+
+   m_webServer = new WebServer();
+   m_webServer->initialise();
+
+   m_status.mdnsName = String( "heatpump-monitor" );
+
+   if ( !startMDNS() )
+   {
+      m_status.mdnsName = String();
+   }
+
+   return( true );
+}
+
+bool Networking::startMDNS()
+{
+   bool  mdnsOk = true;
+
+   // Start the MDNS service so we can be discovered and configured
+
+   if ( ! MDNS.begin( m_status.mdnsName.c_str() ) )
+   {
+      PW_WARN( "Failed to setup MDNS responder" );
+      mdnsOk = false;
+   }
+   else
+   {
+      m_status.mdnsName += String( ".local" );
+      PW_MSG( "MDNS :  at %s/manager",m_status.mdnsName.c_str() );
+
+      MDNS.addService( "http","tcp",80 );
+   }
+
+   return( mdnsOk );
+}
+
+
+void Networking::initialise()
 {
    PW_DEBUG( "Networking::initialise" );
 
-   // now networking...
+   WiFi.mode( WIFI_STA );
 
-   uint32_t start;
+   uint32_t start = millis();
 
-   PW_DEBUG( "Trying to connect to %s ",GET_REGISTRY_STRING( WIFI_SSID ) );
-
-   start = millis();
+   // Connect to the WiFi network
 
    WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
    while (WiFi.status() != WL_CONNECTED && (millis() - start < GET_REGISTRY_INT( WIFI_CONNECT_TIMEOUT )) )
@@ -211,118 +260,153 @@ void Networking::initialise(void)
       delay(200);
    }
 
-   // Now onto NTP
-
    if ( WiFi.status() != WL_CONNECTED )
    {
       PW_WARN( "Network not connected" );
       m_status.isConnected = false;
+      return;
+   }
+
+   m_status.isConnected = true;
+
+   m_status.timeToConnect = ( millis() - start ) / 1000;
+   m_status.ipAddr = WiFi.localIP().toString();
+   m_status.SSID = String( GET_REGISTRY_STRING( WIFI_SSID ) );
+
+   PW_MSG( "Connected to %s",m_status.SSID.c_str() );
+   PW_DEBUG( "  IP : %s",m_status.ipAddr.c_str() );
+   PW_DEBUG( "  Autoreconnect : %u", WiFi.getAutoReconnect() );
+
+   acquireNTP();
+
+   // We have connected network, so we can have the emailer
+
+   m_emailer = new Emailer;
+   m_emailer->initialise();
+
+   // And now for the emoncms client...
+
+   m_emoncmsClient = new WiFiClientSecure;
+   m_emoncmsClient->setCACert( emoncmsCertificate );
+
+   // Start our configuration/download server
+
+   m_webServer = new WebServer();
+   m_webServer->initialise();
+
+   // start MDNS
+
+   m_status.mdnsName = String( GET_REGISTRY_STRING( ACCESS_POINT_NAME ) );
+   startMDNS();
+}
+
+bool  Networking::acquireNTP()
+{
+   struct tm   timeInfo;
+   uint32_t    start;
+
+   PW_DEBUG( "Acquiring NTP..." );
+
+   configTzTime( "GMT0BST,M3.5.0/1,M10.5.0",ntpServer );
+   start = millis();
+   while ( !getLocalTime( &timeInfo ) && (millis() - start < GET_REGISTRY_INT( NTP_UPDATE_TIMEOUT) ) )
+   {
+      delay( 2000 );
+   }
+
+   if ( !getLocalTime( &timeInfo ) )
+   {
+      PW_WARN( "NTP not available" );
+      m_status.timeToAcquireNTP = -1;
    }
    else
    {
-      struct tm   timeInfo;
-
-      m_status.isConnected = true;
-      m_status.timeToConnect = ( millis() - start ) / 1000;
-      strncpy( m_status.ipAddr,WiFi.localIP().toString().c_str(),16 );
-
-      PW_DEBUG( "Acquiring NTP..." );
-
-      configTzTime( "GMT0BST,M3.5.0/1,M10.5.0",ntpServer );
-      start = millis();
-      while ( !getLocalTime( &timeInfo ) && (millis() - start < GET_REGISTRY_INT( NTP_UPDATE_TIMEOUT) ) )
-      {
-         delay( 200 );
-      }
-
-      if ( !getLocalTime( &timeInfo ) )
-      {
-         PW_WARN( "NTP not available" );
-         m_status.timeToAcquireNTP = -1;
-      }
-      else
-      {
-         m_status.timeToAcquireNTP = ( millis() - start ) / 1000;
-      }
-
-      // We have connected network, so we can have the emailer & webserver up
-      m_emailer = new Emailer;
-      m_emailer->initialise();
-
-      m_webServer = new AsyncWebServer( 80 );
-      m_webServer->on( "/", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-               String versionStr( VERSION_STR );
-               request->send(200, "text/plain", "Heat Pump WebServer : " + versionStr );
-            } );
-
-      AsyncElegantOTA.begin( m_webServer );
-      m_webServer->begin();
-
-      // And now for the emoncms client...
-
-      m_emoncmsClient = new WiFiClientSecure;
-      m_emoncmsClient->setCACert( emoncmsCertificate );
+      m_status.timeToAcquireNTP = ( millis() - start ) / 1000;
    }
+
+   return( m_status.timeToAcquireNTP > -1  );
 }
 
-bool  Networking::isConnected( void )
+bool  Networking::isConnected()
 {
    return m_status.isConnected;
 }
 
-void Networking::getIPAddress( char *addrStr )
+String Networking::getIPAddress()
 {
-   if ( addrStr )
+   return( m_status.ipAddr );
+}
+
+String Networking::getMDNSName()
+{
+   return( m_status.mdnsName );
+}
+
+String Networking::getLocalMDNSName()
+{
+   String ret = m_status.mdnsName;
+   int    dotPos;
+
+   dotPos = ret.lastIndexOf( '.' );
+   ret.remove( dotPos );
+
+   return( ret );
+}
+
+
+String Networking::getSSID()
+{
+   return( m_status.SSID );
+}
+
+bool Networking::didAcquireNTP()
+{
+   return ( m_status.timeToAcquireNTP > -1 );
+}
+
+bool Networking::sendEmail( const char *recipient,const char *subject,const String &msg )
+{
+   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
    {
-      strcpy( addrStr,m_status.ipAddr );
+      PW_WARN( "Would send email %s",subject );
+      return true;
    }
-}
 
-bool Networking::didAcquireNTP( void )
-{
-   return (m_status.timeToAcquireNTP > -1 );
-}
-
-bool Networking::sendEmail( const char *recipient,const char *subject,const char *msg )
-{
-#if NO_EMAIL != 1
    if ( m_emailer )
    {
       return m_emailer->sendEmail( recipient,subject,msg );
    }
    return false;
-#else
-   PW_WARN( "Would send email %s",subject );
-   return true;
-#endif
 }
 
 bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName )
 {
-#if NO_EMAIL != 1
+   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
+   {
+      PW_WARN( "Would send email %s",subject );
+      return true;
+   }
+
    if ( m_emailer )
    {
       return m_emailer->sendEmailWithAttachment( recipient,subject,msg,fileName );
    }
    return false;
-#else
-   PW_WARN( "Would send email %s",subject );
-   return true;
-#endif
 }
 
 // https://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
 
 bool Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
 {
-#if NO_EMONCMS_UPDATE == 1
-   (void) emonFeedId;
-   (void) value;
+   if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) != 1 )
+   {
+      (void) emonFeedId;
+      (void) value;
 
-   PW_WARN( "Would send to emon {%u : %.2f]",emonFeedId,value );
-   return true;
-#else
+      PW_WARN( "Would send to emon {%u : %.2f]",emonFeedId,value );
+      return true;
+   }
+
    bool        retOk = false;
    char        url[ 256 ];
    time_t      utc;
@@ -360,6 +444,10 @@ bool Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
       https.end();
    }
 
-   return retOk;
-#endif
+return retOk;
+}
+
+WebServer   *Networking::getWebServer()
+{
+   return( m_webServer );
 }

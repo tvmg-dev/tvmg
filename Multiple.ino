@@ -9,38 +9,9 @@
 #include "Config.h"
 #include "Storage.h"
 #include "Networking.h"
-
-#include <FS.h>
-#include <SD.h>
+#include "WebServer.h"
 
 // ----------------------------------------------------------------------
-
-// The following are the device addresses - we should read this from a file
-
-#if PW_WIFI == 1
-#define MODBUS_HEATPUMP_ADDR     11
-#define MODBUS_IMMERSION_ADDR    12
-#else
-#define MODBUS_HEATPUMP_ADDR     0x1
-#define MODBUS_IMMERSION_ADDR    0x5
-#endif
-
-#if PW_WIFI == 1
-DeviceAddress heatpumpFlowThermometer = { 0x28,0x48,0xFB,0x81,0xE3,0x71,0x3C,0x06 };
-#else
-DeviceAddress heatpumpFlowThermometer = { 0x28,0x30,0x21,0x94,0x97,0x0D,0x03,0x10 };
-#endif
-
-DeviceAddress heatpumpReturnThermometer = { 0x28,0x26,0x11,0x94,0x97,0x0A,0x03,0x13 };
-DeviceAddress heatingFlowThermometer = { 0x28,0x9A,0x11,0x94,0x97,0x02,0x03,0x1F };
-DeviceAddress heatingReturnThermometer = { 0x28,0xD4,0x39,0x94,0x97,0x03,0x03,0x7B };
-DeviceAddress outsideThermometer = { 0x28,0x4E,0X5F,0x94,0x97,0x03,0x03,0x88 };
-
-#define  HEATPUMP_FLOW_THERM_CAL    0.12
-#define  HEATPUMP_RETURN_THERM_CAL  0.38
-#define  HEATING_FLOW_THERM_CAL     0.25
-#define  HEATING_RETURN_THERM_CAL   0.12
-#define  OUTSIDE_THERM_CAL          0.0
 
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
@@ -50,17 +21,17 @@ Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
 
-int threshold = 40;
-bool testingLower = true;
-bool wasButtonPressed = false;
-
 // Initially testingLower which triggers when < threshold, i.e. 'key down'
 // When we receive that then need to get next event when it goes above the
 // threshold which we use to set buttin pressed.
 
+int threshold = 40;
+bool testingLower = true;
+bool wasButtonPressed = false;
+
+
 void gotTouchEvent()
 {
-
   if ( !testingLower )
   {
      wasButtonPressed = true;
@@ -70,101 +41,134 @@ void gotTouchEvent()
   testingLower = !testingLower;
 }
 
-void setup(void)
+void newConfiguration( void )
+{
+   networking = new Networking;
+   networking->startAccessPoint();
+
+   PW_WARN( "Need to configure via SSID : %s",networking->getSSID().c_str() );
+   PW_WARN( "Use %s/manager",networking->getMDNSName().c_str() );
+   PW_WARN( "Or %s/manager",networking->getIPAddress().c_str() );
+
+   while( 1 )
+   {
+      delay( 60 * 1000 );
+      PW_DEBUG( "Waiting for configuration..." );
+   }
+}
+
+void  handleTouch1()
+{
+   PW_MSG( "Button-1 was pressed" );
+
+   wasButtonPressed = false;
+
+   String   msgString;
+   char     message[ 128 ];
+
+   Measurement::Sample  sample = measurement->getLastSample();
+   snprintf( message,128,"Button sample\n\n"
+                    "IP : %s [%s]\n"
+                    "Free Bytes : %u\n\n"
+                    "Time signature %u\n",
+                    networking->getLocalMDNSName().c_str(),
+                    networking->getIPAddress().c_str(),
+                    sample.m_sampleTime,
+                    ESP.getFreeHeap() );
+
+   msgString = message;
+
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+   {
+      if ( sample.m_tempSensors[ i ] )
+      {
+         snprintf( message,128,"%30s,%.1f\n",sample.m_tempSensors[ i ]->m_name,sample.m_tempSensors[ i ]->m_temp );
+         msgString += message;
+      }
+   }
+
+   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+   {
+      if ( sample.m_powerSensors[ i ] )
+      {
+         snprintf( message,128,"%30s,%.1f\n",sample.m_powerSensors[ i ]->m_name,sample.m_powerSensors[ i ]->m_power,sample.m_powerSensors[ i ]->m_energy );
+         msgString += message;
+      }
+   }
+
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","No content",storageModule->getCurrentFileName() );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","No content","/debug.log" );
+   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
+
+   userIO->updateLine( 1, "BT pressed" );
+   delay( 2000 );
+
+}
+
+void setup( void )
 {
    // start serial port
 
    Serial.begin( 115200 );
 
-   Serial.println( "start" );
-   delay( 200 );
+   delay( 1000 );
 
-  // Instantiate the storage module, and initialise it.  If the SD card
-  // is not operational the storage module will not save data but at least
-  // the system will continue to operate.
+   // Initialise our configuration
+
+   config = Config::instance();
+
+   // Is registry available, if not then we need to enter configuration
+   // mode, i.e. networking with AP only with SSID HeatPump-Monitor. The
+   // user must download a suitable config.dat to the device.
+
+   if ( ! config->isRegistryAvailable() )
+   {
+      newConfiguration();
+   }
+
+   selectHardware();
+
+   // Must have a valid configuration at this stage
+
+   // prepare the OLED display for output
+
+   userIO = new UserIO();
+   userIO->initialise();
+
+   char line[ MAX_OLED_COLUMNS + 1 ];
+
+   if ( config->isRegistryAvailable() )
+   {
+      userIO->updateLine( 0,"Starting Networking..." );
+   }
+   else
+   {
+      userIO->updateLine( 0,"Waiting for config" );
+   }
+
+   networking = new Networking;
+   networking->initialise();
+
+   userIO->setNetworking( networking );
+
+   // Instantiate the storage module, and initialise it.  If the SD card
+   // is not operational the storage module will not save data but at least
+   // the system will continue to operate.
 
    storageModule = new Storage();
    storageModule->initialise();
 
-   config = new Config( "/config.dat",storageModule );
-   config->initialise();
+   // show network status
 
-   // Instantiate the temperature collecting module
+   userIO->show( UserIO::NETWORK_STATUS );
 
-   tempModule = new TemperatureModule;
-   tempModule->registerSensor( HEATPUMP_FLOW_THERM,heatpumpFlowThermometer,"Heat Pump Flow",HEATPUMP_FLOW_THERM_CAL );
-   tempModule->registerSensor( HEATPUMP_RETURN_THERM,heatpumpReturnThermometer,"Heat Pump Return",HEATPUMP_RETURN_THERM_CAL );
-   tempModule->registerSensor( HEATING_FLOW_THERM,heatingFlowThermometer,"Heating Flow",HEATING_FLOW_THERM_CAL );
-   tempModule->registerSensor( HEATING_RETURN_THERM,heatingReturnThermometer,"Heating Return",HEATING_RETURN_THERM_CAL );
-   tempModule->registerSensor( OUTSIDE_THERM,outsideThermometer,"Outside",OUTSIDE_THERM_CAL );
-
-   tempModule->initialise();
-
-   // Instantiate the power collecting module
-
-   powerModule = new PowerModule;
-   powerModule->registerSensor( HEATPUMP_POWER,MODBUS_HEATPUMP_ADDR,"Heatpump" );
-   powerModule->registerSensor( IMMERSION_POWER,MODBUS_IMMERSION_ADDR,"Immersion" );
-
-   powerModule->initialise();
-
-   // Instantiate the measurement module, but don't initialise it just yet
-
-   measurement = new Measurement( tempModule,powerModule,storageModule );
-
-   // prepare the OLED display
-
-   userIO = new UserIO( measurement );
-   userIO->initialise();
-
-   char line[ MAX_OLED_COLUMNS + 1 ];
-   char ipAddr[ 20 ];
-
-   strncpy( line,"Initial boot delay...",MAX_OLED_COLUMNS );
-   userIO->updateLine( 0,line );
-
-   delay( GET_REGISTRY_INT( BOOT_DELAY ) );
-
-   // now networking...
-
-   strncpy( line,"Starting Networking...",MAX_OLED_COLUMNS );
-   userIO->updateLine( 1,line );
-
-   networking = new Networking;
-
-   networking->initialise();
-   if ( !networking->isConnected() )
-   {
-      userIO->updateLine( 1,"WiFi not connected",false );
-   }
-   else
-   {
-      networking->getIPAddress( ipAddr );
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",ipAddr );
-      userIO->updateLine( 1,line,false );
-
-      if ( networking->didAcquireNTP() )
-      {
-         struct tm   timeInfo;
-
-         getLocalTime( &timeInfo );
-
-         strftime( line,MAX_OLED_COLUMNS,"%d/%m/%y : %H:%M:%S",&timeInfo );
-         userIO->updateLine( 2,line );
-      }
-      else
-      {
-         strncpy( line,"No NTP !!",MAX_OLED_COLUMNS );
-         userIO->updateLine( 2,line );
-      }
-   }
-
-   // If we don't have NTP, then we reboot here - ping an email too.
+   // If we don't have NTP, then we reboot here if we have
+   // a configuration - ping an email too.  If no configuration then
+   // we assume that a new config will be loaded....
 
    if ( !networking->didAcquireNTP() )
    {
-      strncpy( line,"Reboot in 5s",MAX_OLED_COLUMNS );
-      userIO->updateLine( 5,line );
+      userIO->updateLine( 5,"Reboot in 5s" );
 
       char msg[ 128 ];
       snprintf( msg,128,"Failed to aquire NTP - rebooting",VERSION_STR  );
@@ -176,52 +180,28 @@ void setup(void)
       ESP.restart();
    }
 
+   // Give webserver access to userIO
+
+   networking->getWebServer()->setUserIO( userIO );
+
+   // Instantiate the temperature collecting module
+
+   tempModule = new TemperatureModule;
+   tempModule->initialise();
+
+   // Instantiate the power collecting module
+
+   powerModule = new PowerModule;
+   powerModule->initialise();
+
+   // Instantiate the measurement module, but don't initialise it just yet
+
+   measurement = new Measurement( tempModule,powerModule,storageModule );
+   userIO->setMeasurement( measurement );
+
    // let's tell storage we have networking available
 
    storageModule->setNetworking( networking );
-
-   // Display status info before starting
-
-   delay( 5000 );
-   userIO->clear();
-
-   PW_MSG( "Boot Summary :-" );
-
-   if ( networking->isConnected() )
-   {
-
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",ipAddr );
-   }
-   else
-   {
-      strcpy( line,"No Network" );
-   }
-   userIO->updateLine( 0,line );
-
-   if ( networking->didAcquireNTP() )
-   {
-      struct tm   timeInfo;
-
-      getLocalTime( &timeInfo );
-
-      strftime( line,MAX_OLED_COLUMNS,"%d/%m/%y : %H:%M:%S",&timeInfo );
-   }
-   else
-   {
-      strcpy( line,"NTP : Inactive" );
-   }
-   userIO->updateLine( 1,line );
-
-   if ( storageModule->isSDCardOk() )
-   {
-      strcpy( line,"SD Card Ok" );
-   }
-   else
-   {
-      strcpy( line,"No SD Card" );
-   }
-   userIO->updateLine( 2,line );
-   userIO->updateLine( 5,"Boot complete..." );
 
    delay( 5000 );
 
@@ -234,12 +214,12 @@ void setup(void)
    // intialise touch
    // Touch ISR will be activated when reading is lower than the threshold
 
-   touchAttachInterrupt( TOUCH_BUTTON_1,gotTouchEvent,threshold );
+   touchAttachInterrupt( hwConfig->TouchButton1,gotTouchEvent,threshold );
    touchInterruptSetThresholdDirection( testingLower );
 
    char initialMsg[ 128 ];
 
-   snprintf( initialMsg,128,"Initial boot up completed - [%s]\nIP : [%s]\nStarting monitoring...\n\n\Good luck !",VERSION_STR,ipAddr  );
+   snprintf( initialMsg,128,"Initial boot up completed - [%s]\nIP : [%s]\nStarting monitoring...\n\n\Good luck !",VERSION_STR,networking->getIPAddress().c_str()  );
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                   "Heat Pump Monitoring - Startup",initialMsg );
@@ -282,45 +262,10 @@ void loop(void)
    userIO->update();
    userIO->showNext();
 
-//   measurement->dumpMeasurements();
-
    // was a button pressed ?
    if ( wasButtonPressed )
    {
-      PW_WARN( "Button was pressed" );
-      wasButtonPressed = false;
-
-      char  message[ 512 ];
-      char  ipAddr[ 20 ];
-
-      networking->getIPAddress( ipAddr );
-
-      Measurement::Sample  sample = measurement->getLastSample();
-      sprintf( message,"Button sample\n\n"
-                       "IP : %s\n\n"
-                       "Time signature %u\n\n"
-                       "Heat Pump : Flow [ %.1f ] Return [ %.1f ] DT [ %.1f ]\n"
-                       "Heating   : Flow [ %.1f ] Return [ %.1f ] DT [ %.1f ]\n"
-                       "Outside   : [ %.1f ]\n\n"
-                       "Heat Pump : Current [ %.0f W ] Total [ %.0f WHr ]\n"
-                       "Immersion : Current [ %.0f W ] Total [ %.0f WHr ]\n\n"
-                       "Free Bytes : %u\n",
-                       ipAddr,
-                       sample.m_sampleTime,
-                       sample.m_flowHP,sample.m_returnHP,( sample.m_flowHP - sample.m_returnHP ),
-                       sample.m_flowHeating,sample.m_returnHeating,( sample.m_flowHeating - sample.m_returnHeating ),
-                       sample.m_outside,
-                       sample.m_powerHP,sample.m_energyHP,
-                       sample.m_powerImmersion,sample.m_energyImmersion,
-                       ESP.getFreeHeap() );
-
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data",message,storageModule->getCurrentFileName() );
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log",message,"/debug.log" );
-      networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",message );
-
-      userIO->updateLine( 1, "BT pressed" );
-      delay( 2000 );
-
+      handleTouch1();
    }
 
    currentMillis = millis();

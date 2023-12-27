@@ -8,27 +8,43 @@
 #define MAX_POWER_SENSORS  2
 #define MAX_POWER_NAME     32
 
+#define POWER_INVALID         -1
+#define ENERGY_INVALID        -1
+
+// The ID's should be matched in the sensors.dat file
+
+#define  HEAT_PUMP_ID         100
+#define  HEATING_CIRCUITS_ID  101
+
+typedef struct {
+   uint8_t  m_id;          // should be unique ID
+   uint32_t m_emonFeedId;  // Feed ID for emonCMS
+   float_t  m_power;       // power
+   float_t  m_energy;      // energy
+   char    *m_name;        // name (don't store the name here to keep the structure size to minimum
+} PowerSensor;
+
 class PowerModule
 {
 public:
    PowerModule();
    ~PowerModule();
    void  initialise( void );
-   void  registerSensor( uint8_t index, uint8_t addr, char *name );
-   bool  getPower( uint8_t index, float *power, float *energy );
+   PowerSensor *readNextSensor( uint8_t index );
+   bool  getPower( uint8_t index );
 
 private:
    typedef struct {
-      uint8_t  m_address;                       // address on modbus
+      PowerSensor m_sensor;                     // sensor essentials
       char     m_name[ MAX_POWER_NAME + 1 ];    // Friendly name
-      float_t  m_power;
-      float_t  m_energy;
+      uint8_t  m_address;                       // address on modbus
       bool     m_isValid;
-   } Sensor;
+   } PrivateSensor;
 
    HardwareSerial *m_serial;
    ModbusMaster   *m_master;
-   Sensor         m_sensors[ MAX_POWER_SENSORS ];
+   PrivateSensor  m_sensors[ MAX_POWER_SENSORS ];
+   uint8_t        m_numSensors;
    bool           m_masterStarted;
 };
 
