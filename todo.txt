@@ -1,13 +1,3 @@
-=======
-
-With the current build, re-enable the measurement loop & then configure
-the master board with this new firmware
-
-So master will be re-programmed and then need the local AP to download
-the config.dat and the sensors.dat files.
-
-when 1st doing it, have emon disabled just to be sure its ok...
-
 ========
 
 Storage - if we don't have an SD card then simply the data isn't
@@ -22,6 +12,15 @@ NOTES:
 The file rollover means the SD card is filling with no control over it
 As we email the file then no need to actually save it.
 
+=== STATUS ===
+Add version to the storage status screen
+
+=== CONFIG ===
+
+Look again at config.dat - when not present and trying to get to AP
+was a disaster. Also zero length lines caused problems. (is lenght zero
+when reading blank line ?)
+
 
 HOW TO GET TO AP MODE ??
 ========================
@@ -29,12 +28,7 @@ HOW TO GET TO AP MODE ??
 CALIBRATION
 ===========
 
-
-TODO
-====
-Delete old files from SD card.
-
-========================>> COVID :(
+==== STATUS SCREENS =====
 
 Remotes
    Name <DT>
@@ -47,6 +41,13 @@ All
    1ST
    TOP
 
+==== POWER ESTIMATOR ? ===
+Input flow rates for each floor to config
+Generate mass-flow power generation for consideration ?
+
+==== REMOTE DEBUGGING ===
+
+Instead of serial log, how about a websocket maybe ?
 
 
 

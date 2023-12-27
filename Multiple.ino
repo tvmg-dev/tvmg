@@ -117,8 +117,6 @@ void setup( void )
 
    config = Config::instance();
 
-   selectHardware();
-
    // Is registry available, if not then we need to enter configuration
    // mode, i.e. networking with AP only with SSID HeatPump-Monitor. The
    // user must download a suitable config.dat to the device.
@@ -127,6 +125,8 @@ void setup( void )
    {
       newConfiguration();
    }
+
+   selectHardware();
 
    // Must have a valid configuration at this stage
 

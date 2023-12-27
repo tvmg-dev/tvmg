@@ -54,7 +54,6 @@ private:
 
    fs::SPIFFSFS  *m_spiffs;
    char           m_configFileName[ MAX_FILENAME + 1 ];
-   bool           m_registryAvailable;
 };
 
 #endif

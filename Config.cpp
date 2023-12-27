@@ -78,7 +78,9 @@ int32_t getRegistryInt( char *key )
 
    if ( index == -1 )
    {
-      PW_WARN( "No entry found for %s",key );
+      char line[ 128 ];
+      snprintf( line,128,"No entry found for %s",key );
+//      Serial.println( line );
       return -1;
    }
    else
@@ -93,7 +95,9 @@ char *getRegistryString( char *key )
 
    if ( index == -1 )
    {
-      PW_WARN( "No entry found for %s",key );
+      char line[ 128 ];
+      snprintf( line,128,"No entry found for %s",key );
+//      Serial.println( line );
       return nullptr;
    }
    else
@@ -104,8 +108,7 @@ char *getRegistryString( char *key )
 
 Config::Config( char *fileName )
       : m_spiffs( new fs::SPIFFSFS() ),
-        m_configFileName(),
-        m_registryAvailable( false )
+        m_configFileName()
 {
    // Nothing in the registry yet...
 
@@ -160,7 +163,6 @@ Config   *Config::instance()
 void Config::initialise()
 {
    readRegistryFromFile();
-   m_registryAvailable = true;
 }
 
 bool Config::isRegistryAvailable()
@@ -212,12 +214,26 @@ bool  Config::readRegistryFromFile( void )
       return false;
    }
 
-   File file = m_spiffs->open( m_configFileName,FILE_READ );
-   if ( !file )
+   if ( !m_spiffs->exists( m_configFileName ) )
    {
       PW_WARN( "Config: %s not present",m_configFileName );
       return false;
    }
+
+ {
+   File file = m_spiffs->open(m_configFileName);
+    if(!file || file.isDirectory()){
+        Serial.println("- failed to open file for reading");
+    }
+
+    Serial.println("- read from file:");
+    while(file.available()){
+        Serial.write(file.read());
+    }
+    file.close();
+ }
+
+   File file = m_spiffs->open( m_configFileName,FILE_READ );
 
    bool     fileOk = true;
    char     line[ 128 ];
@@ -238,7 +254,6 @@ bool  Config::readRegistryFromFile( void )
          if ( length > 1 && ( line [ 0 ] != '#' && line [ 0 ] != '/') )
          {
             line[ length ] = 0;
-
             if ( sscanf( line,"%s %s",keyVal.key,keyVal.value ) == 2 )
             {
                stripOutQuotes( keyVal.value );
@@ -249,6 +264,7 @@ bool  Config::readRegistryFromFile( void )
       }
       else
       {
+         PW_WARN( "bad file ? %d",length );
          fileOk = false;
       }
    }
@@ -259,6 +275,7 @@ bool  Config::readRegistryFromFile( void )
    {
       PW_WARN( "Read maximum %d entries from %s",numLines,m_configFileName );
    }
+
 
    return( numLines > 0 );
 }
