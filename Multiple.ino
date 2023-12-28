@@ -310,12 +310,14 @@ void setup( void )
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                   "Heat Pump Monitoring - Startup",initialMsg );
+//   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"test file","messge","/config.dat",true );
 }
 
 #define LOOP_PERIOD_MS  5000
 
 void loop(void)
 {
+#if 0
    // TODO, wrap millis !
 
    /* Design decisions needed to build on the basics.
@@ -367,4 +369,8 @@ void loop(void)
    deltaMillis = targetMillis - currentMillis;
 
    delay( deltaMillis );
+#else
+   delay( 60 * 1000 );
+   PW_MSG( "waiting..." );
+#endif
 }

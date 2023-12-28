@@ -70,7 +70,7 @@ public:
 
    void initialise();
    bool sendEmail( const char *recipient,const char *subject,const String &msg );
-   bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName );
+   bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS );
 
 private:
    EMailSender *m_sender;
@@ -133,8 +133,16 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
    return false;
 }
 
-bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName )
+bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
 {
+
+   PW_WARN( "Send to %s",recipient );
+   PW_WARN( "  subject %s",subject );
+   if ( fileName )
+   {
+      PW_WARN( "  attach %s",fileName );
+   }
+
    if ( m_sender )
    {
       EMailSender::EMailMessage message;
@@ -143,8 +151,15 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       fileDescriptor[ 0 ].filename = "testfile.dat";
       fileDescriptor[ 0 ].url = fileName;
       fileDescriptor[ 0 ].mime = "text/plain";
-      fileDescriptor[0].encode64 = false;
-      fileDescriptor[ 0 ].storageType = EMailSender::EMAIL_STORAGE_TYPE_SD;
+      fileDescriptor[ 0 ].encode64 = false;
+      if ( fromSPIFFS )
+      {
+         fileDescriptor[ 0 ].storageType = EMailSender::EMAIL_STORAGE_TYPE_SPIFFS;
+      }
+      else
+      {
+         fileDescriptor[ 0 ].storageType = EMailSender::EMAIL_STORAGE_TYPE_SD;
+      }
 
       EMailSender::Attachments attachments = { 1, fileDescriptor };
 
@@ -382,7 +397,7 @@ bool Networking::sendEmail( const char *recipient,const char *subject,const Stri
    return false;
 }
 
-bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName )
+bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
 {
    if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
    {
@@ -392,7 +407,7 @@ bool Networking::sendEmailWithAttachment( const char *recipient,const char *subj
 
    if ( m_emailer )
    {
-      return m_emailer->sendEmailWithAttachment( recipient,subject,msg,fileName );
+      return m_emailer->sendEmailWithAttachment( recipient,subject,msg,fileName,fromSPIFFS );
    }
    return false;
 }
