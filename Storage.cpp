@@ -132,6 +132,8 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
       isNewFile = true;
       PW_MSG( "Will be creating %s",fileName );
 
+      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Creating",fileName );
+
       // As this is a new file, let's send previous file onwards ...
 
       if ( m_networking && strlen( m_currentFileName ) && SD.exists( m_currentFileName ) )
@@ -140,7 +142,12 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
 
          snprintf( subject,128,"HP Monitoring : %s - Daily Readings",m_networking->getLocalMDNSName().c_str() );
 
+         m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Sending",fileName );
          m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName );
+      }
+      else
+      {
+         m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Didn't Send",fileName );
       }
    }
 

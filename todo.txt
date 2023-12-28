@@ -12,6 +12,9 @@ NOTES:
 The file rollover means the SD card is filling with no control over it
 As we email the file then no need to actually save it.
 
+=== Status OLED networking ===
+
+Indicate that connected when waiting for NTP ?
 
 === SPIFFS as reference not pointer to standard SPIFFS =====
 
