@@ -148,7 +148,15 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       EMailSender::EMailMessage message;
       EMailSender::FileDescriptior fileDescriptor[ 1 ];
 
-      fileDescriptor[ 0 ].filename = "testfile.dat";
+      if ( fileName[ 0 ] == '/' )
+      {
+         fileDescriptor[ 0 ].filename = &fileName[ 1 ];
+      }
+      else
+      {
+         fileDescriptor[ 0 ].filename = fileName;
+      }
+
       fileDescriptor[ 0 ].url = fileName;
       fileDescriptor[ 0 ].mime = "text/plain";
       fileDescriptor[ 0 ].encode64 = false;

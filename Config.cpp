@@ -107,7 +107,7 @@ char *getRegistryString( char *key )
 }
 
 Config::Config( char *fileName )
-      : m_spiffs( new fs::SPIFFSFS() ),
+      : m_spiffs( &SPIFFS ),
         m_configFileName()
 {
    // Nothing in the registry yet...
@@ -218,7 +218,7 @@ bool  Config::readRegistryFromFile( void )
 
    if ( !file )
    {
-      PW_WARN( "%s doesn't exist",m_configFileName );
+      PW_WARN( "%s can't open",m_configFileName );
       return false;
    }
 

@@ -101,8 +101,7 @@ void  Storage::setNetworking( Networking *network )
    if ( ! m_sdCardOk )
    {
       char subject[ 128 ];
-
-      snprintf( subject,128,"SD Card Init Fault [%s]",m_networking->getIPAddress().c_str() );
+      snprintf( subject,128,"HP Monitoring : %s - SD Card Init Fault",m_networking->getLocalMDNSName().c_str() );
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"No message" );
    }
@@ -137,7 +136,11 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
 
       if ( m_networking && strlen( m_currentFileName ) && SD.exists( m_currentFileName ) )
       {
-         m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Daily Readings","Today's Final Results",m_currentFileName );
+         char subject[ 128 ];
+
+         snprintf( subject,128,"HP Monitoring : %s - Daily Readings",m_networking->getLocalMDNSName().c_str() );
+
+         m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName );
       }
    }
 
@@ -210,8 +213,7 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
    if ( ! m_sdCardOk && m_networking )
    {
       char subject[ 128 ];
-
-      snprintf( subject,128,"SD Card Failure [%s]",m_networking->getIPAddress().c_str() );
+      snprintf( subject,128,"HP Monitoring : %s - SD Card Failure",m_networking->getLocalMDNSName().c_str() );
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Preventing further writes" );
    }

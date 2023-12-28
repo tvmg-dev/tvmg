@@ -13,6 +13,9 @@ The file rollover means the SD card is filling with no control over it
 As we email the file then no need to actually save it.
 
 
+=== SPIFFS as reference not pointer to standard SPIFFS =====
+
+
 ===  RECURSDION IN CONFIG AT START ====
 
 === OVERNIGHT FILE GEN ===

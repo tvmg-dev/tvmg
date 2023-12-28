@@ -304,20 +304,20 @@ void setup( void )
    touchAttachInterrupt( hwConfig->TouchButton1,gotTouchEvent,threshold );
    touchInterruptSetThresholdDirection( testingLower );
 
+   char subject[ 128 ];
    char initialMsg[ 128 ];
 
-   snprintf( initialMsg,128,"Initial boot up completed - [%s]\nIP : [%s]\nStarting monitoring...\n\n\Good luck !",VERSION_STR,networking->getIPAddress().c_str()  );
+   snprintf( subject,128,"HP Monitoring : %s - Startup",networking->getLocalMDNSName().c_str() );
+   snprintf( initialMsg,128,"Initial boot up completed\nVersion : [%s]\nIP : [%s]\nStarting monitoring...\n\n",VERSION_STR,networking->getIPAddress().c_str()  );
 
-   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                  "Heat Pump Monitoring - Startup",initialMsg );
-//   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"test file","messge","/config.dat",true );
+   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
 }
 
 #define LOOP_PERIOD_MS  5000
 
 void loop(void)
 {
-#if 0
+#if 1
    // TODO, wrap millis !
 
    /* Design decisions needed to build on the basics.
