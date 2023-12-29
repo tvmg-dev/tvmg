@@ -151,11 +151,7 @@ void  UserIO::showStorage()
    snprintf( line,MAX_OLED_COLUMNS,"Version : %s",VERSION_STR );
    storeLine( 0,line );
 
-   if ( !Storage::isSDCardOk() )
-   {
-      storeLine( 1,"SD Card Fault" );
-   }
-   else
+   if ( Storage::isSDCardOk() )
    {
       uint32_t totalMiB, usedMiB, freeMiB;
       totalMiB = SD.totalBytes() / (1024 * 1024);
@@ -163,6 +159,14 @@ void  UserIO::showStorage()
 
       snprintf( line,MAX_OLED_COLUMNS,"SD Used %u of %u MiB",usedMiB,totalMiB );
       storeLine( 1,line );
+   }
+   else if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   {
+      storeLine( 1,"SD Card Fault" );
+   }
+   else
+   {
+      storeLine( 1,"TBoard - no SD" );
    }
 
    uint32_t freeHeap = ESP.getFreeHeap();

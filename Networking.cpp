@@ -12,6 +12,9 @@
 #include "Measurement.h"
 
 #include "WebServer.h"
+#include "UserIO.h"
+
+extern UserIO  *userIO;
 
 const char* ntpServer = "pool.ntp.org";
 
@@ -302,6 +305,11 @@ void Networking::initialise()
    PW_MSG( "Connected to %s",m_status.SSID.c_str() );
    PW_DEBUG( "  IP : %s",m_status.ipAddr.c_str() );
    PW_DEBUG( "  Autoreconnect : %u", WiFi.getAutoReconnect() );
+
+   if ( userIO )
+   {
+      userIO->updateLine( 3,"Acquire NTP" );
+   }
 
    acquireNTP();
 

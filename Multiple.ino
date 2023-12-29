@@ -370,7 +370,9 @@ void loop(void)
 
    delay( deltaMillis );
 #else
+   PW_MSG( "loop running on core %d",xPortGetCoreID() );
    delay( 60 * 1000 );
    PW_MSG( "waiting..." );
+
 #endif
 }

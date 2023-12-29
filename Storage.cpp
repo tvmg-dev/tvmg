@@ -98,7 +98,7 @@ void  Storage::setNetworking( Networking *network )
 
    // Send an email if SD card is not OK
 
-   if ( ! m_sdCardOk )
+   if ( ! m_sdCardOk && GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
    {
       char subject[ 128 ];
       snprintf( subject,128,"HP Monitoring : %s - SD Card Init Fault",m_networking->getLocalMDNSName().c_str() );
@@ -149,6 +149,16 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
       {
          m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Didn't Send",fileName );
       }
+
+      // set new current filename
+
+      strcpy( m_currentFileName,fileName );
+   }
+
+   // set current filename if not already set
+   if ( ! strlen( m_currentFileName ) )
+   {
+      strcpy( m_currentFileName,fileName );
    }
 
    File file = SD.open( fileName,FILE_APPEND );
@@ -217,7 +227,7 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
       file.close();
    }
 
-   if ( ! m_sdCardOk && m_networking )
+   if ( ! m_sdCardOk && m_networking && GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
    {
       char subject[ 128 ];
       snprintf( subject,128,"HP Monitoring : %s - SD Card Failure",m_networking->getLocalMDNSName().c_str() );

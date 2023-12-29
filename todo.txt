@@ -18,10 +18,15 @@ Indicate that connected when waiting for NTP ?
 
 === SPIFFS as reference not pointer to standard SPIFFS =====
 
+=== MONITOR webserver ===
+   Fixed on core 0, and no WDT currently...
 
 ===  RECURSDION IN CONFIG AT START ====
 
-=== OVERNIGHT FILE GEN ===
+=== UPDATE - SYNC WITH MEASUREMENT TO AVOID CORRUPTION ? ===
+
+=== UDP DEBUGGING ===
+
 
 CALIBRATION
 ===========
@@ -43,9 +48,6 @@ All
 Input flow rates for each floor to config
 Generate mass-flow power generation for consideration ?
 
-==== REMOTE DEBUGGING ===
-
-Instead of serial log, how about a websocket maybe ?
 
 
 
