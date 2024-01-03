@@ -49,6 +49,8 @@ private:
    void  showRemoteTemps();
    void  showAllTemps();
    TempSensor *findTempSensor( uint8_t id );
+   bool  isPowerDataAvailable();
+
 
    U8G2_SSD1306_128X64_NONAME_F_HW_I2C *m_display;
    ScreenType           m_currentScreen;

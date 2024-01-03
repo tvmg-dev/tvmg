@@ -228,20 +228,47 @@ void  UserIO::showLocalTemps()
 
    if ( hpFlow && hpReturn )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"HP  : %3.1f %3.1f : %3.1f",hpFlow->m_temp,hpReturn->m_temp,hpFlow->m_temp - hpReturn->m_temp );
+      snprintf( line,MAX_OLED_COLUMNS,"HP: %3.1f %3.1f (%3.1f)",hpFlow->m_temp,hpReturn->m_temp,hpFlow->m_temp - hpReturn->m_temp );
       storeLine( 0,line );
    }
 
    if ( UFHFlow && UFHReturn )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"UFH : %3.1f %3.1f : %3.1f",UFHFlow->m_temp,UFHReturn->m_temp,UFHFlow->m_temp - UFHReturn->m_temp );
+      snprintf( line,MAX_OLED_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",UFHFlow->m_temp,UFHReturn->m_temp,UFHFlow->m_temp - UFHReturn->m_temp );
       storeLine( 1,line );
    }
 
    if ( outside )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"Out : %3.1f",outside->m_temp );
+      snprintf( line,MAX_OLED_COLUMNS,"OS: %3.1f",outside->m_temp );
       storeLine( 2,line );
+   }
+
+   TempSensor *loftFlow = findTempSensor( LOFT_FLOW );
+   TempSensor *loftReturn = findTempSensor( LOFT_RETURN );
+
+   TempSensor *firstFlow = findTempSensor( FIRST_FLOW );
+   TempSensor *firstReturn = findTempSensor( FIRST_RETURN );
+
+   TempSensor *groundFlow = findTempSensor( GND_FLOW );
+   TempSensor *groundReturn = findTempSensor( GND_RETURN );
+
+   if ( loftFlow && loftReturn )
+   {
+      snprintf( line,MAX_OLED_COLUMNS,"2 : %3.1f %3.1f (%3.1f)",loftFlow->m_temp,loftReturn->m_temp,loftFlow->m_temp - loftReturn->m_temp );
+      storeLine( 3,line );
+   }
+
+   if ( firstFlow && firstReturn )
+   {
+      snprintf( line,MAX_OLED_COLUMNS,"1 : %3.1f %3.1f (%3.1f)",firstFlow->m_temp,firstReturn->m_temp,firstFlow->m_temp - firstReturn->m_temp );
+      storeLine( 4,line );
+   }
+
+   if ( groundFlow && groundReturn )
+   {
+      snprintf( line,MAX_OLED_COLUMNS,"0 : %3.1f %3.1f (%3.1f)",groundFlow->m_temp,groundReturn->m_temp,groundFlow->m_temp - groundReturn->m_temp );
+      storeLine( 5,line );
    }
 
    show( m_currentLines );
@@ -302,7 +329,14 @@ void  UserIO::showNext()
          m_currentScreen = STORAGE_STATUS;
          break;
       case STORAGE_STATUS:
-         m_currentScreen = ENERGY;
+         if ( isPowerDataAvailable() )
+         {
+            m_currentScreen = ENERGY;
+         }
+         else
+         {
+            m_currentScreen = LOCAL_TEMP;
+         }
          break;
       case ENERGY:
          m_currentScreen = LOCAL_TEMP;
@@ -336,4 +370,17 @@ void  UserIO::update()
 void  UserIO::setFirmwareUpdateInProgress( bool progress )
 {
    m_firmwareUpdateInProgress = progress;
+}
+
+bool  UserIO::isPowerDataAvailable()
+{
+   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+   {
+      if ( m_sample.m_powerSensors[ i ] )
+      {
+         return true;
+      }
+   }
+
+   return false;
 }

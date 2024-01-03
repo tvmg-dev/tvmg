@@ -31,7 +31,7 @@ public:
    ~PowerModule();
    void  initialise( void );
    PowerSensor *readNextSensor( uint8_t index );
-   bool  getPower( uint8_t index );
+   bool     getPower( uint8_t index );
 
 private:
    typedef struct {

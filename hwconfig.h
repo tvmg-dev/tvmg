@@ -7,7 +7,7 @@ typedef struct {
    int8_t        OneWireGPIO;
    int8_t        ModBusSerial;
    int32_t       ModBusBaudRate;
-   int32_t        ModBusSerialFormat;
+   int32_t       ModBusSerialFormat;
    int8_t        ModBusRxGPIO;
    int8_t        ModBusTxGPIO;
    int8_t        ModBusMsgDelay;
