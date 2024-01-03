@@ -72,10 +72,31 @@ if temp-module
          will have 2x sensors
 
 
+====
+
+Temperatures
+   read sensors.dat and get remote + local sensors
+     remotes have :
+     {
+      "type": "THERM",
+      "name": "UFH Flow",
+      "id": 5,
+      "emonFeedId": 0,
+      "remote": true
+     },
+     locals also have (but not "remote")
+      "address": "28302194970D0311",
+      "calibration": 0.12,
+
+Remote boards will not have feed ID's set - even for local sensors !
+
+Measuemw
 
 
-could broadcast from master on 2222, therefore tboards listening on 2222
-tboards bcast on 1111, master listening on 1111
+
+
+
+
 
 
 

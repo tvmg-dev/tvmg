@@ -14,6 +14,8 @@
 
 extern Networking *networking;
 
+char  s_udpPacket[ 1024 ];
+
 uint8_t toHex( char a )
 {
    int8_t n;
@@ -38,9 +40,11 @@ error:
 TemperatureModule::TemperatureModule()
          : m_oneWireController( nullptr ),
            m_dallasController( nullptr ),
+           m_udp( nullptr ),
            m_isOk( true ),
            m_sensors(),
-           m_numSensors( 0 ),
+           m_numLocalSensors( 0 ),
+           m_numRemoteSensors( 0 ),
            m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
 {
    PW_DEBUG( "TemperatureModule::TemperatureModule()" );
@@ -50,8 +54,10 @@ TemperatureModule::TemperatureModule()
    {
       m_sensors[ i ].m_isValid = false;
       m_sensors[ i ].m_busIndex = MAX_TEMP_SENSORS;
-      m_sensors[ i ].m_sensor.m_name = nullptr;
+      m_sensors[ i ].m_sensor.m_id = 255;
+      m_sensors[ i ].m_sensor.m_emonFeedId = 0;
       m_sensors[ i ].m_sensor.m_temp = TEMPERATURE_INVALID;
+      m_sensors[ i ].m_sensor.m_name = nullptr;
    }
 
    // Parse the /sensors.dat file for thermometers
@@ -75,31 +81,46 @@ TemperatureModule::TemperatureModule()
          {
             if ( strcmp( "THERM",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
             {
-               PrivateSensor *tempSensor = &m_sensors[ m_numSensors ];
+               PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
 
                strncpy( tempSensor->m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_TEMP_NAME );
-               strncpy( tempSensor->m_addressStr,cJSON_GetObjectItem( sensor,"address" )->valuestring,sizeof( tempSensor->m_addressStr ) - 1 );
-               tempSensor->m_calibrationOffset = static_cast<float_t> (cJSON_GetObjectItem( sensor,"calibration" )->valuedouble );
-               tempSensor->m_sensor.m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
                tempSensor->m_sensor.m_id = cJSON_GetObjectItem( sensor,"id" )->valueint;
+               tempSensor->m_sensor.m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
                tempSensor->m_sensor.m_name = tempSensor->m_name;
-               tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
                tempSensor->m_isValid = true;
 
-               for ( int i = 0; i < 8; i++ )
+               if ( cJSON_GetObjectItem( sensor,"remote" ) )
                {
-                  uint8_t  byte;
-                  byte = toHex( tempSensor->m_addressStr[ i * 2 ] );
-                  byte <<= 4;
-                  byte |= toHex( tempSensor->m_addressStr[ (i * 2) + 1 ] );
-                  tempSensor->m_address[ i ] = byte;
-               }
-               char addr[ 32 ];
-               getAddressString( tempSensor->m_address,addr );
+                  tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
+                  tempSensor->m_sensor.m_isRemote = true;
+                  m_numRemoteSensors++;
 
-               PW_DEBUG( "Therm: name %s address %s",tempSensor->m_name,addr );
-               PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId,tempSensor->m_calibrationOffset );
-               m_numSensors++;
+                  PW_DEBUG( "Remote Therm: name %s",tempSensor->m_name );
+                  PW_DEBUG( "Id %u, feed %u",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId );
+               }
+               else
+               {
+                  strncpy( tempSensor->m_addressStr,cJSON_GetObjectItem( sensor,"address" )->valuestring,sizeof( tempSensor->m_addressStr ) - 1 );
+                  tempSensor->m_calibrationOffset = static_cast<float_t> (cJSON_GetObjectItem( sensor,"calibration" )->valuedouble );
+                  tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
+                  tempSensor->m_sensor.m_isRemote = false;
+
+                  for ( int i = 0; i < 8; i++ )
+                  {
+                     uint8_t  byte;
+                     byte = toHex( tempSensor->m_addressStr[ i * 2 ] );
+                     byte <<= 4;
+                     byte |= toHex( tempSensor->m_addressStr[ (i * 2) + 1 ] );
+                     tempSensor->m_address[ i ] = byte;
+                  }
+                  char addr[ 32 ];
+                  getAddressString( tempSensor->m_address,addr );
+
+                  m_numLocalSensors++;
+
+                  PW_DEBUG( "Local Therm: name %s address %s",tempSensor->m_name,addr );
+                  PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId,tempSensor->m_calibrationOffset );
+               }
             }
          }
       }
@@ -107,14 +128,8 @@ TemperatureModule::TemperatureModule()
       cJSON_Delete( root );
       close( file );
 
-      if ( m_numSensors )
-      {
-         PW_MSG( "Registered %d thermometers",m_numSensors );
-      }
-      else
-      {
-         PW_ERROR( "No thermometers registered !" );
-      }
+      PW_MSG( "Registered %d local thermometers",m_numLocalSensors );
+      PW_MSG( "Registered %d remote thermometers",m_numRemoteSensors );
    }
 }
 
@@ -148,13 +163,13 @@ void  TemperatureModule::initialise()
 
       uint8_t devices = m_dallasController->getDeviceCount();
 
-      if ( devices == m_numSensors )
+      if ( devices == m_numLocalSensors )
       {
          PW_DEBUG( "%u sensors detected on the OneWire bus ",devices );
       }
       else
       {
-         PW_ERROR( "Only located %u of %u sensors.",devices,m_numSensors );
+         PW_ERROR( "Only located %u of %u sensors.",devices,m_numLocalSensors );
 
          if ( devices == 0 )
          {
@@ -224,7 +239,7 @@ void  TemperatureModule::initialise()
 
 TempSensor  *TemperatureModule::readNextSensor( uint8_t index )
 {
-   if ( index < m_numSensors )
+   if ( index < m_numLocalSensors + m_numRemoteSensors )
    {
       if ( millis() - m_millisLastAquisition > TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
       {
@@ -238,13 +253,57 @@ TempSensor  *TemperatureModule::readNextSensor( uint8_t index )
    return( nullptr );
 }
 
+void TemperatureModule::addUDPListener()
+{
+   uint16_t  listenPort = GET_REGISTRY_INT( LISTEN_UDP_PORT );
+
+   if( listenPort != -1 && m_udp && m_udp->listen( listenPort ) ) {
+      m_udp->onPacket([ & ](AsyncUDPPacket packet) {
+         if ( packet.length() < sizeof( s_udpPacket ) - 1 )
+         {
+            strncpy( s_udpPacket,reinterpret_cast<const char *>(packet.data()),packet.length() );
+            s_udpPacket[ packet.length() ] = 0;
+
+            cJSON *root = cJSON_Parse( s_udpPacket );
+            if ( root )
+            {
+               cJSON *sensors = cJSON_GetObjectItem( root,"sensors" );
+               cJSON *sensor;
+
+               cJSON_ArrayForEach( sensor,sensors )
+               {
+                  uint8_t  id = static_cast<uint8_t>( cJSON_GetObjectItem( sensor,"id" )->valueint );
+                  float_t  value = static_cast<float>( cJSON_GetObjectItem( sensor,"value" )->valuedouble );
+
+                  PW_DEBUG( "remote ID %d %.1f",id,value );
+
+                  // TODO, add mutex protection around values here !
+                  for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+                  {
+                     PrivateSensor *tempSensor = &m_sensors[ i ];
+                     if ( tempSensor->m_isValid && tempSensor->m_sensor.m_isRemote && tempSensor->m_sensor.m_id == id )
+                     {
+                        PW_MSG( "Assign remote temp ID %d %.1f",id,value );
+                        tempSensor->m_sensor.m_temp = value;
+                     }
+                  }
+               }
+
+               cJSON_Delete( root );
+            }
+         }
+      });
+   }
+}
+
 bool TemperatureModule::getTemperatures()
 {
+   // If faking, then incremenent local temperatures and also broadcast
    if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
    {
       for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
       {
-         if ( m_sensors[ i ].m_isValid )
+         if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
          {
             if ( m_sensors[ i ].m_sensor.m_temp < (TEMPERATURE_INVALID + 1.0f) )
             {
@@ -301,6 +360,8 @@ bool TemperatureModule::getTemperatures()
       PW_DEBUG( "Took %u ms to request temperatures", millis() - start );
    }
 
+   // Now broadcast on the network
+
    localBroadcastData();
 
    return true;
@@ -319,15 +380,21 @@ void  TemperatureModule::localBroadcastData()
 {
    cJSON *root,*array;
 
-   if ( !m_numSensors )
+   if ( !m_numLocalSensors )
    {
-      PW_WARN( "No temp sensors to broadcast" );
+      PW_WARN( "No local temp sensors to broadcast" );
       return;
    }
    else if ( ! Networking::getUDP() )
    {
       PW_WARN( "No UDP broadcast" );
       return;
+   }
+
+   if ( !m_udp )
+   {
+      m_udp = Networking::getUDP();
+      addUDPListener();
    }
 
    root = cJSON_CreateObject();
@@ -341,10 +408,10 @@ void  TemperatureModule::localBroadcastData()
    array = cJSON_AddArrayToObject( root,"sensors" );
    if ( array )
    {
-      for ( int i = 0; i < m_numSensors; i++ )
+      for ( int i = 0; i < m_numLocalSensors + m_numRemoteSensors; i++ )
       {
          PrivateSensor *tempSensor = &m_sensors[ i ];
-         if ( tempSensor->m_isValid )
+         if ( tempSensor->m_isValid && ! tempSensor->m_sensor.m_isRemote )
          {
             cJSON *sensor = cJSON_CreateObject();
             if ( sensor )
@@ -366,7 +433,7 @@ void  TemperatureModule::localBroadcastData()
             IPAddress   subNet = WiFi.localIP();
             subNet[ 3 ] = 255;
 
-            (void) Networking::getUDP()->writeTo( (const uint8_t *) str,strlen(str),subNet,sendPort );
+            (void) m_udp->writeTo( (const uint8_t *) str,strlen(str),subNet,sendPort );
          }
 
          free( str );

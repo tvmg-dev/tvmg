@@ -19,7 +19,7 @@ PowerModule::PowerModule()
            : m_serial( nullptr ),
              m_master( nullptr ),
              m_sensors(),
-             m_numSensors( 0 ),
+             m_numLocalSensors( 0 ),
              m_masterStarted( false )
 {
    PW_DEBUG( "PowerModule::PowerModule()" );
@@ -56,7 +56,7 @@ PowerModule::PowerModule()
             {
                PrivateSensor *pwrSensor;
 
-               pwrSensor = &m_sensors[ m_numSensors ];
+               pwrSensor = &m_sensors[ m_numLocalSensors ];
                strncpy( pwrSensor->m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_POWER_NAME );
                pwrSensor->m_address = cJSON_GetObjectItem( sensor,"address" )->valueint;
                pwrSensor->m_sensor.m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
@@ -68,7 +68,7 @@ PowerModule::PowerModule()
 
                PW_DEBUG( "Power: name %s address %u",pwrSensor->m_name,pwrSensor->m_address );
                PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_sensor.m_id,pwrSensor->m_sensor.m_emonFeedId );
-               m_numSensors++;
+               m_numLocalSensors++;
             }
          }
       }
@@ -76,9 +76,9 @@ PowerModule::PowerModule()
       cJSON_Delete( root );
       close( file );
 
-      if ( m_numSensors )
+      if ( m_numLocalSensors )
       {
-         PW_MSG( "Registered %d power sensors",m_numSensors );
+         PW_MSG( "Registered %d power sensors",m_numLocalSensors );
       }
       else
       {
@@ -124,7 +124,7 @@ void PowerModule::initialise( void )
 
 PowerSensor  *PowerModule::readNextSensor( uint8_t index )
 {
-   if ( index < m_numSensors )
+   if ( index < m_numLocalSensors )
    {
       getPower( index );
       return( &m_sensors[ index ].m_sensor );
@@ -153,7 +153,7 @@ bool PowerModule::getPower( uint8_t index )
 
    if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
    {
-      if ( index < m_numSensors )
+      if ( index < m_numLocalSensors )
       {
          if ( m_sensors[ index ].m_sensor.m_energy == POWER_INVALID )
          {
@@ -168,7 +168,7 @@ bool PowerModule::getPower( uint8_t index )
       return true;
    }
 
-   if ( index < m_numSensors && m_sensors[ index ].m_isValid && hwConfig->ModBusSerial != -1 )
+   if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && hwConfig->ModBusSerial != -1 )
    {
       if ( !m_masterStarted )
       {

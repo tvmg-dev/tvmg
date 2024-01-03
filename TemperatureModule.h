@@ -6,6 +6,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+class AsyncUDP;
+
 //---------------------------------------------------------------------
 // Temperature monitoring
 
@@ -31,6 +33,7 @@
 typedef struct {
    uint8_t  m_id;          // should be unique ID
    uint32_t m_emonFeedId;  // Feed ID for emonCMS
+   bool     m_isRemote;    // true if remote
    float_t  m_temp;        // temperature
    char    *m_name;        // name (don't store the name here to keep the structure size to minimum)
 } TempSensor;
@@ -51,20 +54,22 @@ private:
       uint8_t        m_busIndex;                      // index of the sensor on OneWire bus
       float_t        m_calibrationOffset;             // calibration offset
       bool           m_isValid;                       // true if registered ok
-      bool           m_isRemote;                      // true if remote
       char           m_addressStr[ 17 ];              // string for the address - 8 hex chars + null
    } PrivateSensor;
 
    bool  getTemperatures();
    void  getAddressString( DeviceAddress addr,char *addrString );
+   void  addUDPListener();
    void  localBroadcastData();
 
    OneWire           *m_oneWireController;
    DallasTemperature *m_dallasController;
+   AsyncUDP          *m_udp;
 
    bool              m_isOk;
    PrivateSensor     m_sensors[ MAX_TEMP_SENSORS ];
-   uint8_t           m_numSensors;
+   uint8_t           m_numLocalSensors;
+   uint8_t           m_numRemoteSensors;
 
    int32_t           m_millisLastAquisition;       // milliseconds since last acquisition
 };
