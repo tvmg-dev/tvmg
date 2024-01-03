@@ -1,4 +1,5 @@
 #include <cJSON.h>
+#include <WiFi.h>
 #include "AsyncUDP.h"
 
 #include "utils.h"
@@ -361,7 +362,11 @@ void  TemperatureModule::localBroadcastData()
          uint16_t  sendPort = GET_REGISTRY_INT( BROADCAST_UDP_PORT );
          if ( sendPort != -1 )
          {
-            (void) Networking::getUDP()->writeTo( (const uint8_t *) str,strlen(str),IPAddress(192,168,1,255),sendPort );
+            // broadcast address, not 255.255.255.255 but IP x.x.x.255
+            IPAddress   subNet = WiFi.localIP();
+            subNet[ 3 ] = 255;
+
+            (void) Networking::getUDP()->writeTo( (const uint8_t *) str,strlen(str),subNet,sendPort );
          }
 
          free( str );
