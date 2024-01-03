@@ -48,10 +48,34 @@ All
 Input flow rates for each floor to config
 Generate mass-flow power generation for consideration ?
 
+============
+
+Server broadcasts to port 2222
+
+Test.
+Have 1 board sending incrementing counter to 2222
+   other boards receiving counter + display
+
+Board will broadcast to
+
+
+All boards broadcast to 2222
+   cjson parse - get id's
+      tboards look for HP flow/return
+      master processes remotes
+
+remote sensor - new type of sensor ?
+
+if temp-module
+   add udp listener
+      when packet arrives
+         will have 2x sensors
 
 
 
 
+could broadcast from master on 2222, therefore tboards listening on 2222
+tboards bcast on 1111, master listening on 1111
 
 
 

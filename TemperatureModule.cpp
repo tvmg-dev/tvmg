@@ -1,8 +1,10 @@
 #include <cJSON.h>
+#include "AsyncUDP.h"
 
 #include "utils.h"
 #include "Config.h"
 #include "hwconfig.h"
+#include "Networking.h"
 
 #include "TemperatureModule.h"
 
@@ -233,9 +235,25 @@ TempSensor  *TemperatureModule::readNextSensor( uint8_t index )
    return( nullptr );
 }
 
-bool TemperatureModule::getTemperatures( void )
+bool TemperatureModule::getTemperatures()
 {
-   PW_DEBUG( "TemperatureModule::getTemperatures()" );
+   if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
+   {
+      for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+      {
+         if ( m_sensors[ i ].m_isValid )
+         {
+            if ( m_sensors[ i ].m_sensor.m_temp < (TEMPERATURE_INVALID + 1.0f) )
+            {
+               m_sensors[ i ].m_sensor.m_temp = i;
+            }
+            m_sensors[ i ].m_sensor.m_temp += 0.1;
+         }
+      }
+
+      localBroadcastData();
+      return true;
+   }
 
    if ( !m_dallasController )
    {
@@ -280,6 +298,8 @@ bool TemperatureModule::getTemperatures( void )
       PW_DEBUG( "Took %u ms to request temperatures", millis() - start );
    }
 
+   localBroadcastData();
+
    return true;
 }
 
@@ -290,5 +310,62 @@ void  TemperatureModule::getAddressString( DeviceAddress addr,char *addrString )
       sprintf( &addrString[ i * 3 ],"%02X-",addr[ i ] );
    }
    addrString[ -1 + sizeof( DeviceAddress ) * 3 ] = 0;
+}
+
+void  TemperatureModule::localBroadcastData()
+{
+   cJSON *root,*array;
+
+   if ( !m_numSensors )
+   {
+      PW_WARN( "No temp sensors to broadcast" );
+      return;
+   }
+   else if ( ! Networking::getUDP() )
+   {
+      PW_WARN( "No UDP broadcast" );
+      return;
+   }
+
+   root = cJSON_CreateObject();
+   if ( ! root )
+   {
+      PW_WARN( "No root cJSON object" );
+      return;
+   }
+
+   cJSON_AddStringToObject( root,"name",GET_REGISTRY_STRING( ACCESS_POINT_NAME ) );
+   array = cJSON_AddArrayToObject( root,"sensors" );
+   if ( array )
+   {
+      for ( int i = 0; i < m_numSensors; i++ )
+      {
+         PrivateSensor *tempSensor = &m_sensors[ i ];
+         if ( tempSensor->m_isValid )
+         {
+            cJSON *sensor = cJSON_CreateObject();
+            if ( sensor )
+            {
+               cJSON_AddNumberToObject( sensor,"id", tempSensor->m_sensor.m_id ) ;
+               cJSON_AddNumberToObject( sensor,"value", tempSensor->m_sensor.m_temp );
+               cJSON_AddItemToArray( array,sensor );
+            }
+         }
+      }
+
+      char *str = cJSON_PrintUnformatted( root );
+      if ( str )
+      {
+         uint16_t  sendPort = GET_REGISTRY_INT( BROADCAST_UDP_PORT );
+         if ( sendPort != -1 )
+         {
+            (void) Networking::getUDP()->writeTo( (const uint8_t *) str,strlen(str),IPAddress(192,168,0,255),sendPort );
+         }
+
+         free( str );
+      }
+   }
+
+   cJSON_Delete( root );
 }
 

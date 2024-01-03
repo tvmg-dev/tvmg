@@ -193,10 +193,13 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
    return false;
 }
 
+AsyncUDP *Networking::s_udp = nullptr;
+
 Networking::Networking()
           : m_emailer( nullptr ),
             m_webServer( nullptr ),
-            m_emoncmsClient( nullptr )
+            m_emoncmsClient( nullptr ),
+            m_status()
 {
    PW_DEBUG( "Networking::Networking()" );
    PW_MSG( "Networking Startup" );
@@ -332,6 +335,9 @@ void Networking::initialise()
 
    m_status.mdnsName = String( GET_REGISTRY_STRING( ACCESS_POINT_NAME ) );
    startMDNS();
+
+   // Create new UDP
+   s_udp = new AsyncUDP;
 }
 
 bool  Networking::acquireNTP()
@@ -484,4 +490,9 @@ return retOk;
 WebServer   *Networking::getWebServer()
 {
    return( m_webServer );
+}
+
+AsyncUDP    *Networking::getUDP()
+{
+   return( s_udp );
 }

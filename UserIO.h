@@ -33,7 +33,7 @@ public:
    void  setNetworking( Networking *network );
 
    void  updateLine( uint8_t lineNum,char *line,bool isForLog = true );
-   void  clear( void );
+   void  clear();
    void  showNext();
    void  show( ScreenType type );
    void  update();

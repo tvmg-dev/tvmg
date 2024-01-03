@@ -51,11 +51,13 @@ private:
       uint8_t        m_busIndex;                      // index of the sensor on OneWire bus
       float_t        m_calibrationOffset;             // calibration offset
       bool           m_isValid;                       // true if registered ok
+      bool           m_isRemote;                      // true if remote
       char           m_addressStr[ 17 ];              // string for the address - 8 hex chars + null
    } PrivateSensor;
 
-   bool  getTemperatures( void );
+   bool  getTemperatures();
    void  getAddressString( DeviceAddress addr,char *addrString );
+   void  localBroadcastData();
 
    OneWire           *m_oneWireController;
    DallasTemperature *m_dallasController;

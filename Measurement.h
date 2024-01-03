@@ -32,12 +32,12 @@ public:
 
    Measurement( TemperatureModule *tempModule, PowerModule *powerModule,Storage *storage );
    ~Measurement();
-   void     initialise( void );
-   void     takeSample( void );
-   Sample   getLastSample( void );
+   void     initialise();
+   void     takeSample();
+   Sample   getLastSample();
 
 private:
-   void  saveLastSample( void );
+   void  saveLastSample();
 
    TemperatureModule *m_tempModule;
    PowerModule       *m_powerModule;

@@ -97,7 +97,11 @@ PowerModule::~PowerModule()
 
 void PowerModule::initialise( void )
 {
-   if ( hwConfig->ModBusSerial != -1 )
+   if ( hwConfig->ModBusSerial == -1 )
+   {
+      PW_DEBUG( "PowerModule::initialise() - fake" );
+   }
+   else
    {
       PW_DEBUG( "PowerModule::initialise() - h/w" );
 
@@ -115,10 +119,6 @@ void PowerModule::initialise( void )
       m_master->postTransmission( postTransmission );
 
       m_serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
-   }
-   else
-   {
-      PW_DEBUG( "PowerModule::initialise() - fake" );
    }
 }
 
@@ -150,6 +150,23 @@ PowerSensor  *PowerModule::readNextSensor( uint8_t index )
 bool PowerModule::getPower( uint8_t index )
 {
    uint8_t  modbusResult;
+
+   if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
+   {
+      if ( index < m_numSensors )
+      {
+         if ( m_sensors[ index ].m_sensor.m_energy == POWER_INVALID )
+         {
+            m_sensors[ index ].m_sensor.m_energy = index;
+            m_sensors[ index ].m_sensor.m_power = index;
+         }
+
+         m_sensors[ index ].m_sensor.m_energy += 1;
+         m_sensors[ index ].m_sensor.m_power += 2;
+      }
+
+      return true;
+   }
 
    if ( index < m_numSensors && m_sensors[ index ].m_isValid && hwConfig->ModBusSerial != -1 )
    {

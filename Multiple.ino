@@ -311,6 +311,54 @@ void setup( void )
    snprintf( initialMsg,128,"Initial boot up completed\nVersion : [%s]\nIP : [%s]\nStarting monitoring...\n\n",VERSION_STR,networking->getIPAddress().c_str()  );
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
+
+#if 0
+
+   uint16_t  listenPort = GET_REGISTRY_INT( LISTEN_PORT_FOR_MASTER );
+
+    if(listenPort != -1 && udp.listen( listenPort ) ) {
+        Serial.print("UDP Listening on IP: ");
+        Serial.println(WiFi.localIP());
+        udp.onPacket([](AsyncUDPPacket packet) {
+            Serial.print("UDP Packet Type: ");
+            Serial.print(packet.isBroadcast()?"Broadcast":packet.isMulticast()?"Multicast":"Unicast");
+            Serial.print(", From: ");
+            Serial.print(packet.remoteIP());
+            Serial.print(":");
+            Serial.print(packet.remotePort());
+            Serial.print(", To: ");
+            Serial.print(packet.localIP());
+            Serial.print(":");
+            Serial.print(packet.localPort());
+            Serial.print(", Length: ");
+            Serial.print(packet.length());
+            Serial.print(", Data: ");
+            Serial.write(packet.data(), packet.length());
+            Serial.println();
+            char line[ MAX_OLED_COLUMNS ];
+            if ( packet.length() < MAX_OLED_COLUMNS )
+            {
+               userIO->clear();
+
+               snprintf( line,MAX_OLED_COLUMNS,"from: %s",packet.remoteIP().toString().c_str() );
+               userIO->updateLine( 0,line );
+               snprintf( line,MAX_OLED_COLUMNS,"port: %d",packet.remotePort() );
+               userIO->updateLine( 1,line );
+
+               strncpy(line,reinterpret_cast<const char *>(packet.data()),packet.length() );
+               line[ packet.length() ] = 0;
+               userIO->updateLine( 2,line );
+
+               PW_DEBUG( "%d [%s]",packet.length(),line );
+            }
+
+            //reply to the client
+//            packet.printf("Got %u bytes of data", packet.length());
+        });
+    }
+#endif
+
+
 }
 
 #define LOOP_PERIOD_MS  5000
@@ -371,8 +419,7 @@ void loop(void)
    delay( deltaMillis );
 #else
    PW_MSG( "loop running on core %d",xPortGetCoreID() );
-   delay( 60 * 1000 );
-   PW_MSG( "waiting..." );
+   delay( 10 * 1000 );
 
 #endif
 }

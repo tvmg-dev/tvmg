@@ -2,6 +2,7 @@
 #define NETWORKING_H
 
 #include <String.h>
+#include <AsyncUDP.h>
 
 #include "utils.h"
 
@@ -40,11 +41,13 @@ public:
    bool  startMDNS();
    bool  acquireNTP();
    WebServer   *getWebServer();
+static   AsyncUDP    *getUDP();
 
 private:
    Emailer           *m_emailer;
    WebServer         *m_webServer;
    WiFiClientSecure  *m_emoncmsClient;
+static    AsyncUDP   *s_udp;
 
    Status  m_status;
 };
