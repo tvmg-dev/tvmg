@@ -11,6 +11,8 @@
 #define TEMPERATURE_PRECISION                11
 #define TEMPERATURE_MIN_SAMPLING_PERIOD_MS   15000
 
+extern Networking *networking;
+
 uint8_t toHex( char a )
 {
    int8_t n;
@@ -359,7 +361,7 @@ void  TemperatureModule::localBroadcastData()
          uint16_t  sendPort = GET_REGISTRY_INT( BROADCAST_UDP_PORT );
          if ( sendPort != -1 )
          {
-            (void) Networking::getUDP()->writeTo( (const uint8_t *) str,strlen(str),IPAddress(192,168,0,255),sendPort );
+            (void) Networking::getUDP()->writeTo( (const uint8_t *) str,strlen(str),IPAddress(192,168,1,255),sendPort );
          }
 
          free( str );
