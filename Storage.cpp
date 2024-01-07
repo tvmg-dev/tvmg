@@ -33,6 +33,13 @@ void Storage::initialise( void )
 {
    PW_DEBUG( "Storage::initialise" );
 
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+   {
+      PW_MSG( "TBoard - not detecting SD card" );
+      m_storageOk = true;
+      return;
+   }
+
    SD.begin();
    if( SD.cardType() == CARD_NONE )
    {
@@ -109,31 +116,77 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
       return;
    }
 
-   bool  isNewFile = false;
+   // If we're a tboard then are we configured to store to SPIFFS, if not
+   // then exit
+
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD &&
+                  GET_REGISTRY_INT( USE_SPIFFS_AS_STORAGE ) != 1 )
+   {
+      return;
+   }
+
+   bool   isNewFile = false;
+   bool   currentFileExists = false;
    struct tm timeInfo;
    char   fileName[ MAX_FILENAME + 1 ];
 
    localtime_r( &sample.m_sampleTime,&timeInfo );
    strftime( fileName,MAX_FILENAME,"/%Y%m%d.dat",&timeInfo );
 
-   // If the filename is new, then we send out the existing file.  If we
-   // fail to write to the file then the SD card status is set false to
-   // prevent further writes - we'll send an email in that case too.
+   // If the filename is new, then we send out the existing file.
 
-   if ( !SD.exists( fileName ) )
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
    {
-      isNewFile = true;
+      if ( ! Config::instance()->getSPIFFS()->exists( fileName ) )
+      {
+         PW_MSG( "Tboard - file %s doesn't exist",fileName );
+         isNewFile = true;
+         if ( Config::instance()->getSPIFFS()->exists( m_currentFileName ) )
+         {
+            PW_MSG( "Tboard - existing file %s exist",m_currentFileName );
+            currentFileExists = true;
+         }
+      }
+   }
+   else
+   {
+      if ( ! SD.exists( fileName ) )
+      {
+         isNewFile = true;
+         if ( SD.exists( m_currentFileName ) )
+         {
+            currentFileExists = true;
+         }
+      }
+   }
+
+   if ( isNewFile )
+   {
       PW_MSG( "Will be creating %s",fileName );
 
-      // As this is a new file, let's send previous file onwards ...
+      // As this is a new file, let's send previous file onwards - maybe hosted from SPIFFS
 
-      if ( m_networking && strlen( m_currentFileName ) && SD.exists( m_currentFileName ) )
+      if ( m_networking && strlen( m_currentFileName ) && currentFileExists )
       {
          char subject[ 128 ];
 
          snprintf( subject,128,"HP Monitoring : %s - Daily Readings",m_networking->getLocalMDNSName().c_str() );
 
-         m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName );
+         if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+         {
+            m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName,true );
+         }
+         else
+         {
+            m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName,false );
+         }
+
+         // Now remove the file if a t-board (SPIFFS)
+
+         if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+         {
+            Config::instance()->getSPIFFS()->remove( m_currentFileName );
+         }
       }
 
       // set new current filename
@@ -147,7 +200,16 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
       strcpy( m_currentFileName,fileName );
    }
 
-   File file = SD.open( fileName,FILE_APPEND );
+   File  file;
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+   {
+      file = Config::instance()->getSPIFFS()->open( fileName,FILE_APPEND );
+   }
+   else
+   {
+      file = SD.open( fileName,FILE_APPEND );
+   }
+
    if( !file )
    {
       PW_WARN( "Failed to open %s",fileName );
@@ -208,17 +270,19 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
          m_storageOk = file.println( hdrString.c_str() );
       }
 
-      PW_DEBUG( dataString.c_str() );
+      PW_MSG( "store %s",dataString.c_str() );
       m_storageOk = file.println( dataString.c_str() );
       file.close();
    }
 
-   if ( ! m_storageOk && m_networking && GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   if ( ! m_storageOk && m_networking )
    {
       char subject[ 128 ];
-      snprintf( subject,128,"HP Monitoring : %s - SD Card Failure",m_networking->getLocalMDNSName().c_str() );
+      snprintf( subject,128,"HP Monitoring : %s - Storage Failure",m_networking->getLocalMDNSName().c_str() );
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Preventing further writes" );
+
+      PW_ERROR( "Storage failure" );
    }
 }
 

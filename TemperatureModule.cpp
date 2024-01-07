@@ -275,15 +275,13 @@ void TemperatureModule::addUDPListener()
                   uint8_t  id = static_cast<uint8_t>( cJSON_GetObjectItem( sensor,"id" )->valueint );
                   float_t  value = static_cast<float>( cJSON_GetObjectItem( sensor,"value" )->valuedouble );
 
-                  PW_DEBUG( "remote ID %d %.1f",id,value );
-
                   // TODO, add mutex protection around values here !
                   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
                   {
                      PrivateSensor *tempSensor = &m_sensors[ i ];
                      if ( tempSensor->m_isValid && tempSensor->m_sensor.m_isRemote && tempSensor->m_sensor.m_id == id )
                      {
-                        PW_MSG( "Assign remote temp ID %d %.1f",id,value );
+                        PW_DEBUG( "UDP: Assign remote temp ID %d %.1f",id,value );
                         tempSensor->m_sensor.m_temp = value;
                      }
                   }
@@ -434,6 +432,8 @@ void  TemperatureModule::localBroadcastData()
             subNet[ 3 ] = 255;
 
             (void) m_udp->writeTo( (const uint8_t *) str,strlen(str),subNet,sendPort );
+
+            PW_DEBUG( "Broadcast: %s",str );
          }
 
          free( str );

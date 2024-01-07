@@ -136,7 +136,7 @@ void  Measurement::takeSample( void )
 
       if ( m_millisLastAquisition && !(m_write % MAX_MEASUREMENTS_IN_RAM) )
       {
-         PW_WARN( "TODO : Should send to emoncms as bulk" );
+         PW_DEBUG( "TODO : Should send to emoncms as bulk" );
       }
 
       m_millisLastAquisition = start;
