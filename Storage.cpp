@@ -107,7 +107,7 @@ void  Storage::setNetworking( Networking *network )
    }
 }
 
-void  Storage::saveSampleToSD( const Measurement::Sample &sample )
+void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 {
    // we won't store if the card isn't ok
 
@@ -301,7 +301,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
    }
 
-   saveSampleToSD( sample );
+   saveSampleToBackingStore( sample );
 }
 
 char  *Storage::getCurrentFileName()

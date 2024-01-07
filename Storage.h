@@ -19,7 +19,7 @@ public:
    static bool  isStorageOk( void );
 
 private:
-   void  saveSampleToSD( const Measurement::Sample &sample );
+   void  saveSampleToBackingStore( const Measurement::Sample &sample );
 
    char        m_currentFileName[ MAX_FILENAME +1 ];
    Networking  *m_networking;
