@@ -1,24 +1,22 @@
 #include <SD.h>
 #include <FS.h>
 
-//#include <EMailSender.h>
-
 #include "Storage.h"
 #include "Networking.h"
 #include "Config.h"
+#include "UserIO.h"
 
 #include "TemperatureModule.h"
 #include "PowerModule.h"
 
 #define WRITE_TEST_FILE "/test.dat"
 
-bool Storage::m_storageOk = false;
-
 Storage::Storage()
        : m_currentFileName(),
          m_networking( nullptr ),
          m_lastSentHour( 23 ),
-         m_dailyUpdate( false )
+         m_dailyUpdate( false ),
+         m_storageOk( false )
 {
    PW_DEBUG( "Storage::Storage()" );
    PW_MSG( "Storage Module Startup" );
@@ -83,11 +81,6 @@ void Storage::initialise( void )
          }
       }
    }
-}
-
-bool  Storage::isStorageOk( void )
-{
-   return m_storageOk;
 }
 
 void  Storage::setNetworking( Networking *network )
@@ -307,4 +300,25 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 char  *Storage::getCurrentFileName()
 {
    return m_currentFileName;
+}
+
+void  Storage::getStatus( char *line )
+{
+  if ( m_storageOk )
+  {
+      uint32_t totalMiB, usedMiB, freeMiB;
+      totalMiB = SD.totalBytes() / (1024 * 1024);
+      usedMiB = SD.usedBytes() / (1024 * 1024);
+
+      snprintf( line,MAX_OLED_COLUMNS,"SD Used %u of %u MiB",usedMiB,totalMiB );
+   }
+   else if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   {
+      strncpy( line,"SD Card Fault",MAX_OLED_COLUMNS );
+   }
+   else
+   {
+      strncpy( line,"TBoard - no SD",MAX_OLED_COLUMNS );
+   }
+
 }

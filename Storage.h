@@ -16,7 +16,7 @@ public:
    void  storeSample( const Measurement::Sample &sample );
    char  *getCurrentFileName();
    void  setNetworking( Networking *network );
-   static bool  isStorageOk( void );
+   void  getStatus( char *line );
 
 private:
    void  saveSampleToBackingStore( const Measurement::Sample &sample );
@@ -25,8 +25,7 @@ private:
    Networking  *m_networking;
    uint8_t     m_lastSentHour;
    bool        m_dailyUpdate;
-
-   static bool m_storageOk;
+   bool        m_storageOk;
 };
 
 #endif

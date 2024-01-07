@@ -12,6 +12,8 @@
 #include "UserIO.h"
 #include "Storage.h"
 
+extern Storage *storageModule;
+
 UserIO::UserIO()
       : m_display( nullptr ),
         m_currentScreen( NONE ),
@@ -151,22 +153,10 @@ void  UserIO::showStorage()
    snprintf( line,MAX_OLED_COLUMNS,"Version : %s",VERSION_STR );
    storeLine( 0,line );
 
-   if ( Storage::isStorageOk() )
+   if ( storageModule )
    {
-      uint32_t totalMiB, usedMiB, freeMiB;
-      totalMiB = SD.totalBytes() / (1024 * 1024);
-      usedMiB = SD.usedBytes() / (1024 * 1024);
-
-      snprintf( line,MAX_OLED_COLUMNS,"SD Used %u of %u MiB",usedMiB,totalMiB );
+      storageModule->getStatus( line );
       storeLine( 1,line );
-   }
-   else if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
-   {
-      storeLine( 1,"SD Card Fault" );
-   }
-   else
-   {
-      storeLine( 1,"TBoard - no SD" );
    }
 
    uint32_t freeHeap = ESP.getFreeHeap();
