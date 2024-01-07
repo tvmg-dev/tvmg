@@ -12,7 +12,7 @@
 
 #define WRITE_TEST_FILE "/test.dat"
 
-bool Storage::m_sdCardOk = false;
+bool Storage::m_storageOk = false;
 
 Storage::Storage()
        : m_currentFileName(),
@@ -65,13 +65,13 @@ void Storage::initialise( void )
             file.close();
             if ( SD.remove( WRITE_TEST_FILE ) )
             {
-               m_sdCardOk = true;
+               m_storageOk = true;
                PW_MSG( "SD Card ok" );
             }
          }
       }
 
-      if ( ! m_sdCardOk )
+      if ( ! m_storageOk )
       {
          PW_WARN( "SD card has failed !" );
       }
@@ -85,9 +85,9 @@ void Storage::initialise( void )
    }
 }
 
-bool  Storage::isSDCardOk( void )
+bool  Storage::isStorageOk( void )
 {
-   return m_sdCardOk;
+   return m_storageOk;
 }
 
 void  Storage::setNetworking( Networking *network )
@@ -98,7 +98,7 @@ void  Storage::setNetworking( Networking *network )
 
    // Send an email if SD card is not OK
 
-   if ( ! m_sdCardOk && GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   if ( ! m_storageOk && GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
    {
       char subject[ 128 ];
       snprintf( subject,128,"HP Monitoring : %s - SD Card Init Fault",m_networking->getLocalMDNSName().c_str() );
@@ -111,7 +111,7 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
 {
    // we won't store if the card isn't ok
 
-   if ( !m_sdCardOk )
+   if ( !m_storageOk )
    {
       return;
    }
@@ -158,7 +158,7 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
    if( !file )
    {
       PW_WARN( "Failed to open %s",fileName );
-      m_sdCardOk = false;
+      m_storageOk = false;
    }
    else
    {
@@ -212,15 +212,15 @@ void  Storage::saveSampleToSD( const Measurement::Sample &sample )
       if ( isNewFile )
       {
          PW_DEBUG( hdrString.c_str() );
-         m_sdCardOk = file.println( hdrString.c_str() );
+         m_storageOk = file.println( hdrString.c_str() );
       }
 
       PW_DEBUG( dataString.c_str() );
-      m_sdCardOk = file.println( dataString.c_str() );
+      m_storageOk = file.println( dataString.c_str() );
       file.close();
    }
 
-   if ( ! m_sdCardOk && m_networking && GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   if ( ! m_storageOk && m_networking && GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
    {
       char subject[ 128 ];
       snprintf( subject,128,"HP Monitoring : %s - SD Card Failure",m_networking->getLocalMDNSName().c_str() );

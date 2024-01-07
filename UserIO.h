@@ -20,9 +20,7 @@ public:
       NETWORK_STATUS,
       STORAGE_STATUS,
       ENERGY,
-      LOCAL_TEMP,
-      REMOTE_TEMP,
-      ALL_TEMP,
+      TEMPERATURES,
       NONE
    };
 
@@ -45,9 +43,7 @@ private:
    void  showNetwork();
    void  showStorage();
    void  showEnergy();
-   void  showLocalTemps();
-   void  showRemoteTemps();
-   void  showAllTemps();
+   void  showTemps();
    TempSensor *findTempSensor( uint8_t id );
    bool  isPowerDataAvailable();
 

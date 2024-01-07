@@ -12,10 +12,6 @@ NOTES:
 The file rollover means the SD card is filling with no control over it
 As we email the file then no need to actually save it.
 
-=== Status OLED networking ===
-
-Indicate that connected when waiting for NTP ?
-
 === SPIFFS as reference not pointer to standard SPIFFS =====
 
 === MONITOR webserver ===
@@ -30,19 +26,6 @@ Indicate that connected when waiting for NTP ?
 
 CALIBRATION
 ===========
-
-==== STATUS SCREENS =====
-
-Remotes
-   Name <DT>
-   Flow Return
-
-All
-   HP  14.5 22.5 : 10.5
-   UFH
-   GND
-   1ST
-   TOP
 
 ==== POWER ESTIMATOR ? ===
 Input flow rates for each floor to config
@@ -90,7 +73,26 @@ Temperatures
 
 Remote boards will not have feed ID's set - even for local sensors !
 
-Measuemw
+====
+
+Mutex the remote data
+checksum the remote data + discard on hash fail ??
+
+
+================
+
+Label & Calibrate all sensors
+   new node 'calibration'
+   add to breadboard
+
+prepare 1 unit
+   veroboard with JST connectors, resistor + 3 lines
+   solder up pins to ESP32 board
+   glue screen better
+   position in casing
+   PSU to USB - from Heatmiser or external plug (latter to start)
+
+
 
 
 

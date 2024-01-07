@@ -151,7 +151,7 @@ void  UserIO::showStorage()
    snprintf( line,MAX_OLED_COLUMNS,"Version : %s",VERSION_STR );
    storeLine( 0,line );
 
-   if ( Storage::isSDCardOk() )
+   if ( Storage::isStorageOk() )
    {
       uint32_t totalMiB, usedMiB, freeMiB;
       totalMiB = SD.totalBytes() / (1024 * 1024);
@@ -214,7 +214,7 @@ TempSensor *UserIO::findTempSensor( uint8_t id )
    return( sensor );
 }
 
-void  UserIO::showLocalTemps()
+void  UserIO::showTemps()
 {
    char  line[ MAX_OLED_COLUMNS ];
 
@@ -274,14 +274,6 @@ void  UserIO::showLocalTemps()
    show( m_currentLines );
 }
 
-void  UserIO::showRemoteTemps()
-{
-}
-
-void UserIO::showAllTemps()
-{
-}
-
 void  UserIO::show( ScreenType type )
 {
    // clear lines
@@ -301,14 +293,8 @@ void  UserIO::show( ScreenType type )
       case ENERGY:
          showEnergy();
          break;
-      case LOCAL_TEMP:
-         showLocalTemps();
-         break;
-      case REMOTE_TEMP:
-         showRemoteTemps();
-         break;
-      case ALL_TEMP:
-         showRemoteTemps();
+      case TEMPERATURES:
+         showTemps();
          break;
       default :
          PW_WARN( "Unknown display type" );
@@ -335,24 +321,17 @@ void  UserIO::showNext()
          }
          else
          {
-            m_currentScreen = LOCAL_TEMP;
+            m_currentScreen = TEMPERATURES;
          }
          break;
       case ENERGY:
-         m_currentScreen = LOCAL_TEMP;
+         m_currentScreen = TEMPERATURES;
          break;
-      case LOCAL_TEMP:
-//         m_currentScreen = REMOTE_TEMP;
-         m_currentScreen = NETWORK_STATUS;
-         break;
-      case REMOTE_TEMP:
-         m_currentScreen = ALL_TEMP;
-         break;
-      case ALL_TEMP:
+      case TEMPERATURES:
          m_currentScreen = NETWORK_STATUS;
          break;
       default:
-         m_currentScreen = LOCAL_TEMP;
+         m_currentScreen = TEMPERATURES;
          break;
    }
 

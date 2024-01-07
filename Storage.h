@@ -16,7 +16,7 @@ public:
    void  storeSample( const Measurement::Sample &sample );
    char  *getCurrentFileName();
    void  setNetworking( Networking *network );
-   static bool  isSDCardOk( void );
+   static bool  isStorageOk( void );
 
 private:
    void  saveSampleToSD( const Measurement::Sample &sample );
@@ -26,7 +26,7 @@ private:
    uint8_t     m_lastSentHour;
    bool        m_dailyUpdate;
 
-   static bool m_sdCardOk;
+   static bool m_storageOk;
 };
 
 #endif
