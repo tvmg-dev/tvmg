@@ -368,21 +368,21 @@ char  *Storage::getCurrentFileName()
 
 void  Storage::getStatus( char *line )
 {
-  if ( m_storageOk )
-  {
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+   {
+      strncpy( line,"TBoard - no SD",MAX_OLED_COLUMNS );
+   }
+   else if ( m_storageOk )
+   {
       uint32_t totalMiB, usedMiB, freeMiB;
       totalMiB = SD.totalBytes() / (1024 * 1024);
       usedMiB = SD.usedBytes() / (1024 * 1024);
 
       snprintf( line,MAX_OLED_COLUMNS,"SD Used %u of %u MiB",usedMiB,totalMiB );
    }
-   else if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
-   {
-      strncpy( line,"SD Card Fault",MAX_OLED_COLUMNS );
-   }
    else
    {
-      strncpy( line,"TBoard - no SD",MAX_OLED_COLUMNS );
+      strncpy( line,"SD Card Fault",MAX_OLED_COLUMNS );
    }
 
 }

@@ -60,7 +60,9 @@ prepare 1 unit
    position in casing
    PSU to USB - from Heatmiser or external plug (latter to start)
 
+====
 
+Energy double display on master ??
 
 
 
