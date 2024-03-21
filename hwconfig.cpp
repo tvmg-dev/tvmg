@@ -30,7 +30,7 @@ HardwareConfig MasterDevice =
 
 HardwareConfig TemperatureNode =
 {
-   -1,            // OneWireGPIO
+   26,            // OneWireGPIO
    -1,            // ModBusSerial
    -1,            // ModBusBaudRate
    -1,            // ModBusSerialFormat

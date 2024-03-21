@@ -9,11 +9,11 @@ As we email the file then no need to actually save it.
 === MONITOR webserver ===
    Fixed on core 0, and no WDT currently...
 
-===  RECURSDION IN CONFIG AT START ====
-
 === UPDATE - SYNC WITH MEASUREMENT TO AVOID CORRUPTION ? ===
 
 === UDP DEBUGGING ===
+
+emon cert to SPIFFS ?
 
 
 CALIBRATION
@@ -22,6 +22,8 @@ CALIBRATION
 ==== POWER ESTIMATOR ? ===
 Input flow rates for each floor to config
 Generate mass-flow power generation for consideration ?
+
+
 
 ====
 
@@ -53,12 +55,6 @@ Label & Calibrate all sensors
    new node 'calibration'
    add to breadboard
 
-prepare 1 unit
-   veroboard with JST connectors, resistor + 3 lines
-   solder up pins to ESP32 board
-   glue screen better
-   position in casing
-   PSU to USB - from Heatmiser or external plug (latter to start)
 
 ====
 
