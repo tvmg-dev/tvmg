@@ -54,6 +54,48 @@
    "address": 5,
    "calibration": 0,
    "emonFeedId": 476997
+},
+{
+   "type": "THERM",
+   "name": "Loft Flow",
+   "id": 40,
+   "remote": true,
+   "emonFeedId": 0
+},
+{
+   "type": "THERM",
+   "name": "Loft Return",
+   "id": 41,
+   "remote": true,
+   "emonFeedId": 0
+},
+{
+   "type": "THERM",
+   "name": "First Flow",
+   "id": 30,
+   "remote": true,
+   "emonFeedId": 0
+},
+{
+   "type": "THERM",
+   "name": "First Return",
+   "id": 31,
+   "remote": true,
+   "emonFeedId": 0
+},
+{
+   "type": "THERM",
+   "name": "Ground Flow",
+   "id": 20,
+   "remote": true,
+   "emonFeedId": 0
+},
+{
+   "type": "THERM",
+   "name": "Ground Return",
+   "id": 21,
+   "remote": true,
+   "emonFeedId": 0
 }
 ]
 @

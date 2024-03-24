@@ -133,12 +133,12 @@ void  handleTouch1()
    Measurement::Sample  sample = measurement->getLastSample();
    snprintf( message,128,"Button sample\n\n"
                     "IP : %s [%s]\n"
-                    "Free Bytes : %u\n\n"
-                    "Time signature %u\n",
+                    "Free Bytes : %u\n"
+                    "Time signature %u\n\n",
                     networking->getLocalMDNSName().c_str(),
                     networking->getIPAddress().c_str(),
-                    sample.m_sampleTime,
-                    ESP.getFreeHeap() );
+                    ESP.getFreeHeap(),
+                    sample.m_sampleTime );
 
    msgString = message;
 
