@@ -1,3 +1,1 @@
 Odd timing in display update on master
-
-Invalid time signature on button press
