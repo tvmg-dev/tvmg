@@ -100,7 +100,7 @@ void  Measurement::takeSample( void )
    Sample   newSample;
 
    start = millis();
-   time( &m_lastSample.m_sampleTime );
+   time( &newSample.m_sampleTime );
 
    // Get all temperature sensor data, then power.
 
