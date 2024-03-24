@@ -2,6 +2,8 @@
 #include <WiFi.h>
 #include "AsyncUDP.h"
 
+#include <mutex>
+
 #include "utils.h"
 #include "Config.h"
 #include "hwconfig.h"
@@ -13,6 +15,8 @@
 #define TEMPERATURE_MIN_SAMPLING_PERIOD_MS   15000
 
 extern Networking *networking;
+
+std::mutex  tempSensorMutex;
 
 char  s_udpPacket[ 1024 ];
 
@@ -282,6 +286,7 @@ void TemperatureModule::addUDPListener()
                      if ( tempSensor->m_isValid && tempSensor->m_sensor.m_isRemote && tempSensor->m_sensor.m_id == id )
                      {
                         PW_DEBUG( "UDP: Assign remote temp ID %d %.1f",id,value );
+                        std::lock_guard<std::mutex> lock(tempSensorMutex);
                         tempSensor->m_sensor.m_temp = value;
                      }
                   }
@@ -335,7 +340,7 @@ bool TemperatureModule::getTemperatures()
 
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
-      if ( m_sensors[ i ].m_isValid )
+      if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
       {
          m_sensors[ i ].m_sensor.m_temp = m_dallasController->getTempCByIndex( m_sensors[ i ].m_busIndex );
          if ( m_sensors[ i ].m_sensor.m_temp != DEVICE_DISCONNECTED_C )
@@ -430,6 +435,9 @@ void  TemperatureModule::localBroadcastData()
             // broadcast address, not 255.255.255.255 but IP x.x.x.255
             IPAddress   subNet = WiFi.localIP();
             subNet[ 3 ] = 255;
+
+            // if we broadcast via m_udp->broadcastTo( (uint8_t *) str,strlen(str),sendPort );
+            // then that will be a 255.255.255.255 broadcast, so lets limit to the subnet
 
             (void) m_udp->writeTo( (const uint8_t *) str,strlen(str),subNet,sendPort );
 

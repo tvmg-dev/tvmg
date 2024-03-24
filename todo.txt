@@ -1,3 +1,8 @@
+1. uptime - set to d/m/s if > x seconds
+2. display seconds since last UDP message
+3. remove pointer stuff & just use a new m_isValid flag or something
+   for TempSensor/PowerSensor
+
 ========
 
 NOTES:
@@ -13,41 +18,13 @@ As we email the file then no need to actually save it.
 
 === UDP DEBUGGING ===
 
-emon cert to SPIFFS ?
+=== EMON cert to SPIFFS ?
 
 
-CALIBRATION
-===========
 
 ==== POWER ESTIMATOR ? ===
 Input flow rates for each floor to config
 Generate mass-flow power generation for consideration ?
-
-
-
-====
-
-Temperatures
-   read sensors.dat and get remote + local sensors
-     remotes have :
-     {
-      "type": "THERM",
-      "name": "UFH Flow",
-      "id": 5,
-      "emonFeedId": 0,
-      "remote": true
-     },
-     locals also have (but not "remote")
-      "address": "28302194970D0311",
-      "calibration": 0.12,
-
-Remote boards will not have feed ID's set - even for local sensors !
-
-====
-
-Mutex the remote data
-checksum the remote data + discard on hash fail ??
-
 
 ================
 
@@ -60,12 +37,75 @@ Label & Calibrate all sensors
 
 Energy double display on master ??
 
+==
+UDP - when we create the UDP async. then the listen address becomes
+      the source address for broadcasting.
+
+==
+
+Design (as such)
+loop -
+{
+   measurement->takeSample()
+   update display
+   handle any button press
+   if time < 5s then
+      delay to make 5s
+   else
+      delay to make integer of 5s from last
+   endif
+}
+
+userIO:
+      NETWORK -> STORAGE -> [ENERGY] -> TEMPERATURES
+
+If we can't make the 5s, then likely to be due to takeSample:
+
+Measurement::takeSample()
+{
+   // Will actually read temp sensors every 15s, so we skip
+   // some samples.  When we read we also broadcast !
+   // 660ms to get 2x sensors
+
+   for all temp-sensors
+      temperatureModule::readNextSensor()
+
+   // Actually acquires power data each time
+   for all power-sensors
+      powerModule::readNextSensor()
+
+   if > 30s since last stored sample then
+      storageModule::storeSample( current sample )
+}
 
 
+storgeModule::storeSample
+{
+   for each sensor
+      if emonCMS then
+         send it
+      endif
 
+   if 5pm then
+      send daily update
+   endif
 
+   // in saveSampleToBackingStore
 
+   if 12pm then
+      send daily readings
+   endif
 
+   if tboard then
+      save to SPIFFS
+   else
+      save to SD
+   endif
+}
 
+So we loop every 5s, and after 30 seconds we send it & save it.
+
+Maybe we should in the main loop skip taking measurements until 3
+loops ?
 
 

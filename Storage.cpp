@@ -295,7 +295,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    while ( sample.m_tempSensors[ i ] )
    {
       const TempSensor  *sensor;
-      sensor = sample.m_tempSensors[ i ];
+      sensor = &sample.m_actualTemps[ i ];
 
       if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 && m_networking )
       {
@@ -312,7 +312,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    while ( sample.m_powerSensors[ i ] )
    {
       const PowerSensor  *sensor;
-      sensor = sample.m_powerSensors[ i ];
+      sensor = &sample.m_actualPowers[ i ];
 
       if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 && m_networking )
       {

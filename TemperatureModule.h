@@ -2,9 +2,12 @@
 #define TEMPERATURE_MODULE_H
 
 #include <Arduino.h>
+#include <mutex>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
+
+extern std::mutex  tempSensorMutex;
 
 class AsyncUDP;
 

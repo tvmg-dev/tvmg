@@ -146,7 +146,10 @@ void  handleTouch1()
    {
       if ( sample.m_tempSensors[ i ] )
       {
-         snprintf( message,128,"%30s,%.1f\n",sample.m_tempSensors[ i ]->m_name,sample.m_tempSensors[ i ]->m_temp );
+         const TempSensor  *sensor;
+         sensor = &sample.m_actualTemps[ i ];
+
+         snprintf( message,128,"%30s,%.1f\n",sensor->m_name,sensor->m_temp );
          msgString += message;
       }
    }
@@ -155,7 +158,10 @@ void  handleTouch1()
    {
       if ( sample.m_powerSensors[ i ] )
       {
-         snprintf( message,128,"%30s,%.1f\n",sample.m_powerSensors[ i ]->m_name,sample.m_powerSensors[ i ]->m_power,sample.m_powerSensors[ i ]->m_energy );
+         const PowerSensor  *sensor;
+         sensor = &sample.m_actualPowers[ i ];
+
+         snprintf( message,128,"%30s,%.1f\n",sensor->m_name,sensor->m_power,sensor->m_energy );
          msgString += message;
       }
    }

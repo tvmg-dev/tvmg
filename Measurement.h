@@ -23,7 +23,9 @@ public:
    struct Sample {
       time_t       m_sampleTime;
       TempSensor  *m_tempSensors[ MAX_TEMP_SENSORS + 1 ];         // The 1 after is null pointer to terminate the list
+      TempSensor   m_actualTemps[ MAX_TEMP_SENSORS ];
       PowerSensor *m_powerSensors[ MAX_POWER_SENSORS + 1 ];       // The 1 after is null pointer to terminate the list
+      PowerSensor  m_actualPowers[ MAX_POWER_SENSORS ];
 
       Sample();
       Sample( const Sample &other );

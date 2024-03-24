@@ -178,8 +178,11 @@ void  UserIO::showEnergy()
    int i = 0;
    while( m_sample.m_powerSensors[ i ] )
    {
-      storeLine( i * 2,m_sample.m_powerSensors[ i ]->m_name );
-      snprintf( line,MAX_OLED_COLUMNS,"%.0f W %.0f kWh",m_sample.m_powerSensors[ i ]->m_power,m_sample.m_powerSensors[ i ]->m_energy / 1000.0 );
+      const PowerSensor  *sensor;
+      sensor = &m_sample.m_actualPowers[ i ];
+
+      storeLine( i * 2,sensor->m_name );
+      snprintf( line,MAX_OLED_COLUMNS,"%.0f W %.0f kWh",sensor->m_power,sensor->m_energy / 1000.0 );
       storeLine( 1 + i * 2,line );
       i++;
    }
@@ -195,7 +198,7 @@ TempSensor *UserIO::findTempSensor( uint8_t id )
    {
       if ( m_sample.m_tempSensors[ i ]->m_id == id )
       {
-         sensor = m_sample.m_tempSensors[ i ];
+         sensor = &m_sample.m_actualTemps[ i ];
          break;
       }
       i++;
@@ -237,23 +240,23 @@ void  UserIO::showTemps()
    TempSensor *loftFlow = findTempSensor( LOFT_FLOW );
    TempSensor *loftReturn = findTempSensor( LOFT_RETURN );
 
-   TempSensor *firstFlow = findTempSensor( FIRST_FLOW );
-   TempSensor *firstReturn = findTempSensor( FIRST_RETURN );
-
-   TempSensor *groundFlow = findTempSensor( GND_FLOW );
-   TempSensor *groundReturn = findTempSensor( GND_RETURN );
-
    if ( loftFlow && loftReturn )
    {
       snprintf( line,MAX_OLED_COLUMNS,"2 : %3.1f %3.1f (%3.1f)",loftFlow->m_temp,loftReturn->m_temp,loftFlow->m_temp - loftReturn->m_temp );
       storeLine( 3,line );
    }
 
+   TempSensor *firstFlow = findTempSensor( FIRST_FLOW );
+   TempSensor *firstReturn = findTempSensor( FIRST_RETURN );
+
    if ( firstFlow && firstReturn )
    {
       snprintf( line,MAX_OLED_COLUMNS,"1 : %3.1f %3.1f (%3.1f)",firstFlow->m_temp,firstReturn->m_temp,firstFlow->m_temp - firstReturn->m_temp );
       storeLine( 4,line );
    }
+
+   TempSensor *groundFlow = findTempSensor( GND_FLOW );
+   TempSensor *groundReturn = findTempSensor( GND_RETURN );
 
    if ( groundFlow && groundReturn )
    {
