@@ -1,0 +1,31 @@
+# loft node
+
+ACCESS_POINT_NAME "loft"
+WIFI_SSID "ClaireHouseWiFi"
+WIFI_PASSWORD "Fourlanes1"
+WIFI_CONNECT_TIMEOUT "60000"
+NTP_UPDATE_TIMEOUT "60000"
+SMTP_HOST "send.one.com"
+SMTP_PORT "465"
+ACCOUNT_EMAIL "heatpump@dyllysplace.com"
+ACCOUNT_PASSWORD "***REMOVED***"
+RECIPIENT_EMAIL "heatpump@dyllysplace.com"
+
+# For debug logging etc
+DEBUG_LEVEL_ENABLED "0"
+DISABLED_SERIAL_LOGGING "0"
+
+# Functionality
+SEND_EMAILS "0"
+UPDATE_EMONCMS "0"
+
+# 1 == temperature node, 2 == master
+BOARD_TYPE "1"
+
+FAKE_MEASUREMENTS "0"
+
+# 51001 - master sends to this port
+LISTEN_UDP_PORT "51001"
+# 51002 - nodes broadcast to 51002
+BROADCAST_UDP_PORT "51002"
+

@@ -1,0 +1,47 @@
+[
+{
+   "type": "THERM",
+   "name": "HP Flow",
+   "id": 1,
+   "emonFeedId": 0,
+   "remote": true
+},
+{
+   "type": "THERM",
+   "name": "HP Return",
+   "id": 2,
+   "emonFeedId": 0,
+   "remote": true
+},
+{
+   "type": "THERM",
+   "name": "UFH Flow",
+   "id": 5,
+   "emonFeedId": 0,
+   "remote": true
+},
+{
+   "type": "THERM",
+   "name": "UFH Return",
+   "id": 6,
+   "emonFeedId": 0,
+   "remote": true
+},
+{
+   "type": "THERM",
+   "name": "Loft Flow",
+   "id": 40,
+   "address": "2848FB81E3713C06",
+   "calibration": 0.6,
+   "emonFeedId": 0
+},
+{
+   "type": "THERM",
+   "name": "Loft Return",
+   "id": 41,
+   "address": "285EF081E3293C9E",
+   "calibration": -0.1,
+   "emonFeedId": 0
+}
+]
+@
