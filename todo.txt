@@ -1,7 +1,23 @@
 1. uptime - set to d/m/s if > x seconds
-2. display seconds since last UDP message
+
+2. display seconds since last UDP message ?
+
 3. remove pointer stuff & just use a new m_isValid flag or something
    for TempSensor/PowerSensor
+
+4. Add new HeatPump class, a new sensor type
+   will have:
+      isDHWOn,isHeatingOn,isSilentMode
+      isWaterPumpOn,isExtWaterPumpOn,isDefrost,
+      DHWBootHeaterOn
+      flowT, returnT, outdoorT,targetT, DHWT, flowRate,
+      shiftValue(target) auto mode,
+      DHWT target
+
+5. draw out IO board, temp board ?  Design notes & operating instructions
+
+6. option to use buttons to cycle display ?
+
 
 ========
 
