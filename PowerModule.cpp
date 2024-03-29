@@ -95,6 +95,18 @@ PowerModule::~PowerModule()
    delete m_serial;
 }
 
+ModbusMaster *PowerModule::getModbus()
+{
+   if ( !m_masterStarted )
+   {
+      return nullptr;
+   }
+   else
+   {
+      return m_master;
+   }
+}
+
 void PowerModule::initialise( void )
 {
    if ( hwConfig->ModBusSerial == -1 )

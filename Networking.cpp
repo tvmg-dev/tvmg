@@ -122,7 +122,7 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
       message.message = msg.c_str();
       message.mime = "text/plain";
 
-      PW_DEBUG( "Sending to %s [%s]",recipient,subject );
+      PW_MSG( "Sending to %s [%s]",recipient,subject );
 
       EMailSender::Response resp = m_sender->send( recipient,message );
 
@@ -138,12 +138,10 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
 
 bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
 {
-
-   PW_WARN( "Send to %s",recipient );
-   PW_WARN( "  subject %s",subject );
+   PW_MSG( "Sending to %s [%s]",recipient,subject );
    if ( fileName )
    {
-      PW_WARN( "  attach %s",fileName );
+      PW_MSG( "  attachment %s",fileName );
    }
 
    if ( m_sender )
@@ -170,6 +168,12 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       else
       {
          fileDescriptor[ 0 ].storageType = EMailSender::EMAIL_STORAGE_TYPE_SD;
+         if ( ! SD.exists( fileName ) )
+         {
+            PW_WARN( "%s doesn't exist, not sending email",fileName );
+            return false;
+         }
+
       }
 
       EMailSender::Attachments attachments = { 1, fileDescriptor };
@@ -177,8 +181,6 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       message.subject = subject;
       message.message = msg;
       message.mime = "text/plain";
-
-      PW_DEBUG( "Sending to %s [%s]",recipient,subject );
 
       EMailSender::Response resp = m_sender->send( recipient,message,attachments );
 
@@ -408,7 +410,7 @@ bool Networking::sendEmail( const char *recipient,const char *subject,const Stri
 {
    if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
    {
-      PW_WARN( "Would send email %s",subject );
+      PW_DEBUG( "Would send email %s",subject );
       return true;
    }
 
@@ -423,7 +425,7 @@ bool Networking::sendEmailWithAttachment( const char *recipient,const char *subj
 {
    if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
    {
-      PW_WARN( "Would send email %s",subject );
+      PW_DEBUG( "Would send email %s",subject );
       return true;
    }
 
@@ -443,7 +445,7 @@ bool Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
       (void) emonFeedId;
       (void) value;
 
-      PW_WARN( "Would send to emon {%u : %.2f]",emonFeedId,value );
+      PW_DEBUG( "Would send to emon {%u : %.2f]",emonFeedId,value );
       return true;
    }
 

@@ -30,6 +30,7 @@ public:
    PowerModule();
    ~PowerModule();
    void  initialise( void );
+   ModbusMaster   *getModbus();
    PowerSensor *readNextSensor( uint8_t index );
    bool     getPower( uint8_t index );
 

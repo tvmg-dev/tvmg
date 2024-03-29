@@ -6,80 +6,153 @@
 #include "utils.h"
 #include "Config.h"
 
-#define  LOG_TIMESTAMP  1
-
 static char buffer[ 4096 ];
+
+static bool  isTrueVal = true;
+static bool  isFalseVal = false;
+
+static bool *isTrue = &isTrueVal;
+static bool *isFalse = &isFalseVal;
+
+static bool *serialLoggingEnabled = nullptr;
+static bool *debugLevelEnabled = nullptr;
+static bool *logTimestamps = nullptr;
+static bool *logToFile = nullptr;
+static bool *logTiming = nullptr;
+
+static bool logFileOk = true;
 
 void msgLog( LOGGING_LEVEL level,const char *format,... )
 {
-   // check for early returns, but we need to have config available otherwise
-   // there will be recursion as Config class itself wants to output debug
+   // 1st check to see if we have configured yet, use the serialLoggingEnabled
+   // to determine our debug options once (after config is available).
 
-   if ( Config::instance() )
+   if ( !serialLoggingEnabled && Config::instance() )
    {
-      if ( GET_REGISTRY_INT( DISABLED_SERIAL_LOGGING ) == 1 )
+      serialLoggingEnabled = isFalse;
+      debugLevelEnabled = isFalse;
+      logTimestamps = isFalse;
+      logToFile = isFalse;
+      logTiming = isFalse;
+
+      if ( GET_REGISTRY_INT( DISABLED_SERIAL_LOGGING ) != 1 )
       {
-         return;
+         serialLoggingEnabled = isTrue;
       }
-      else if ( level == LOGGING_LEVEL::DEBUG && GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) != 1 )
+
+      if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
       {
-         return;
+         debugLevelEnabled = isTrue;
       }
+
+      if ( GET_REGISTRY_INT( LOG_TIMESTAMP ) == 1 )
+      {
+         logTimestamps = isTrue;
+      }
+
+      if ( GET_REGISTRY_INT( LOG_TO_FILE ) == 1 )
+      {
+         if( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+         {
+            Serial.println( "Can't debug log to file on TBoards" );
+         }
+         else
+         {
+            logToFile = isTrue;
+         }
+      }
+
+      if ( GET_REGISTRY_INT( LOG_TIMING ) == 1 )
+      {
+         logTiming = isTrue;
+      }
+
    }
 
-  va_list args;
+   // Now check to see if we're logging or not
 
-#if LOG_TIMESTAMP == 1
-   struct tm      timeInfo;
-   struct timeval tv_now;
-   char           line[ 64 ],msStr[ 32 ];
+   if ( (serialLoggingEnabled == isFalse && logToFile == isFalse) || (level == LOGGING_LEVEL::DEBUG && debugLevelEnabled == isFalse)
+                  || (level == LOGGING_LEVEL::TIMING && logTiming == isFalse) )
+   {
+      return;
+   }
 
-   gettimeofday( &tv_now, NULL );
+   String  debugString;
 
-   uint32_t ms = tv_now.tv_usec / 1000;
-   time_t now = tv_now.tv_sec;
+   if ( logTimestamps == isTrue )
+   {
+      struct tm      timeInfo;
+      struct timeval tv_now;
+      char           line[ 64 ],msStr[ 32 ];
 
-   localtime_r( &now,&timeInfo );
+      gettimeofday( &tv_now, NULL );
 
-   // Can get the stack free effectively, seem to have about 2.5k left
-   // with the 512 byte buffer used in sending daily update - starts at
-   // about 7k and we're at around 3.5k when loop() entered.
+      uint32_t ms = tv_now.tv_usec / 1000;
+      time_t now = tv_now.tv_sec;
 
-   // uint32_t wmark = uxTaskGetStackHighWaterMark( NULL );
+      localtime_r( &now,&timeInfo );
 
-   strftime( line,20,"%H:%M:%S",&timeInfo );
-   sprintf( msStr,".%03u - ",ms );
-   strcat( line,msStr );
+      // Can get the stack free effectively, seem to have about 2.5k left
+      // with the 512 byte buffer used in sending daily update - starts at
+      // about 7k and we're at around 3.5k when loop() entered.
 
-   Serial.print( line );
-#endif
+      // uint32_t wmark = uxTaskGetStackHighWaterMark( NULL );
 
-  if ( level == LOGGING_LEVEL::DEBUG )
-  {
-    Serial.printf( "DBG: ");
-  }
-  else if ( level == LOGGING_LEVEL::WARNING )
-  {
-    Serial.printf( "WARN: ");
-  }
-  else if ( level == LOGGING_LEVEL::ERROR )
-  {
-    Serial.printf( "ERROR: " );
-  }
+      strftime( line,20,"%H:%M:%S",&timeInfo );
+      sprintf( msStr,".%03u - ",ms );
+      strcat( line,msStr );
 
-  va_start( args,format );
-  vsprintf( buffer,format,args );
-  Serial.printf( "%s\n", buffer);
-  va_end( args );
+      debugString += line;
+   }
 
-#if DEBUG_LOGGING == 1
-  File file = SD.open( "/debug.log",FILE_APPEND );
-  if ( file )
-  {
-      file.println( buffer );
-      file.close();
+   if ( level == LOGGING_LEVEL::DEBUG )
+   {
+      debugString += "DBG: ";
+   }
+   else if ( level == LOGGING_LEVEL::WARNING )
+   {
+      debugString += "WARN: ";
+   }
+   else if ( level == LOGGING_LEVEL::ERROR )
+   {
+      debugString += "ERROR: ";
+   }
+   else if ( level == LOGGING_LEVEL::TIMING )
+   {
+      debugString += "TIMING: ";
+   }
 
-  }
-#endif
+   va_list args;
+   va_start( args,format );
+   vsprintf( buffer,format,args );
+   debugString += buffer;
+   va_end( args );
+
+   if ( serialLoggingEnabled != isFalse )
+   {
+      Serial.println( debugString.c_str() );
+   }
+
+   if ( logToFile == isTrue )
+   {
+     File file = SD.open( "/debug.log",FILE_APPEND );
+     if ( file )
+     {
+         file.println( debugString.c_str() );
+         file.close();
+     }
+   }
 }
 
+Timing::Timing( const String &name )
+   : m_name( name ),
+     m_startMillis(0)
+{
+   m_startMillis = millis();
+}
+
+Timing::~Timing()
+{
+   String timing( millis() - m_startMillis,DEC );
+   PW_TIMING( "%s : %s",m_name.c_str(),timing.c_str() );
+}

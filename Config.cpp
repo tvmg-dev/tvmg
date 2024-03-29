@@ -78,9 +78,7 @@ int32_t getRegistryInt( char *key )
 
    if ( index == -1 )
    {
-      char line[ 128 ];
-      snprintf( line,128,"No entry found for %s",key );
-//      Serial.println( line );
+      PW_DEBUG( "Registry: no entry for %s",key );
       return -1;
    }
    else
@@ -95,9 +93,7 @@ char *getRegistryString( char *key )
 
    if ( index == -1 )
    {
-      char line[ 128 ];
-      snprintf( line,128,"No entry found for %s",key );
-//      Serial.println( line );
+      PW_DEBUG( "Registry: no entry for %s",key );
       return nullptr;
    }
    else

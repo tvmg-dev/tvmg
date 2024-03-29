@@ -206,7 +206,7 @@ void  TemperatureModule::initialise()
 
          for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
          {
-            if ( m_sensors[ i ].m_isValid )
+            if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
             {
                PW_DEBUG( "Locating %s",m_sensors[ i ].m_name );
                for ( int j = 0; j < devices; j++ )
@@ -383,6 +383,7 @@ void  TemperatureModule::localBroadcastData()
 {
    cJSON *root,*array;
 
+
    if ( !m_numLocalSensors )
    {
       PW_WARN( "No local temp sensors to broadcast" );
@@ -406,6 +407,8 @@ void  TemperatureModule::localBroadcastData()
       PW_WARN( "No root cJSON object" );
       return;
    }
+
+   START_TIMING( "UDP broadcast temperatures" );
 
    cJSON_AddStringToObject( root,"name",GET_REGISTRY_STRING( ACCESS_POINT_NAME ) );
    array = cJSON_AddArrayToObject( root,"sensors" );
@@ -447,6 +450,8 @@ void  TemperatureModule::localBroadcastData()
          free( str );
       }
    }
+
+   END_TIMING;
 
    cJSON_Delete( root );
 }

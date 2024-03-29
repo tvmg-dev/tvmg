@@ -4,6 +4,7 @@
 #include "hwconfig.h"
 #include "TemperatureModule.h"
 #include "PowerModule.h"
+#include "HeatPumpModule.h"
 #include "UserIO.h"
 #include "Measurement.h"
 #include "Config.h"
@@ -15,6 +16,7 @@
 
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
+HeatPumpModule    *heatPumpModule = nullptr;
 Storage           *storageModule = nullptr;
 UserIO            *userIO = nullptr;
 Measurement       *measurement = nullptr;
@@ -108,13 +110,13 @@ void newConfiguration( void )
 
 int threshold = 40;
 bool testingLower = true;
-bool wasButtonPressed = false;
+bool wasButton1Pressed = false;
 
 void gotTouchEvent()
 {
   if ( !testingLower )
   {
-     wasButtonPressed = true;
+     wasButton1Pressed = true;
   }
 
   touchInterruptSetThresholdDirection( !testingLower );
@@ -125,7 +127,10 @@ void  handleTouch1()
 {
    PW_MSG( "Button-1 was pressed" );
 
-   wasButtonPressed = false;
+   userIO->clear();
+   userIO->updateLine( 1, "BT pressed" );
+
+   wasButton1Pressed = false;
 
    String   msgString;
    char     message[ 128 ];
@@ -166,13 +171,13 @@ void  handleTouch1()
       }
    }
 
+   heatPumpModule->readNextSensor( 0 );
+
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","No content",storageModule->getCurrentFileName() );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","No content","/debug.log" );
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
 
-   userIO->updateLine( 1, "BT pressed" );
    delay( 2000 );
-
 }
 
 void setup( void )
@@ -287,6 +292,11 @@ void setup( void )
    powerModule = new PowerModule;
    powerModule->initialise();
 
+   // Instantiate the heat pump collecting module
+
+   heatPumpModule = new HeatPumpModule( powerModule );
+   heatPumpModule->initialise();
+
    // Instantiate the measurement module, but don't initialise it just yet
 
    measurement = new Measurement( tempModule,powerModule,storageModule );
@@ -321,30 +331,14 @@ void setup( void )
 
 #define LOOP_PERIOD_MS  5000
 
+bool  simulatedBtn1Press = false;
+
 void loop(void)
 {
-#if 1
-   // TODO, wrap millis !
-
-   /* Design decisions needed to build on the basics.
-
-   1. Measure periodically (the temperature module will not allow readings
-      at greater than 4/minute)
-
-   2. Service the display/input periodically, but not at necessarily
-      at the same rate.
-
-   3. Check network functionality, restarting if possible - state machine
-
-   6. Reset energy used every day ?
-
-   Have ~ 170 KiB available currently for dynamic storage.  If we
-   stored every 30s, then 24 hours would require 2880 samples, at 50
-   bytes/sample that's ~ 141 KiB.
-
-   */
-
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
+   static uint32_t loops = 1;
+
+   START_TIMING( "Main Loop" );
 
    if ( ! targetMillis )
    {
@@ -352,20 +346,44 @@ void loop(void)
    }
    targetMillis += LOOP_PERIOD_MS;
 
-   measurement->takeSample();
+   // was button 1 pressed, or we may simulate it
 
-   userIO->update();
-   userIO->showNext();
-
-   // was a button pressed ?
-   if ( wasButtonPressed )
+   simulatedBtn1Press = false;
+   if ( loops == 40 )
    {
-      handleTouch1();
+      if ( GET_REGISTRY_INT( BTN_PRESS_ON_LOOP40 ) == 1 )
+      {
+         simulatedBtn1Press = true;
+      }
+      loops = 0;
    }
+   else if ( loops > 0 )
+   {
+      loops++;
+   }
+
+   if ( wasButton1Pressed || simulatedBtn1Press )
+   {
+      START_TIMING( "Handle Touch1" );
+      handleTouch1();
+      END_TIMING;
+   }
+
+   START_TIMING( "takeSample" );
+   measurement->takeSample();
+   END_TIMING;
+
+   START_TIMING( "UserIO Update" );
+   userIO->update();
+   END_TIMING;
+
+   START_TIMING( "UserIO ShowNext" );
+   userIO->showNext();
+   END_TIMING;
 
    currentMillis = millis();
 
-   // We may need to skip a sample if we've executed too long in this loop
+   // We may need to skip a sample(s) if we've executed too long in this loop
 
    while ( currentMillis >= targetMillis )
    {
@@ -374,10 +392,9 @@ void loop(void)
 
    deltaMillis = targetMillis - currentMillis;
 
-   delay( deltaMillis );
-#else
-   PW_MSG( "loop running on core %d",xPortGetCoreID() );
-   delay( 10 * 1000 );
+   END_TIMING;
 
-#endif
+   PW_MSG( "Loop Delay %u",deltaMillis );
+
+   delay( deltaMillis );
 }

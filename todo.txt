@@ -16,7 +16,7 @@
 
 5. draw out IO board, temp board ?  Design notes & operating instructions
 
-6. option to use buttons to cycle display ?
+6. option to use 2nd button to toggle between stall & cycle display
 
 
 ========
@@ -123,5 +123,33 @@ So we loop every 5s, and after 30 seconds we send it & save it.
 
 Maybe we should in the main loop skip taking measurements until 3
 loops ?
+
+==========
+
+5 temp sensors take ~ 900ms to get data
+maybe ~ 250ms to get power data
+
+sending dato emoncms is a killer
+
+13:47:34.162 - DBG: EMONCMS: Send https://emoncms.org/feed/insert.json?id=476741&time=1711633654&value=45.37&apikey=***REMOVED***
+13:47:35.524 - DBG: EMONCMS: Response 45.37
+13:47:35.527 - DBG: EMONCMS: Send https://emoncms.org/feed/insert.json?id=476740&time=1711633655&value=44.38&apikey=***REMOVED***
+13:47:36.879 - DBG: EMONCMS: Response 44.38
+13:47:36.882 - DBG: EMONCMS: Send https://emoncms.org/feed/insert.json?id=476738&time=1711633656&value=47.12&apikey=***REMOVED***
+13:47:37.364 - DBG: UDP: Assign remote temp ID 30 26.0
+13:47:37.365 - DBG: UDP: Assign remote temp ID 31 21.8
+13:47:38.307 - DBG: EMONCMS: Response 47.12
+13:47:38.310 - DBG: EMONCMS: Send https://emoncms.org/feed/insert.json?id=476739&time=1711633658&value=42.74&apikey=***REMOVED***
+13:47:39.640 - DBG: EMONCMS: Response 42.74
+13:47:39.643 - DBG: EMONCMS: Send https://emoncms.org/feed/insert.json?id=476990&time=1711633659&value=31.88&apikey=***REMOVED***
+13:47:39.994 - DBG: UDP: Assign remote temp ID 40 26.7
+13:47:39.994 - DBG: UDP: Assign remote temp ID 41 23.9
+13:47:41.008 - DBG: EMONCMS: Response 31.88
+
+a send takes ~ 1.5 seconds !  So over 7 seconds in total for the 5 feeds
+(good job I send to emon for the nodes)
+
+
+
 
 
