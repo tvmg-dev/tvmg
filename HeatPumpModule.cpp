@@ -7,7 +7,8 @@
 #include "hwconfig.h"
 #include "config.h"
 
-#define  MODBUS_TCP_TIMEOUT_MS 2000
+#define  TCP_SERVER_CONNECT_TIMEOUT_MS 1000
+#define  MODBUS_TCP_TIMEOUT_MS         2000
 
 #define  READ_COILS     1
 #define  READ_DISCRETES 2
@@ -407,7 +408,7 @@ bool  HeatPumpModule::sampleHP()
    ModBusResponse response;
    WiFiClient host;
 
-   if ( !host.connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort ) )
+   if ( !host.connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
    {
       PW_ERROR( "Failed to connect to ModbusTCP server" );
       return false;
@@ -435,6 +436,7 @@ bool  HeatPumpModule::sampleHP()
       }
    }
 
+   uint16_t compressor;
    if ( m_sensor.m_numDiscretes )
    {
       numRequests++;
@@ -448,9 +450,12 @@ bool  HeatPumpModule::sampleHP()
 
       if ( getData( &host,&request,&response ) )
       {
+         compressor = response.registers[ 3 ];
          numSuccessRequests++;
       }
    }
+
+   uint16_t target,flow,ret,flowRate,outside;
 
    if ( m_sensor.m_numHolding )
    {
@@ -466,7 +471,9 @@ bool  HeatPumpModule::sampleHP()
       if ( getData( &host,&request,&response ) )
       {
          numSuccessRequests++;
+         target = response.registers[ 2 ];
       }
+
    }
 
    if ( m_sensor.m_numInput )
@@ -482,10 +489,15 @@ bool  HeatPumpModule::sampleHP()
 
       if ( getData( &host,&request,&response ) )
       {
+         flow = response.registers[ 3 ];
+         ret = response.registers[ 2 ];
+         flowRate = response.registers[ 8 ];
+         outside = response.registers[ 12 ];
          numSuccessRequests++;
       }
    }
 
+   PW_DEBUG( "MEASURE: %u %u %u %u %u %u",compressor,flowRate,ret,flow,outside,target );
    return ( numSuccessRequests == numRequests );
 }
 
