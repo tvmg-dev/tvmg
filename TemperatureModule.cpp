@@ -173,7 +173,7 @@ void  TemperatureModule::initialise()
       }
       else
       {
-         PW_ERROR( "Only located %u of %u sensors.",devices,m_numLocalSensors );
+         PW_ERROR( "Located %u of %u sensors.",devices,m_numLocalSensors );
 
          if ( devices == 0 )
          {

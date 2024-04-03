@@ -149,7 +149,61 @@ sending dato emoncms is a killer
 a send takes ~ 1.5 seconds !  So over 7 seconds in total for the 5 feeds
 (good job I send to emon for the nodes)
 
+LIBS
+====
+
+AsyncTCP is a library, AsyncUDP is in ESP 32 core
+(cJSON in core too)
+
+AsyncTCP -
+ESP_Async_WebServer uses AsyncTCP as ESP32 core, otherwise ESPAsyncTCP
+EmailSender uses ESPAsyncTCP
+
+Libraries under Documents/Arduino/libraries
+
+Core packages : under C:\Users\trial\AppData\Local\Arduino15\packages\esp32 etc
+
+e.g.
+C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\tools\sdk\esp32c3\include\json\cJSON
+
+
+read 10 input registers from address 0 of slave 32
+
+00 01 00 00 00 06 20 03 00 00 00 0a
+
+00 01 # transaction ID #1
+00 00 # protocol
+00 06 # number of bytes following (always < 255)
+20    # slave address (HP 32)
+03    # function code (read input registers)
+00 00 # Register address to start read from
+00 0a # number of registers to read from
+
+Response
+00 01 00 00 00 17 20 03 14 00 03 00 01 00 c8 00
+00 ff fb 00 00 00 00 00 00 01 2c 00 00
+
+00 01 # transaction id
+00 00 # protocol
+00 17 # 23 bytes to follow
+20    # slave 32
+03    # function code 3 - read input reg
+14    # 20 bytes to follow (10 regs x 2)
+00 03 # reg 0 = 3
+00 01 # 1
+00 c8 # 200
+00 00 # 0
+ff fb # 65531
+00 00 # 0
+00 00 # 0
+00 00 # 0
+01 2c # 300
+00 00 # 0
 
 
 
 
+
+
+
+"\x00\x01\x00\x00\x00\x06 \x03\x00\x00\x00\x0a"

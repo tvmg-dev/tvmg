@@ -294,7 +294,7 @@ void setup( void )
 
    // Instantiate the heat pump collecting module
 
-   heatPumpModule = new HeatPumpModule( powerModule );
+   heatPumpModule = new HeatPumpModule();
    heatPumpModule->initialise();
 
    // Instantiate the measurement module, but don't initialise it just yet
@@ -333,6 +333,9 @@ void setup( void )
 
 bool  simulatedBtn1Press = false;
 
+uint32_t hpSamples = 0;
+uint32_t hpErrors = 0;
+
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
@@ -346,40 +349,57 @@ void loop(void)
    }
    targetMillis += LOOP_PERIOD_MS;
 
-   // was button 1 pressed, or we may simulate it
-
-   simulatedBtn1Press = false;
-   if ( loops == 40 )
+   if ( !userIO->isFirmwareUpdateInProgress() )
    {
-      if ( GET_REGISTRY_INT( BTN_PRESS_ON_LOOP40 ) == 1 )
+      // was button 1 pressed, or we may simulate it
+
+      simulatedBtn1Press = false;
+      if ( loops == 5 )
       {
-         simulatedBtn1Press = true;
+         if ( GET_REGISTRY_INT( BTN_PRESS_ON_LOOP40 ) == 1 )
+         {
+            simulatedBtn1Press = true;
+         }
+         loops = 0;
       }
-      loops = 0;
-   }
-   else if ( loops > 0 )
-   {
-      loops++;
-   }
+      else if ( loops > 0 )
+      {
+         loops++;
+      }
 
-   if ( wasButton1Pressed || simulatedBtn1Press )
-   {
-      START_TIMING( "Handle Touch1" );
-      handleTouch1();
+      if ( wasButton1Pressed || simulatedBtn1Press )
+      {
+         START_TIMING( "Handle Touch1" );
+         handleTouch1();
+         END_TIMING;
+      }
+
+      START_TIMING( "takeSample" );
+      measurement->takeSample();
       END_TIMING;
+
+      START_TIMING( "UserIO Update" );
+      userIO->update();
+      END_TIMING;
+
+      START_TIMING( "UserIO ShowNext" );
+      userIO->showNext();
+      END_TIMING;
+
+      if ( heatPumpModule->isAvailable() )
+      {
+         hpSamples++;
+         if ( ! heatPumpModule->sampleHP() )
+         {
+            hpErrors++;
+         }
+
+         char buff[ 64 ];
+         sprintf( buff,"t: %u - e: %u",hpSamples,hpErrors );
+
+         userIO->updateLine( 5,buff );
+      }
    }
-
-   START_TIMING( "takeSample" );
-   measurement->takeSample();
-   END_TIMING;
-
-   START_TIMING( "UserIO Update" );
-   userIO->update();
-   END_TIMING;
-
-   START_TIMING( "UserIO ShowNext" );
-   userIO->showNext();
-   END_TIMING;
 
    currentMillis = millis();
 

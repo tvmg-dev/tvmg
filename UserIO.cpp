@@ -344,6 +344,11 @@ void  UserIO::setFirmwareUpdateInProgress( bool progress )
    m_firmwareUpdateInProgress = progress;
 }
 
+bool  UserIO::isFirmwareUpdateInProgress()
+{
+   return m_firmwareUpdateInProgress;
+}
+
 bool  UserIO::isPowerDataAvailable()
 {
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )

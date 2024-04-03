@@ -6,6 +6,15 @@
 
 #define MAX_FILENAME    32
 
+extern bool  isDebugEnabled();
+
+#define START_DEBUG \
+do \
+if ( isDebugEnabled() ) {
+
+#define END_DEBUG \
+} while( 0 );
+
 enum LOGGING_LEVEL { MSG, DEBUG, WARNING, ERROR, TIMING };
 
 extern void msgLog( LOGGING_LEVEL level,const char *format,... );
@@ -30,8 +39,6 @@ private:
 #define  START_TIMING( x ) \
 do \
    { Timing timeThis( x );
-
-//while( 0 );
 
 #define  END_TIMING \
  } while( 0 );

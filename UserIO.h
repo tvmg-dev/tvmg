@@ -36,6 +36,7 @@ public:
    void  show( ScreenType type );
    void  update();
    void  setFirmwareUpdateInProgress( bool inProgress );
+   bool  isFirmwareUpdateInProgress();
 
 private:
    void  show( OLEDDisplayLine lines[] );

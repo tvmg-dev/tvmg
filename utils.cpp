@@ -22,6 +22,16 @@ static bool *logTiming = nullptr;
 
 static bool logFileOk = true;
 
+bool  isDebugEnabled()
+{
+   if ( debugLevelEnabled == isTrue )
+   {
+      return true;
+   }
+
+   return false;
+}
+
 void msgLog( LOGGING_LEVEL level,const char *format,... )
 {
    // 1st check to see if we have configured yet, use the serialLoggingEnabled
