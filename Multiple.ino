@@ -124,8 +124,6 @@ void gotTouchEvent()
   testingBtnLower = !testingBtnLower;
 }
 
-extern bool getHPData();
-
 void  handleTouch1()
 {
    PW_MSG( "Button-1 was pressed" );
@@ -333,6 +331,7 @@ void setup( void )
 
 bool  simulatedBtn1Press = false;
 
+extern bool getHPData();
 uint32_t hpSamples = 0;
 uint32_t hpErrors = 0;
 

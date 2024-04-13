@@ -21,7 +21,8 @@ UserIO::UserIO()
         m_measurement( nullptr ),
         m_networking( nullptr ),
         m_sample(),
-        m_firmwareUpdateInProgress( false )
+        m_firmwareUpdateInProgress( false ),
+        m_startTime()
 {
    PW_DEBUG( "UserIO::UserIO()" );
    PW_MSG( "UserIO Module Startup" );
@@ -32,6 +33,8 @@ UserIO::UserIO()
    {
       m_currentLines[ i ][ 0 ] = 0;
    }
+
+   time( &m_startTime );
 }
 
 UserIO::~UserIO()
@@ -114,6 +117,7 @@ void  UserIO::showNetwork()
    char        line[ MAX_OLED_COLUMNS ];
    char        sdCardStatus[ MAX_OLED_COLUMNS ];
    struct tm   timeInfo;
+   time_t      currentTime;
 
    // get Wifi status
    if ( WiFi.status() != WL_CONNECTED )
@@ -137,9 +141,15 @@ void  UserIO::showNetwork()
       }
       else
       {
+         time( &currentTime );
+         uint32_t secondsDiff = difftime( currentTime,m_startTime );
+
          getLocalTime( &timeInfo );
          strftime( m_currentLines[ 4 ],20,"%d/%m/%y : %H:%M:%S",&timeInfo );
-         sprintf( m_currentLines[ 5 ],"Uptime (s) : %u", millis() / 1000);
+
+         sprintf( m_currentLines[ 5 ],"Uptime %u:%02u:%02u.%02u",secondsDiff / ( 24 * 3600 ), secondsDiff / 3600, secondsDiff / 60, secondsDiff % 60 );
+
+         PW_MSG( "Time diff %u %s",secondsDiff,m_currentLines[ 5 ] );
       }
    }
 

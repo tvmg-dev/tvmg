@@ -8,7 +8,6 @@
 
 class WebServer;
 class Emailer;
-class WiFiClientSecure;
 
 class Networking
 {
@@ -30,7 +29,7 @@ public:
    void initialise();
    bool sendEmail( const char *recipient,const char *subject,const String &msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS = false );
-   bool sendToEmonCMS( uint32_t emonFeedId,float_t value );
+   void sendToEmonCMS( uint32_t emonFeedId,float_t value );
    bool isConnected();
    bool didAcquireNTP();
    String getIPAddress();
@@ -46,7 +45,6 @@ static   AsyncUDP    *getUDP();
 private:
    Emailer           *m_emailer;
    WebServer         *m_webServer;
-   WiFiClientSecure  *m_emoncmsClient;
 static    AsyncUDP   *s_udp;
 
    Status  m_status;

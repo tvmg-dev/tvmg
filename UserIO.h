@@ -56,6 +56,7 @@ private:
    Networking           *m_networking;
    Measurement::Sample  m_sample;
    bool                 m_firmwareUpdateInProgress;
+   time_t               m_startTime;
 };
 
 #endif

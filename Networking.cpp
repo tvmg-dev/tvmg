@@ -65,6 +65,109 @@ const char* emoncmsCertificate = \
 
 const char *emoncmsApiKey = "***REMOVED***";
 
+static WiFiClientSecure *s_emoncmsClient = nullptr;
+
+// Example feed data insertion -
+// https://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
+
+struct   EmonData {
+   uint32_t emonFeedId;
+   float_t  value;
+};
+
+static TaskHandle_t  backgroundHandle = NULL;
+static QueueHandle_t dataQueue = NULL;
+
+void  sendToEmonCMS( uint32_t emonFeedId,float_t value );
+
+void  backgroundThread( void *params )
+{
+   EmonData *data;
+   bool     sendData = true;
+
+   if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) != 1 )
+   {
+      sendData = false;
+   }
+
+   while( true )
+   {
+      if ( dataQueue )
+      {
+         if ( xQueueReceive( dataQueue,&data,portTICK_PERIOD_MS * 60000 ) )
+         {
+            char  buff[ 128 ];
+            snprintf( buff,128,"Processed Q for [%u], %.2f",data->emonFeedId,data->value );
+            START_TIMING( buff );
+
+            PW_MSG( "Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
+
+            if ( sendData )
+            {
+               sendToEmonCMS( data->emonFeedId,data->value );
+            }
+            else
+            {
+               PW_DEBUG( "Would send to emon [%u], %.2f",data->emonFeedId,data->value );
+               delay( random( 1000,2500 ) );
+            }
+
+            delete data;
+            END_TIMING;
+         }
+         else
+         {
+            PW_DEBUG( "Nothing received from Q (cpu%u)",xPortGetCoreID() );
+         }
+      }
+      else
+      {
+         PW_WARN( "Waiting for Q creation" );
+         delay( 2000 );
+      }
+   }
+}
+
+void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
+{
+   bool        retOk = false;
+   char        url[ 256 ];
+   time_t      utc;
+   HTTPClient  https;
+
+   time( &utc );
+
+   snprintf( url,256,"https://emoncms.org/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,emoncmsApiKey );
+
+   PW_DEBUG( "EMONCMS: Send %s",url );
+
+   if ( ! https.begin( *s_emoncmsClient, url ) )
+   {
+      PW_ERROR( "EMONCMS: failed to connect" );
+   }
+   else
+   {
+      // start connection and send HTTP header
+      int httpCode = https.GET();
+
+      // httpCode will be negative on error
+      if (httpCode < 0)
+      {
+         PW_ERROR( "EMONCMS: GET failed [%s]",https.errorToString(httpCode).c_str() );
+      }
+      else if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
+      {
+         // HTTP header has been sent and Server response header has been handled
+         retOk = true;
+
+         String payload = https.getString();
+         PW_DEBUG( "EMONCMS: Response %s",payload.c_str() );
+      }
+
+      https.end();
+   }
+}
+
 class Emailer
 {
 public:
@@ -200,7 +303,6 @@ AsyncUDP *Networking::s_udp = nullptr;
 Networking::Networking()
           : m_emailer( nullptr ),
             m_webServer( nullptr ),
-            m_emoncmsClient( nullptr ),
             m_status()
 {
    PW_DEBUG( "Networking::Networking()" );
@@ -219,7 +321,7 @@ Networking::~Networking()
 {
    PW_DEBUG( "Networking::~Networking()" );
 
-   delete m_emoncmsClient;
+   delete s_emoncmsClient;
    delete m_webServer;
    delete m_emailer;
 }
@@ -325,8 +427,8 @@ void Networking::initialise()
 
    // And now for the emoncms client...
 
-   m_emoncmsClient = new WiFiClientSecure;
-   m_emoncmsClient->setCACert( emoncmsCertificate );
+   s_emoncmsClient = new WiFiClientSecure;
+   s_emoncmsClient->setCACert( emoncmsCertificate );
 
    // Start our configuration/download server
 
@@ -340,6 +442,26 @@ void Networking::initialise()
 
    // Create new UDP
    s_udp = new AsyncUDP;
+
+   // Now create out background task helper, up to 20 emon messages
+   // may be queued.
+
+   dataQueue = xQueueCreate( 20,sizeof( struct EmonData *) );
+   if ( ! dataQueue )
+   {
+      PW_ERROR( "Failed to create XQueue" );
+   }
+   else
+   {
+      xTaskCreatePinnedToCore(
+         backgroundThread,    // thread fn
+         "EmonCMS-Task",      // Name of the task
+         4096,               // Stack size in words
+         NULL,                // no input params
+         0,                   // Priority
+         &backgroundHandle,   // handle
+         0 );                 // Assign to core 0, core 1 used for main loop
+   }
 }
 
 bool  Networking::acquireNTP()
@@ -436,57 +558,25 @@ bool Networking::sendEmailWithAttachment( const char *recipient,const char *subj
    return false;
 }
 
-// https://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
-
-bool Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
+void Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
 {
-   if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) != 1 )
+   // Create a new data item and add to the queue - the background task will delete
+   // the data.
+
+   EmonData *data = new EmonData;
+   data->emonFeedId = emonFeedId;
+   data->value = value;
+
+   if ( dataQueue )
    {
-      (void) emonFeedId;
-      (void) value;
+      PW_DEBUG( "Sending to Q (cpu%u) - %u %.1f",xPortGetCoreID(),data->emonFeedId,data->value );
 
-      PW_DEBUG( "Would send to emon {%u : %.2f]",emonFeedId,value );
-      return true;
-   }
-
-   bool        retOk = false;
-   char        url[ 256 ];
-   time_t      utc;
-   HTTPClient  https;
-
-   time( &utc );
-
-   snprintf( url,256,"https://emoncms.org/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,emoncmsApiKey );
-
-   PW_DEBUG( "EMONCMS: Send %s",url );
-
-   if ( ! https.begin( *m_emoncmsClient, url ) )
-   {
-      PW_ERROR( "EMONCMS: failed to connect" );
-   }
-   else
-   {
-      // start connection and send HTTP header
-      int httpCode = https.GET();
-
-      // httpCode will be negative on error
-      if (httpCode < 0)
+      if ( xQueueSend( dataQueue,(void *) &data,0 ) != pdTRUE )
       {
-         PW_ERROR( "EMONCMS: GET failed [%s]",https.errorToString(httpCode).c_str() );
+         PW_WARN( "Q full - failed to send" );
+         delete data;
       }
-      else if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-      {
-         // HTTP header has been sent and Server response header has been handled
-         retOk = true;
-
-         String payload = https.getString();
-         PW_DEBUG( "EMONCMS: Response %s",payload.c_str() );
-      }
-
-      https.end();
    }
-
-return retOk;
 }
 
 WebServer   *Networking::getWebServer()
