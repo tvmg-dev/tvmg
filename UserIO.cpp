@@ -147,7 +147,7 @@ void  UserIO::showNetwork()
          getLocalTime( &timeInfo );
          strftime( m_currentLines[ 4 ],20,"%d/%m/%y : %H:%M:%S",&timeInfo );
 
-         sprintf( m_currentLines[ 5 ],"Uptime %u:%02u:%02u.%02u",secondsDiff / ( 24 * 3600 ), secondsDiff / 3600, secondsDiff / 60, secondsDiff % 60 );
+         sprintf( m_currentLines[ 5 ],"Uptime %u:%02u:%02u.%02u",secondsDiff / ( 24 * 3600 ), (secondsDiff / 3600) % 24, (secondsDiff / 60) % 60, secondsDiff % 60 );
 
          PW_MSG( "Time diff %u %s",secondsDiff,m_currentLines[ 5 ] );
       }

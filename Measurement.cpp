@@ -156,11 +156,6 @@ void  Measurement::takeSample( void )
       PW_DEBUG( "%u Samples, Writing to %u",m_numSamples + 1,m_write );
       m_samples[ m_write ] = m_lastSample;
 
-      if ( m_millisLastAquisition && !(m_write % MAX_MEASUREMENTS_IN_RAM) )
-      {
-         PW_DEBUG( "TODO : Should send to emoncms as bulk" );
-      }
-
       m_millisLastAquisition = start;
 
       saveLastSample();

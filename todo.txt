@@ -1,5 +1,3 @@
-1. uptime - set to d/m/s if > x seconds
-
 2. display seconds since last UDP message ?
 
 3. remove pointer stuff & just use a new m_isValid flag or something
@@ -17,6 +15,9 @@
 5. draw out IO board, temp board ?  Design notes & operating instructions
 
 6. option to use 2nd button to toggle between stall & cycle display
+
+7. Decide what to do about daily data files accumulating in flash
+
 
 
 ========
@@ -348,6 +349,16 @@ SEND_DEBUG_LOG    send at midnight
 DEBUG_LEVEL_ENABLED  0
 
 
+-----
 
+Sunday - collect HP data via btn press
+New s/w - collect data after 10 minutes, to see emon & loop timing
+        - disable timing & log to file
+        - collect data after 10 minutes, should just be HP data
+Update s/w - increase sampling rate from LG to perhaps 20s
+
+S/W update
+   - button hold/restart
+   - HP screen
 
 
