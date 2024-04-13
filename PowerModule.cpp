@@ -5,6 +5,8 @@
 #include "hwconfig.h"
 #include "config.h"
 
+static ModbusMaster *s_master = nullptr;
+
 void preTransmission()
 {
   digitalWrite( hwConfig->ModBus485EnGPIO,1 );
@@ -120,6 +122,8 @@ void PowerModule::initialise( void )
       m_serial = new HardwareSerial( hwConfig->ModBusSerial );
       m_master = new ModbusMaster;
 
+      s_master = m_master;
+
       PW_MSG( "Starting MODBUS port %u",hwConfig->ModBusSerial );
       PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
 
@@ -230,4 +234,134 @@ bool PowerModule::getPower( uint8_t index )
    }
 
    return false;
+}
+
+// temporary get HP data
+
+bool  getHPData()
+{
+   uint8_t mbusRes = 1;
+   if ( s_master )
+   {
+      s_master->setSlaveId( 32 );
+
+      uint8_t numRegs = 6;
+
+      delay(50  );
+      mbusRes = s_master->readCoils( 0x0,numRegs );
+
+      if ( mbusRes != ModbusMaster::ku8MBSuccess )
+      {
+         PW_WARN( "HP-MODBUS: Failed to get 1st coils: %u",mbusRes );
+         delay( 50 );
+         s_master->clearResponseBuffer();
+         mbusRes = s_master->readCoils( 0x0,numRegs );
+      }
+
+      if ( ! mbusRes )
+      {
+         String dbg = "Coils: ";
+
+         for ( int i = 0; i < ( 1 + numRegs / 16 ); i++ )
+         {
+            uint16_t word = s_master->getResponseBuffer( i );
+            uint8_t  bit = i % 16;
+            bool     coil = word & (1 << bit);
+
+            if ( coil )
+            {
+               dbg += "ON ";
+            }
+            else
+            {
+               dbg += "OFF ";
+            }
+         }
+         PW_MSG( dbg.c_str() );
+      }
+
+      if ( ! mbusRes )
+      {
+         numRegs = 15;
+         delay( 50 );
+         s_master->clearResponseBuffer();
+         mbusRes = s_master->readDiscreteInputs( 0x0,numRegs );
+
+         if ( mbusRes )
+         {
+            PW_WARN( "HP-MODBUS: Failed to get discretes: %u",mbusRes );
+         }
+         else
+         {
+            String dbg = "Discretes: ";
+
+            for ( int i = 0; i < ( 1 + numRegs / 16 ); i++ )
+            {
+               uint16_t word = s_master->getResponseBuffer( i );
+               uint8_t  bit = i % 16;
+               bool     coil = word & (1 << bit);
+
+               if ( coil )
+               {
+                  dbg += "ON ";
+               }
+               else
+               {
+                  dbg += "OFF ";
+               }
+            }
+            PW_MSG( dbg.c_str() );
+         }
+      }
+
+      if ( ! mbusRes )
+      {
+         numRegs = 6;
+         delay( 50 );
+         s_master->clearResponseBuffer();
+         mbusRes = s_master->readHoldingRegisters( 0x0,numRegs );
+
+         if ( mbusRes )
+         {
+            PW_WARN( "HP-MODBUS: Failed to get holding: %u",mbusRes );
+         }
+         else
+         {
+            String dbg = "Holding: ";
+
+            for ( int i = 0; i < numRegs; i++ )
+            {
+               dbg += String( s_master->getResponseBuffer( i ),DEC );
+               dbg += " ";
+            }
+            PW_MSG( dbg.c_str() );
+         }
+      }
+
+      if ( ! mbusRes )
+      {
+         numRegs = 13;
+         delay( 50 );
+         s_master->clearResponseBuffer();
+         mbusRes = s_master->readInputRegisters( 0x0,numRegs );
+
+         if ( mbusRes )
+         {
+            PW_WARN( "HP-MODBUS: Failed to get inputs: %u",mbusRes );
+         }
+         else
+         {
+            String dbg = "Inputs: ";
+
+            for ( int i = 0; i < numRegs; i++ )
+            {
+               dbg += String( s_master->getResponseBuffer( i ),DEC );
+               dbg += " ";
+            }
+            PW_MSG( dbg.c_str() );
+         }
+      }
+   }
+
+   return (mbusRes == ModbusMaster::ku8MBSuccess);
 }

@@ -104,24 +104,27 @@ void newConfiguration( void )
 }
 
 
-// Initially testingLower which triggers when < threshold, i.e. 'key down'
+// Initially testingBtnLower which triggers when < threshold, i.e. 'key down'
 // When we receive that then need to get next event when it goes above the
 // threshold which we use to set button pressed.
 
 int threshold = 40;
-bool testingLower = true;
+bool testingBtnLower = true;
 bool wasButton1Pressed = false;
+bool wasButton2Pressed = false;
 
 void gotTouchEvent()
 {
-  if ( !testingLower )
+  if ( !testingBtnLower )
   {
      wasButton1Pressed = true;
   }
 
-  touchInterruptSetThresholdDirection( !testingLower );
-  testingLower = !testingLower;
+  touchInterruptSetThresholdDirection( !testingBtnLower );
+  testingBtnLower = !testingBtnLower;
 }
+
+extern bool getHPData();
 
 void  handleTouch1()
 {
@@ -170,14 +173,11 @@ void  handleTouch1()
          msgString += message;
       }
    }
-
-   heatPumpModule->readNextSensor( 0 );
-
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","No content",storageModule->getCurrentFileName() );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","No content","/debug.log" );
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
 
-   delay( 2000 );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName() );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log","/debug.log" );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data","/hpmodbus.log" );
 }
 
 void setup( void )
@@ -318,7 +318,7 @@ void setup( void )
    // Touch ISR will be activated when reading is lower than the threshold
 
    touchAttachInterrupt( hwConfig->TouchButton1,gotTouchEvent,threshold );
-   touchInterruptSetThresholdDirection( testingLower );
+   touchInterruptSetThresholdDirection( testingBtnLower );
 
    char subject[ 128 ];
    char initialMsg[ 128 ];
@@ -338,7 +338,7 @@ uint32_t hpErrors = 0;
 
 void loop(void)
 {
-   static uint32_t targetMillis = 0,deltaMillis,currentMillis;
+   static uint32_t targetMillis = 0,deltaMillis,currentMillis,lastHpMillis = 0;
    static uint32_t loops = 1;
 
    START_TIMING( "Main Loop" );
@@ -347,7 +347,6 @@ void loop(void)
    {
       targetMillis = millis();
    }
-   targetMillis += LOOP_PERIOD_MS;
 
    if ( !userIO->isFirmwareUpdateInProgress() )
    {
@@ -386,21 +385,28 @@ void loop(void)
       userIO->showNext();
       END_TIMING;
 
-      if ( heatPumpModule->isAvailable() )
+      if ( GET_REGISTRY_INT( LG_MODBUS ) == 1 && (targetMillis - lastHpMillis) > 40000  )
       {
+         START_TIMING( "LG Modbus" );
          hpSamples++;
-         if ( ! heatPumpModule->sampleHP() )
+         if ( ! getHPData() )
          {
             hpErrors++;
          }
+         END_TIMING;
 
          char buff[ 64 ];
          sprintf( buff,"t: %u - e: %u",hpSamples,hpErrors );
 
          userIO->updateLine( 5,buff );
+         lastHpMillis = targetMillis;
       }
    }
 
+   // our target MS is our original millis at entry of this loop, plus
+   // our sampling delay
+
+   targetMillis += LOOP_PERIOD_MS;
    currentMillis = millis();
 
    // We may need to skip a sample(s) if we've executed too long in this loop
@@ -414,7 +420,7 @@ void loop(void)
 
    END_TIMING;
 
-   PW_MSG( "Loop Delay %u",deltaMillis );
+   PW_DEBUG( "Loop Delay %u",deltaMillis );
 
    delay( deltaMillis );
 }

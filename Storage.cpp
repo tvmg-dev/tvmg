@@ -29,6 +29,45 @@ Storage::~Storage()
    PW_DEBUG( "Storage::~Storage()" );
 }
 
+void printDirectory( File dir, int numTabs )
+{
+
+   while (true)
+   {
+      File entry = dir.openNextFile();
+      if (!entry) {
+         if (numTabs == 0)
+         {
+            PW_DEBUG( "Done" );
+         }
+         return;
+      }
+
+      String line;
+
+      for (uint8_t i = 0; i < numTabs; i++)
+      {
+         line += "  ";
+      }
+
+      line += entry.name();
+
+      if ( entry.isDirectory() )
+      {
+         PW_DEBUG( line.c_str() );
+         printDirectory(entry, numTabs + 1);
+      }
+      else
+      {
+         line += "      ";
+         line += String( entry.size(), DEC );
+         PW_DEBUG( line.c_str() );
+      }
+
+      entry.close();
+   }
+}
+
 void Storage::initialise( void )
 {
    PW_DEBUG( "Storage::initialise" );
@@ -80,13 +119,18 @@ void Storage::initialise( void )
       {
          PW_WARN( "SD card has failed !" );
       }
-      else if ( SD.exists( "/debug.log" ) )
+      else if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG) != 1 && SD.exists( "/debug.log" ) )
       {
          if ( ! SD.remove( "/debug.log" ) )
          {
             PW_WARN( "Failed to remove log file, likely SD error" );
          }
       }
+#if 0
+   File root = SD.open( "/" );
+   printDirectory( root,0 );
+   root.close();
+#endif
    }
 }
 
@@ -186,6 +230,16 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
          if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
          {
             Config::instance()->getSPIFFS()->remove( m_currentFileName );
+         }
+
+         if ( GET_REGISTRY_INT( SEND_DAILY_DEBUG ) == 1 && SD.exists( "/debug.log" ) )
+         {
+            m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Debug log","/debug.log",false );
+         }
+
+         if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 && SD.exists( "/debug.log" ) )
+         {
+            SD.remove( "/debug.log" );
          }
       }
 

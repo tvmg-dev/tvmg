@@ -16,6 +16,7 @@ static bool *isFalse = &isFalseVal;
 
 static bool *serialLoggingEnabled = nullptr;
 static bool *debugLevelEnabled = nullptr;
+static bool *hpModBusEnabled = nullptr;
 static bool *logTimestamps = nullptr;
 static bool *logToFile = nullptr;
 static bool *logTiming = nullptr;
@@ -41,6 +42,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    {
       serialLoggingEnabled = isFalse;
       debugLevelEnabled = isFalse;
+      hpModBusEnabled = isFalse;
       logTimestamps = isFalse;
       logToFile = isFalse;
       logTiming = isFalse;
@@ -77,12 +79,18 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
          logTiming = isTrue;
       }
 
+      if ( GET_REGISTRY_INT( LOG_HP_MODBUS ) == 1 )
+      {
+         hpModBusEnabled = isTrue;
+      }
    }
 
    // Now check to see if we're logging or not
 
-   if ( (serialLoggingEnabled == isFalse && logToFile == isFalse) || (level == LOGGING_LEVEL::DEBUG && debugLevelEnabled == isFalse)
-                  || (level == LOGGING_LEVEL::TIMING && logTiming == isFalse) )
+   if ( (serialLoggingEnabled == isFalse && logToFile == isFalse)
+                  || (level == LOGGING_LEVEL::DEBUG && debugLevelEnabled == isFalse)
+                  || (level == LOGGING_LEVEL::TIMING && logTiming == isFalse)
+                  || (level == LOGGING_LEVEL::HP_MODBUS && hpModBusEnabled == isFalse) )
    {
       return;
    }
@@ -131,6 +139,10 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    {
       debugString += "TIMING: ";
    }
+   else if ( level == LOGGING_LEVEL::HP_MODBUS )
+   {
+      debugString += "HPMOD: ";
+   }
 
    va_list args;
    va_start( args,format );
@@ -151,6 +163,16 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
          file.println( debugString.c_str() );
          file.close();
      }
+   }
+
+   if ( level == LOGGING_LEVEL::HP_MODBUS )
+   {
+      File file = SD.open( "/hpmodbus.log",FILE_APPEND );
+      if ( file )
+      {
+         file.println( debugString.c_str() );
+         file.close();
+      }
    }
 }
 

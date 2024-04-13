@@ -23,7 +23,7 @@ HeatPumpModule::HeatPumpModule()
    m_sensor.m_isValid = false;
    m_sensor.m_hpSensor.m_name = nullptr;
 
-   // Parse the /sensors.dat file for thermometers
+   // Parse the /sensors.dat file for heat pump
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
    File file = spiffs->open( "/sensors.dat",FILE_READ );
@@ -422,6 +422,9 @@ bool  HeatPumpModule::sampleHP()
    request.numBytes = 6;
    request.slaveAddress = m_sensor.m_slaveAddress;
 
+   uint16_t target,flow,ret,flowRate,outside,dhwTemp,externalPump,compressor;
+
+
    if ( m_sensor.m_numCoils )
    {
       numRequests++;
@@ -434,9 +437,17 @@ bool  HeatPumpModule::sampleHP()
       {
          numSuccessRequests++;
       }
+      else if ( getData( &host,&request,&response ) )
+      {
+         PW_WARN( "Second attempt to get coil" );
+         numSuccessRequests++;
+      }
+      else
+      {
+         PW_ERROR( "Failed to get coil info" );
+      }
    }
 
-   uint16_t compressor;
    if ( m_sensor.m_numDiscretes )
    {
       numRequests++;
@@ -451,11 +462,10 @@ bool  HeatPumpModule::sampleHP()
       if ( getData( &host,&request,&response ) )
       {
          compressor = response.registers[ 3 ];
+         externalPump = response.registers[ 2 ];
          numSuccessRequests++;
       }
    }
-
-   uint16_t target,flow,ret,flowRate,outside;
 
    if ( m_sensor.m_numHolding )
    {
@@ -489,15 +499,16 @@ bool  HeatPumpModule::sampleHP()
 
       if ( getData( &host,&request,&response ) )
       {
-         flow = response.registers[ 3 ];
          ret = response.registers[ 2 ];
+         flow = response.registers[ 3 ];
+         dhwTemp = response.registers[ 5 ];
          flowRate = response.registers[ 8 ];
          outside = response.registers[ 12 ];
          numSuccessRequests++;
       }
    }
 
-   PW_DEBUG( "MEASURE: %u %u %u %u %u %u",compressor,flowRate,ret,flow,outside,target );
+   PW_DEBUG( "MEASURE: %u %u %u %u %u %u %u %u",compressor,externalPump,flowRate,ret,flow,outside,target,dhwTemp );
    return ( numSuccessRequests == numRequests );
 }
 

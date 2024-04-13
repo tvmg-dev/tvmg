@@ -285,7 +285,7 @@ void TemperatureModule::addUDPListener()
                      PrivateSensor *tempSensor = &m_sensors[ i ];
                      if ( tempSensor->m_isValid && tempSensor->m_sensor.m_isRemote && tempSensor->m_sensor.m_id == id )
                      {
-                        PW_DEBUG( "UDP: Assign remote temp ID %d %.1f",id,value );
+                        PW_MSG( "UDP: Assign remote temp ID %d %.1f",id,value );
                         std::lock_guard<std::mutex> lock(tempSensorMutex);
                         tempSensor->m_sensor.m_temp = value;
                      }

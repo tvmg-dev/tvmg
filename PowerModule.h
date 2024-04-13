@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define MAX_POWER_SENSORS  2
+#define MAX_POWER_SENSORS  3
 #define MAX_POWER_NAME     32
 
 #define POWER_INVALID         -1
