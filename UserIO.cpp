@@ -22,7 +22,7 @@ UserIO::UserIO()
         m_networking( nullptr ),
         m_sample(),
         m_firmwareUpdateInProgress( false ),
-        m_startTime()
+        m_startTime(0)
 {
    PW_DEBUG( "UserIO::UserIO()" );
    PW_MSG( "UserIO Module Startup" );
@@ -33,8 +33,6 @@ UserIO::UserIO()
    {
       m_currentLines[ i ][ 0 ] = 0;
    }
-
-   time( &m_startTime );
 }
 
 UserIO::~UserIO()
@@ -141,7 +139,12 @@ void  UserIO::showNetwork()
       }
       else
       {
+         if ( ! m_startTime )
+         {
+            time( &m_startTime );
+         }
          time( &currentTime );
+
          uint32_t secondsDiff = difftime( currentTime,m_startTime );
 
          getLocalTime( &timeInfo );

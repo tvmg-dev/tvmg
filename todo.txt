@@ -358,7 +358,18 @@ New s/w - collect data after 10 minutes, to see emon & loop timing
 Update s/w - increase sampling rate from LG to perhaps 20s
 
 S/W update
-   - button hold/restart
    - HP screen
+
+Saving to SD is costly in terms of performance !
+KiB free 137 -> 87 and back..emoncms sending...
+
+updating - stop udp & emon updates
+email sending - as above
+hp logging - when to delete the file
+stats - Q processing - failed to send to q, failed to send to emon, success
+modbus stats for HP
+
+
+
 
 

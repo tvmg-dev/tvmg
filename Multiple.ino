@@ -1,3 +1,6 @@
+#include <SD.h>
+#include <FS.h>
+
 #include <time.h>
 
 #include "utils.h"
@@ -346,6 +349,12 @@ void setup( void )
    snprintf( initialMsg,128,"Initial boot up completed\nVersion : [%s]\nIP : [%s]\nStarting monitoring...\n\n",VERSION_STR,networking->getIPAddress().c_str()  );
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
+   if ( SD.exists ( "/hpmodbus.log" ) )
+   {
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data","/hpmodbus.log" );
+      SD.remove( "/hpmodbus.log");
+   }
+
 }
 
 // ---------------------------------------------------------------------

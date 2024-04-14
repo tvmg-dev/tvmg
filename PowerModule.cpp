@@ -252,7 +252,7 @@ bool  getHPData()
 
       if ( mbusRes != ModbusMaster::ku8MBSuccess )
       {
-         PW_WARN( "HP-MODBUS: Failed to get 1st coils: %u",mbusRes );
+         PW_HP_MODBUS( "HP-MODBUS: Failed to get 1st coils: %u",mbusRes );
          delay( 50 );
          s_master->clearResponseBuffer();
          mbusRes = s_master->readCoils( 0x0,numRegs );
@@ -262,9 +262,10 @@ bool  getHPData()
       {
          String dbg = "Coils: ";
 
-         for ( int i = 0; i < ( 1 + numRegs / 16 ); i++ )
+         for ( int i = 0; i < numRegs; i++ )
          {
-            uint16_t word = s_master->getResponseBuffer( i );
+            uint8_t  reg = i / 16;
+            uint16_t word = s_master->getResponseBuffer( reg );
             uint8_t  bit = i % 16;
             bool     coil = word & (1 << bit);
 
@@ -277,7 +278,7 @@ bool  getHPData()
                dbg += "OFF ";
             }
          }
-         PW_MSG( dbg.c_str() );
+         PW_HP_MODBUS( dbg.c_str() );
       }
 
       if ( ! mbusRes )
@@ -289,15 +290,16 @@ bool  getHPData()
 
          if ( mbusRes )
          {
-            PW_WARN( "HP-MODBUS: Failed to get discretes: %u",mbusRes );
+            PW_HP_MODBUS( "HP-MODBUS: Failed to get discretes: %u",mbusRes );
          }
          else
          {
             String dbg = "Discretes: ";
 
-            for ( int i = 0; i < ( 1 + numRegs / 16 ); i++ )
+            for ( int i = 0; i < numRegs; i++ )
             {
-               uint16_t word = s_master->getResponseBuffer( i );
+               uint8_t  reg = i / 16;
+               uint16_t word = s_master->getResponseBuffer( reg );
                uint8_t  bit = i % 16;
                bool     coil = word & (1 << bit);
 
@@ -310,7 +312,7 @@ bool  getHPData()
                   dbg += "OFF ";
                }
             }
-            PW_MSG( dbg.c_str() );
+            PW_HP_MODBUS( dbg.c_str() );
          }
       }
 
@@ -323,7 +325,7 @@ bool  getHPData()
 
          if ( mbusRes )
          {
-            PW_WARN( "HP-MODBUS: Failed to get holding: %u",mbusRes );
+            PW_HP_MODBUS( "HP-MODBUS: Failed to get holding: %u",mbusRes );
          }
          else
          {
@@ -334,7 +336,7 @@ bool  getHPData()
                dbg += String( s_master->getResponseBuffer( i ),DEC );
                dbg += " ";
             }
-            PW_MSG( dbg.c_str() );
+            PW_HP_MODBUS( dbg.c_str() );
          }
       }
 
@@ -347,7 +349,7 @@ bool  getHPData()
 
          if ( mbusRes )
          {
-            PW_WARN( "HP-MODBUS: Failed to get inputs: %u",mbusRes );
+            PW_HP_MODBUS( "HP-MODBUS: Failed to get inputs: %u",mbusRes );
          }
          else
          {
@@ -358,7 +360,7 @@ bool  getHPData()
                dbg += String( s_master->getResponseBuffer( i ),DEC );
                dbg += " ";
             }
-            PW_MSG( dbg.c_str() );
+            PW_HP_MODBUS( dbg.c_str() );
          }
       }
    }

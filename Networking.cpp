@@ -100,7 +100,7 @@ void  backgroundThread( void *params )
             snprintf( buff,128,"Processed Q for [%u], %.2f",data->emonFeedId,data->value );
             START_TIMING( buff );
 
-            PW_MSG( "Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
+            PW_MSG( "EMONCMS:Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
 
             if ( sendData )
             {
@@ -117,7 +117,7 @@ void  backgroundThread( void *params )
          }
          else
          {
-            PW_DEBUG( "Nothing received from Q (cpu%u)",xPortGetCoreID() );
+            PW_DEBUG( "EMONCMS:Nothing received from Q (cpu%u)",xPortGetCoreID() );
          }
       }
       else
@@ -130,15 +130,17 @@ void  backgroundThread( void *params )
 
 void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 {
-   bool        retOk = false;
    char        url[ 256 ];
    time_t      utc;
    HTTPClient  https;
+static uint32_t requests=0,fails=0;
 
    time( &utc );
 
    snprintf( url,256,"https://emoncms.org/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,emoncmsApiKey );
 
+   requests++;
+   fails++;
    PW_DEBUG( "EMONCMS: Send %s",url );
 
    if ( ! https.begin( *s_emoncmsClient, url ) )
@@ -147,6 +149,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    }
    else
    {
+      PW_DEBUG( "EMONCMS:connected ok.." );
       // start connection and send HTTP header
       int httpCode = https.GET();
 
@@ -158,14 +161,18 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
       else if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
       {
          // HTTP header has been sent and Server response header has been handled
-         retOk = true;
-
+         fails--;
          String payload = https.getString();
          PW_DEBUG( "EMONCMS: Response %s",payload.c_str() );
+      }
+      else
+      {
+         PW_DEBUG( "EMONCMS:Unknown state" );
       }
 
       https.end();
    }
+PW_DEBUG( "EMONCMS:At end of send : %u %u",requests,fails );
 }
 
 class Emailer
@@ -241,7 +248,11 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
 
 bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
 {
-   PW_MSG( "Sending to %s [%s]",recipient,subject );
+   char buff[ 256 ];
+   snprintf( buff,256,"Sending to %s [%s]",recipient,subject );
+
+   START_TIMING( buff );
+
    if ( fileName )
    {
       PW_MSG( "  attachment %s",fileName );
@@ -294,6 +305,8 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
 
       return resp.status;
    }
+
+   END_TIMING;
 
    return false;
 }
@@ -456,7 +469,7 @@ void Networking::initialise()
       xTaskCreatePinnedToCore(
          backgroundThread,    // thread fn
          "EmonCMS-Task",      // Name of the task
-         4096,               // Stack size in words
+         10000,               // Stack size in words
          NULL,                // no input params
          0,                   // Priority
          &backgroundHandle,   // handle
@@ -569,11 +582,11 @@ void Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
    if ( dataQueue )
    {
-      PW_DEBUG( "Sending to Q (cpu%u) - %u %.1f",xPortGetCoreID(),data->emonFeedId,data->value );
+      PW_DEBUG( "EMONCMS:Sending to Q (cpu%u) - %u %.1f",xPortGetCoreID(),data->emonFeedId,data->value );
 
       if ( xQueueSend( dataQueue,(void *) &data,0 ) != pdTRUE )
       {
-         PW_WARN( "Q full - failed to send" );
+         PW_WARN( "EMONCMS:Q full - failed to send" );
          delete data;
       }
    }
