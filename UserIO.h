@@ -34,6 +34,7 @@ public:
    void  clear();
    void  showNext();
    void  show( ScreenType type );
+   void  refresh();
    void  update();
    void  setFirmwareUpdateInProgress( bool inProgress );
    bool  isFirmwareUpdateInProgress();

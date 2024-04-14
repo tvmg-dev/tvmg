@@ -340,6 +340,10 @@ void  UserIO::showNext()
 
    show( m_currentScreen );
 }
+void  UserIO::refresh()
+{
+   show( m_currentScreen );
+}
 
 void  UserIO::update()
 {

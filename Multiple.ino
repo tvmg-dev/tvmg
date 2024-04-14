@@ -12,7 +12,7 @@
 #include "Networking.h"
 #include "WebServer.h"
 
-// ----------------------------------------------------------------------
+// ---------------------------------------------------------------------
 
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
@@ -22,6 +22,10 @@ UserIO            *userIO = nullptr;
 Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
+
+// ---------------------------------------------------------------------
+// Reboot handling code, if we have 3 reboots then we consider WiFi has
+// failed and drop to AP mode which will remain active until reboot.
 
 #define REBOOT_COUNTER_FILE      "/failedreboot.dat"
 #define MAX_FAILED_WIFI_ATTEMPTS 3
@@ -103,35 +107,34 @@ void newConfiguration( void )
    }
 }
 
+// ---------------------------------------------------------------------
+// Handle button presses
+// button 1 is for debug emails, button 2 is for toggling OLED cycling
+// or refreshing current display
 
-// Initially testingBtnLower which triggers when < threshold, i.e. 'key down'
-// When we receive that then need to get next event when it goes above the
-// threshold which we use to set button pressed.
-
-int threshold = 40;
-bool testingBtnLower = true;
+int  threshold = 40;
 bool wasButton1Pressed = false;
 bool wasButton2Pressed = false;
+bool userIOHoldScreen = false;   // if true then don't cycle screens
 
-void gotTouchEvent()
+void gotTouch1Event()
 {
-  if ( !testingBtnLower )
-  {
-     wasButton1Pressed = true;
-  }
+  wasButton1Pressed = true;
+}
 
-  touchInterruptSetThresholdDirection( !testingBtnLower );
-  testingBtnLower = !testingBtnLower;
+void gotTouch2Event()
+{
+  wasButton2Pressed = true;
 }
 
 void  handleTouch1()
 {
    PW_MSG( "Button-1 was pressed" );
 
-   userIO->clear();
-   userIO->updateLine( 1, "BT pressed" );
-
    wasButton1Pressed = false;
+
+   userIO->clear();
+   userIO->updateLine( 1, "BT-1 pressed" );
 
    String   msgString;
    char     message[ 128 ];
@@ -177,6 +180,24 @@ void  handleTouch1()
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log","/debug.log" );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data","/hpmodbus.log" );
 }
+
+void  handleTouch2()
+{
+   PW_MSG( "Button-2 was pressed" );
+
+   wasButton2Pressed = false;
+   if ( userIOHoldScreen )
+   {
+      userIOHoldScreen = false;
+   }
+   else
+   {
+      userIOHoldScreen = true;
+   }
+}
+
+// ---------------------------------------------------------------------
+// Create/initialise all modules prior to main loop
 
 void setup( void )
 {
@@ -315,8 +336,8 @@ void setup( void )
    // intialise touch
    // Touch ISR will be activated when reading is lower than the threshold
 
-   touchAttachInterrupt( hwConfig->TouchButton1,gotTouchEvent,threshold );
-   touchInterruptSetThresholdDirection( testingBtnLower );
+   touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,threshold );
+   touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,threshold );
 
    char subject[ 128 ];
    char initialMsg[ 128 ];
@@ -327,9 +348,10 @@ void setup( void )
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
 }
 
-#define LOOP_PERIOD_MS  5000
+// ---------------------------------------------------------------------
+// Loop
 
-bool  simulatedBtn1Press = false;
+#define LOOP_PERIOD_MS  5000
 
 extern bool getHPData();
 uint32_t hpSamples = 0;
@@ -349,26 +371,18 @@ void loop(void)
 
    if ( !userIO->isFirmwareUpdateInProgress() )
    {
-      // was button 1 pressed, or we may simulate it
+      // process button presses
 
-      simulatedBtn1Press = false;
-      if ( loops == 5 )
-      {
-         if ( GET_REGISTRY_INT( BTN_PRESS_ON_LOOP40 ) == 1 )
-         {
-            simulatedBtn1Press = true;
-         }
-         loops = 0;
-      }
-      else if ( loops > 0 )
-      {
-         loops++;
-      }
-
-      if ( wasButton1Pressed || simulatedBtn1Press )
+      if ( wasButton1Pressed )
       {
          START_TIMING( "Handle Touch1" );
          handleTouch1();
+         END_TIMING;
+      }
+      else if ( wasButton2Pressed )
+      {
+         START_TIMING( "Handle Touch2" );
+         handleTouch2();
          END_TIMING;
       }
 
@@ -380,11 +394,18 @@ void loop(void)
       userIO->update();
       END_TIMING;
 
-      START_TIMING( "UserIO ShowNext" );
-      userIO->showNext();
+      START_TIMING( "UserIO Show Screen" );
+      if ( userIOHoldScreen )
+      {
+         userIO->refresh();
+      }
+      else
+      {
+         userIO->showNext();
+      }
       END_TIMING;
 
-      if ( GET_REGISTRY_INT( LG_MODBUS ) == 1 && (targetMillis - lastHpMillis) > 40000  )
+      if ( GET_REGISTRY_INT( LG_MODBUS ) == 1 && (targetMillis - lastHpMillis) > 20000  )
       {
          START_TIMING( "LG Modbus" );
          hpSamples++;
