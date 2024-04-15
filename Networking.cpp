@@ -66,9 +66,14 @@ const char* emoncmsCertificate = \
 const char *emoncmsApiKey = "***REMOVED***";
 
 static WiFiClientSecure *s_emoncmsClient = nullptr;
+static HTTPClient       *s_webClient = nullptr;
+
+#define  KEEP_ALIVE_MS     6000
+
+static uint32_t emonSendRequests = 0,emonQFailures = 0, emonSendFailures = 0;
 
 // Example feed data insertion -
-// https://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
+// s_webClient://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
 
 struct   EmonData {
    uint32_t emonFeedId;
@@ -100,7 +105,7 @@ void  backgroundThread( void *params )
             snprintf( buff,128,"EMONCMS: Processed Q for [%u], %.2f",data->emonFeedId,data->value );
             START_TIMING( buff );
 
-            PW_MSG( "EMONCMS: Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
+            PW_DEBUG( "EMONCMS: Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
 
             if ( sendData )
             {
@@ -108,7 +113,7 @@ void  backgroundThread( void *params )
             }
             else
             {
-               PW_DEBUG( "EMONCMS: Would send to emon [%u], %.2f",data->emonFeedId,data->value );
+               PW_MSG( "EMONCMS: Would send to emon [%u], %.2f",data->emonFeedId,data->value );
                delay( random( 1000,2500 ) );
             }
 
@@ -130,47 +135,75 @@ void  backgroundThread( void *params )
 
 void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 {
-   char        url[ 256 ];
+   static uint32_t   lastSentMillis = 0;
+   char        path[ 128 ];
    time_t      utc;
-   HTTPClient  https;
-static uint32_t requests=0,fails=0;
 
+   // If we've not processed a send request for KEEP_ALIVE_MS then force
+   // the connection to drop. Maybe unecessary but don't want to try and
+   // keep a permanent connection.  Really would like to start a connection
+   // when we do the batch update and then close it, but we don't have an
+   // API to handle that yet (and it would need to be thread safe).
+
+   if ( millis() - lastSentMillis > KEEP_ALIVE_MS && s_webClient )
+   {
+      PW_DEBUG( "EMONCMS: Closing connection (%u ms elapsed)",millis() - lastSentMillis );
+      s_webClient->end();
+      delete s_webClient;
+      s_webClient = nullptr;
+
+      // take this opportunity to show some stats
+      PW_MSG( "EMONCMS: Sent %u, failed [Q,E] [%u,%u]",emonSendRequests,emonQFailures,emonSendFailures );
+   }
+
+   // Create a new HTTPClient if we need to, and we try to connect to the
+   // emon host, but no GET request yet
+
+   if ( !s_webClient )
+   {
+      s_webClient = new HTTPClient();
+      s_webClient->setReuse( true );
+
+      if ( ! s_webClient->begin( *s_emoncmsClient,"https://emoncms.org" ) )
+      {
+         PW_ERROR( "EMONCMS: Can't start HTTPClient" );
+         delete s_webClient;
+         s_webClient = nullptr;
+         emonSendFailures++;
+         return;
+      }
+   }
+
+   // Form our path for the GET request based on the feed Id
    time( &utc );
 
-   snprintf( url,256,"https://emoncms.org/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,emoncmsApiKey );
+   snprintf( path,128,"/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,emoncmsApiKey );
 
-   requests++;
-   fails++;
-   PW_DEBUG( "EMONCMS: Send %s",url );
+   PW_MSG( "EMONCMS: Send %s",path );
 
-   if ( ! https.begin( *s_emoncmsClient, url ) )
+   // Send the GET request - which will force a connect if necessary
+
+   s_webClient->setURL( path );
+   int httpCode = s_webClient->GET();
+
+   // Check success from HTTP perspective, then check success from emon REST perspective
+
+   if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
    {
-      PW_ERROR( "EMONCMS: failed to connect" );
+      String payload = s_webClient->getString();
+      if ( strstr( payload.c_str(),"false" ) )
+      {
+         PW_ERROR( "EMONCMS: emon failure [%s]",payload.c_str() );
+         emonSendFailures++;
+      }
    }
    else
    {
-      // start connection and send HTTP header
-      int httpCode = https.GET();
-
-      // httpCode will be negative on error
-      if (httpCode < 0)
-      {
-         PW_ERROR( "EMONCMS: GET failed [%s]",https.errorToString(httpCode).c_str() );
-      }
-      else if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
-      {
-         // HTTP header has been sent and Server response header has been handled
-         fails--;
-         String payload = https.getString();
-         PW_MSG( "EMONCMS: Response OK [%s]",payload.c_str() );
-      }
-      else
-      {
-         PW_ERROR( "EMONCMS:Unknown response %d",httpCode );
-      }
-
-      https.end();
+      emonSendFailures++;
+      PW_ERROR( "EMONCMS: GET failed [%s]",s_webClient->errorToString(httpCode).c_str() );
    }
+
+   lastSentMillis = millis();
 }
 
 class Emailer
@@ -586,6 +619,8 @@ void Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
    // Create a new data item and add to the queue - the background task will delete
    // the data.
 
+   emonSendRequests++;
+
    EmonData *data = new EmonData;
    data->emonFeedId = emonFeedId;
    data->value = value;
@@ -597,10 +632,18 @@ void Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
       if ( xQueueSend( dataQueue,(void *) &data,0 ) != pdTRUE )
       {
          PW_WARN( "EMONCMS:Q full - failed to send" );
+         emonQFailures++;
          delete data;
       }
    }
 }
+void Networking::getEMONStats( uint32_t *sends,uint32_t *qFails, uint32_t *fails )
+{
+   *sends = emonSendRequests;
+   *qFails = emonQFailures;
+   *fails = emonSendFailures;
+}
+
 
 WebServer   *Networking::getWebServer()
 {

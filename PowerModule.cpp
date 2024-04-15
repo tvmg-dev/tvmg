@@ -375,11 +375,7 @@ bool  getHPData()
             delay( 50 );
             mbusRes = s_master->readInputRegisters( i,1 );
 
-            if ( mbusRes )
-            {
-               PW_HP_MODBUS( "Failed to get input: %d %u",i,mbusRes );
-            }
-            else
+            if ( !mbusRes || i % 128 == 0 )
             {
                PW_HP_MODBUS( "Input: %u %u",i,s_master->getResponseBuffer( 0 ) );
                File file = SD.open( "/registers.log",FILE_APPEND );
@@ -390,6 +386,10 @@ bool  getHPData()
                   file.println( a );
                   file.close();
                }
+            }
+            else
+            {
+               PW_HP_MODBUS( "Failed to get input: %d %u",i,mbusRes );
             }
          }
          x += 8;

@@ -278,6 +278,22 @@ void  UserIO::showTemps()
    show( m_currentLines );
 }
 
+void  UserIO::showCommsStatus()
+{
+   char  line[ MAX_OLED_COLUMNS ];
+   uint32_t sends,qFails,fails;
+
+   m_networking->getEMONStats( &sends,&qFails,&fails );
+
+   snprintf( line,MAX_OLED_COLUMNS,"EMON: sent %u",sends );
+   storeLine( 0,line );
+
+   snprintf( line,MAX_OLED_COLUMNS," [QF,EF] %u,%u",qFails,fails );
+   storeLine( 1,line );
+
+   show( m_currentLines );
+}
+
 void  UserIO::show( ScreenType type )
 {
    // clear lines
@@ -299,6 +315,9 @@ void  UserIO::show( ScreenType type )
          break;
       case TEMPERATURES:
          showTemps();
+         break;
+      case COMMS_STATUS:
+         showCommsStatus();
          break;
       default :
          PW_WARN( "Unknown display type" );
@@ -332,6 +351,16 @@ void  UserIO::showNext()
          m_currentScreen = TEMPERATURES;
          break;
       case TEMPERATURES:
+         if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) == 1 )
+         {
+            m_currentScreen = COMMS_STATUS;
+         }
+         else
+         {
+            m_currentScreen = NETWORK_STATUS;
+         }
+         break;
+      case COMMS_STATUS:
          m_currentScreen = NETWORK_STATUS;
          break;
       default:

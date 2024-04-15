@@ -21,6 +21,7 @@ public:
       STORAGE_STATUS,
       ENERGY,
       TEMPERATURES,
+      COMMS_STATUS,
       NONE
    };
 
@@ -46,6 +47,7 @@ private:
    void  showStorage();
    void  showEnergy();
    void  showTemps();
+   void  showCommsStatus();
    TempSensor *findTempSensor( uint8_t id );
    bool  isPowerDataAvailable();
 

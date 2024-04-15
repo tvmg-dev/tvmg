@@ -391,6 +391,82 @@ touch was 10 if touched, 62 if not, use existing threshold
 
 begin/end the http client - keep it open for X seconds at least..
 
+From Saltaire:
+
+Weekend
+
+Either modbusTCP for HP or modbusRTU
+   HP - config, state TCP or RTU
+   (TCP also needs IP address)
+
+modbusRTU - coils/discretes sort out
+
+HP collect all data to file - include power info too & flow, return, outside
+
+TCP - try to find additional registers, power consumption
+
+HP data to write to current daily file
+   compressor
+   dhw temp
+   flow rate
+   flow
+   return
+   target
+   cop (raw)
+   cop (if compressor > X + flow >= return)
+
+To emoncms
+   compressor
+   dhw
+   flow rate
+   cop - processed
+   target (?)
+
+New screen
+   HP data
+   compressor : cop processed
+   outside : target
+   flow : return
+   dhw
+   modbus queries : errors
+
+Overview Screen
+   HP Power : COP : Flow rate
+   Flow : Return : target : DHW
+   Buff Flow : Return
+
+Button press - distinguish button 1 & 2 presses, how ?
+
+Button 2 press - toggle screen updates/hold
+
+Modbus recovery -
+   don't sample for 3 minutes, CH03 error
+   then start sampling again - does HP recover ?
+
+emon uploads - separate thread
+
+Poor Man's flow meter - Keith ?
+
+Loop:
+   sample therms
+   power
+   HP
+   store  ??
+
+
+==
+external pump may be following WP ?  So the run on/off may pulse the
+external pump too.
+
+Is WP/ext active when pre/post run ?
+
+Possibly combine pump active + compressor active to drive relay
+this main pump active signal would AND with a manifold active line
+to drive an individual pump.
+
+
+
+
 
 
 
