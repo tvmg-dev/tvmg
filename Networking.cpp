@@ -97,10 +97,10 @@ void  backgroundThread( void *params )
          if ( xQueueReceive( dataQueue,&data,portTICK_PERIOD_MS * 60000 ) )
          {
             char  buff[ 128 ];
-            snprintf( buff,128,"Processed Q for [%u], %.2f",data->emonFeedId,data->value );
+            snprintf( buff,128,"EMONCMS: Processed Q for [%u], %.2f",data->emonFeedId,data->value );
             START_TIMING( buff );
 
-            PW_MSG( "EMONCMS:Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
+            PW_MSG( "EMONCMS: Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
 
             if ( sendData )
             {
@@ -108,7 +108,7 @@ void  backgroundThread( void *params )
             }
             else
             {
-               PW_DEBUG( "Would send to emon [%u], %.2f",data->emonFeedId,data->value );
+               PW_DEBUG( "EMONCMS: Would send to emon [%u], %.2f",data->emonFeedId,data->value );
                delay( random( 1000,2500 ) );
             }
 
@@ -117,12 +117,12 @@ void  backgroundThread( void *params )
          }
          else
          {
-            PW_DEBUG( "EMONCMS:Nothing received from Q (cpu%u)",xPortGetCoreID() );
+            PW_DEBUG( "EMONCMS: Nothing received from Q (cpu%u)",xPortGetCoreID() );
          }
       }
       else
       {
-         PW_WARN( "Waiting for Q creation" );
+         PW_WARN( "EMONCMS: Waiting for Q creation" );
          delay( 2000 );
       }
    }
@@ -149,7 +149,6 @@ static uint32_t requests=0,fails=0;
    }
    else
    {
-      PW_DEBUG( "EMONCMS:connected ok.." );
       // start connection and send HTTP header
       int httpCode = https.GET();
 
@@ -163,16 +162,15 @@ static uint32_t requests=0,fails=0;
          // HTTP header has been sent and Server response header has been handled
          fails--;
          String payload = https.getString();
-         PW_DEBUG( "EMONCMS: Response %s",payload.c_str() );
+         PW_MSG( "EMONCMS: Response OK [%s]",payload.c_str() );
       }
       else
       {
-         PW_DEBUG( "EMONCMS:Unknown state" );
+         PW_ERROR( "EMONCMS:Unknown response %d",httpCode );
       }
 
       https.end();
    }
-PW_DEBUG( "EMONCMS:At end of send : %u %u",requests,fails );
 }
 
 class Emailer
@@ -296,7 +294,19 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       message.message = msg;
       message.mime = "text/plain";
 
+      PW_MSG( "Suspend emon task" );
+      if ( backgroundHandle != NULL )
+      {
+         vTaskSuspend( backgroundHandle );
+      }
+
       EMailSender::Response resp = m_sender->send( recipient,message,attachments );
+
+      PW_MSG( "Resume emon task" );
+      if ( backgroundHandle != NULL )
+      {
+         vTaskResume( backgroundHandle );
+      }
 
       if ( !resp.status )
       {

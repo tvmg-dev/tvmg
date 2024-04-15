@@ -14,8 +14,6 @@
 
 5. draw out IO board, temp board ?  Design notes & operating instructions
 
-6. option to use 2nd button to toggle between stall & cycle display
-
 7. Decide what to do about daily data files accumulating in flash
 
 
@@ -51,14 +49,6 @@ Label & Calibrate all sensors
 
 
 ====
-
-Energy double display on master ??
-
-==
-UDP - when we create the UDP async. then the listen address becomes
-      the source address for broadcasting.
-
-==
 
 Design (as such)
 loop -
@@ -122,8 +112,7 @@ storgeModule::storeSample
 
 So we loop every 5s, and after 30 seconds we send it & save it.
 
-Maybe we should in the main loop skip taking measurements until 3
-loops ?
+Offload emon to second core
 
 ==========
 
@@ -351,11 +340,6 @@ DEBUG_LEVEL_ENABLED  0
 
 -----
 
-Sunday - collect HP data via btn press
-New s/w - collect data after 10 minutes, to see emon & loop timing
-        - disable timing & log to file
-        - collect data after 10 minutes, should just be HP data
-Update s/w - increase sampling rate from LG to perhaps 20s
 
 S/W update
    - HP screen
@@ -368,6 +352,38 @@ email sending - as above
 hp logging - when to delete the file
 stats - Q processing - failed to send to q, failed to send to emon, success
 modbus stats for HP
+
+Also - on power up detect a button press and if pressed then don't
+initialise too much, to allow a firmware replacement if stuck in a boot
+cycle.
+
+Debbugging:
+
+# client node
+
+# For debug logging etc
+
+DISABLED_SERIAL_LOGGING "0"
+LOG_TO_UDP_PORT "51003"
+DEBUG_LEVEL_ENABLED "1"
+LOG_TIMING "1"
+LOG_TIMESTAMP "1"
+LOG_HP_MODBUS "0"
+LOG_TO_FILE "0"
+SEND_DAILY_DEBUG "0"
+KEEP_DEBUG_LOG "0"
+
+# Functionality
+
+SEND_EMAILS "0"
+UPDATE_EMONCMS "0"
+
+
+On boot we always have serial debugging until told otherwise via
+config processing.  We log to UDP if enabled after networking is up.
+
+On boot we send the modbus log email & start-up
+
 
 
 

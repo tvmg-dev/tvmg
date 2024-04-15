@@ -160,11 +160,9 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
       return;
    }
 
-   // If we're a tboard then are we configured to store to SPIFFS, if not
-   // then exit
+   // If we're a tboard then exit
 
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD &&
-                  GET_REGISTRY_INT( USE_SPIFFS_AS_STORAGE ) != 1 )
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
    {
       return;
    }
@@ -179,28 +177,12 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 
    // If the filename is new, then we send out the existing file.
 
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+   if ( ! SD.exists( fileName ) )
    {
-      if ( ! Config::instance()->getSPIFFS()->exists( fileName ) )
+      isNewFile = true;
+      if ( SD.exists( m_currentFileName ) )
       {
-         PW_MSG( "Tboard - file %s doesn't exist",fileName );
-         isNewFile = true;
-         if ( Config::instance()->getSPIFFS()->exists( m_currentFileName ) )
-         {
-            PW_MSG( "Tboard - existing file %s exist",m_currentFileName );
-            currentFileExists = true;
-         }
-      }
-   }
-   else
-   {
-      if ( ! SD.exists( fileName ) )
-      {
-         isNewFile = true;
-         if ( SD.exists( m_currentFileName ) )
-         {
-            currentFileExists = true;
-         }
+         currentFileExists = true;
       }
    }
 
@@ -208,7 +190,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
    {
       PW_MSG( "Will be creating %s",fileName );
 
-      // As this is a new file, let's send previous file onwards - maybe hosted from SPIFFS
+      // As this is a new file, let's send previous file onwards
 
       if ( m_networking && strlen( m_currentFileName ) && currentFileExists )
       {
@@ -216,21 +198,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 
          snprintf( subject,128,"HP Monitoring : %s - Daily Readings",m_networking->getLocalMDNSName().c_str() );
 
-         if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
-         {
-            m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName,true );
-         }
-         else
-         {
-            m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName,false );
-         }
-
-         // Now remove the file if a t-board (SPIFFS)
-
-         if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
-         {
-            Config::instance()->getSPIFFS()->remove( m_currentFileName );
-         }
+         m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName,false );
 
          if ( GET_REGISTRY_INT( SEND_DAILY_DEBUG ) == 1 && SD.exists( "/debug.log" ) )
          {
@@ -254,15 +222,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
       strcpy( m_currentFileName,fileName );
    }
 
-   File  file;
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
-   {
-      file = Config::instance()->getSPIFFS()->open( fileName,FILE_APPEND );
-   }
-   else
-   {
-      file = SD.open( fileName,FILE_APPEND );
-   }
+   File  file = SD.open( fileName,FILE_APPEND );
 
    if( !file )
    {

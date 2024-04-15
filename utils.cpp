@@ -1,10 +1,14 @@
 #include <time.h>
+#include <WiFi.h>
+#include <AsyncUDP.h>
 
 #include <SD.h>
 #include <FS.h>
 
 #include "utils.h"
 #include "Config.h"
+
+#include "Networking.h"
 
 static char buffer[ 4096 ];
 
@@ -15,6 +19,7 @@ static bool *isTrue = &isTrueVal;
 static bool *isFalse = &isFalseVal;
 
 static bool *serialLoggingEnabled = nullptr;
+static bool *logToUDP = nullptr;
 static bool *debugLevelEnabled = nullptr;
 static bool *hpModBusEnabled = nullptr;
 static bool *logTimestamps = nullptr;
@@ -22,6 +27,9 @@ static bool *logToFile = nullptr;
 static bool *logTiming = nullptr;
 
 static bool logFileOk = true;
+
+static IPAddress   subNet;
+static uint16_t    UDPDebugPort = 0;
 
 bool  isDebugEnabled()
 {
@@ -46,6 +54,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       logTimestamps = isFalse;
       logToFile = isFalse;
       logTiming = isFalse;
+      logToUDP = isFalse;
 
       if ( GET_REGISTRY_INT( DISABLED_SERIAL_LOGGING ) != 1 )
       {
@@ -81,13 +90,26 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
       if ( GET_REGISTRY_INT( LOG_HP_MODBUS ) == 1 )
       {
-         hpModBusEnabled = isTrue;
+         if( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+         {
+            Serial.println( "Can't debug log HP modbus to file on TBoards" );
+         }
+         else
+         {
+            hpModBusEnabled = isTrue;
+         }
+      }
+
+      if ( GET_REGISTRY_INT( LOG_TO_UDP_PORT ) > 0 )
+      {
+         logToUDP = isTrue;
+         UDPDebugPort = GET_REGISTRY_INT( LOG_TO_UDP_PORT );
       }
    }
 
    // Now check to see if we're logging or not
 
-   if ( (serialLoggingEnabled == isFalse && logToFile == isFalse)
+   if ( (serialLoggingEnabled == isFalse && logToFile == isFalse && logToUDP == isFalse )
                   || (level == LOGGING_LEVEL::DEBUG && debugLevelEnabled == isFalse)
                   || (level == LOGGING_LEVEL::TIMING && logTiming == isFalse)
                   || (level == LOGGING_LEVEL::HP_MODBUS && hpModBusEnabled == isFalse) )
@@ -150,9 +172,20 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    debugString += buffer;
    va_end( args );
 
-   if ( serialLoggingEnabled != isFalse )
+   if ( serialLoggingEnabled == isTrue )
    {
       Serial.println( debugString.c_str() );
+   }
+
+   if ( logToUDP == isTrue && UDPDebugPort && Networking::getUDP() )
+   {
+      if ( subNet[ 3 ] == 0 )
+      {
+         subNet = WiFi.localIP();
+         subNet[ 3 ] = 255;
+      }
+
+      (void) Networking::getUDP()->writeTo( (const uint8_t *) debugString.c_str(),strlen(debugString.c_str()),subNet,UDPDebugPort );
    }
 
    if ( logToFile == isTrue )

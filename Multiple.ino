@@ -304,6 +304,14 @@ void setup( void )
 
    networking->getWebServer()->setUserIO( userIO );
 
+   // did we boot with button down pressed ?
+
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   {
+      touch_value_t  touchVal = touchRead( hwConfig->TouchButton1 );
+      PW_MSG( "Touch value : %u",touchVal );
+   }
+
    // Instantiate the temperature collecting module
 
    tempModule = new TemperatureModule;
@@ -328,7 +336,7 @@ void setup( void )
 
    storageModule->setNetworking( networking );
 
-   delay( 5000 );
+   delay( 2000 );
 
    // Can now initialise the measurement module
 

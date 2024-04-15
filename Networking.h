@@ -40,12 +40,13 @@ public:
    bool  startMDNS();
    bool  acquireNTP();
    WebServer   *getWebServer();
-static   AsyncUDP    *getUDP();
+
+   static   AsyncUDP    *getUDP();
 
 private:
    Emailer           *m_emailer;
    WebServer         *m_webServer;
-static    AsyncUDP   *s_udp;
+   static    AsyncUDP   *s_udp;
 
    Status  m_status;
 };
