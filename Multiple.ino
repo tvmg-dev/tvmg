@@ -309,8 +309,12 @@ void setup( void )
    if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
    {
       touch_value_t  touchVal = touchRead( hwConfig->TouchButton1 );
-      PW_MSG( "Touch value : %u",touchVal );
-   }
+      if ( touchVal < threshold )
+      {
+         userIO->updateLine( 4,"Touch on boot",false );
+         delay( 5000 );
+      }
+  }
 
    // Instantiate the temperature collecting module
 
@@ -357,12 +361,13 @@ void setup( void )
    snprintf( initialMsg,128,"Initial boot up completed\nVersion : [%s]\nIP : [%s]\nStarting monitoring...\n\n",VERSION_STR,networking->getIPAddress().c_str()  );
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
-   if ( SD.exists ( "/hpmodbus.log" ) )
+#if 1
+   if ( SD.exists ( "/registers.log" ) )
    {
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data","/hpmodbus.log" );
-      SD.remove( "/hpmodbus.log");
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus regs","/registers.log" );
+      //SD.remove( "/hpmodbus.log");
    }
-
+#endif
 }
 
 // ---------------------------------------------------------------------

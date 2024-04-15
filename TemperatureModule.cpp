@@ -245,7 +245,7 @@ TempSensor  *TemperatureModule::readNextSensor( uint8_t index )
 {
    if ( index < m_numLocalSensors + m_numRemoteSensors )
    {
-      if ( millis() - m_millisLastAquisition > TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
+      if ( millis() - m_millisLastAquisition > TEMPERATURE_MIN_SAMPLING_PERIOD_MS && !index )
       {
          getTemperatures();
          m_millisLastAquisition = millis();

@@ -1,5 +1,7 @@
 #include <cJSON.h>
 
+#include <SD.h>
+
 #include "PowerModule.h"
 
 #include "hwconfig.h"
@@ -252,7 +254,7 @@ bool  getHPData()
 
       if ( mbusRes != ModbusMaster::ku8MBSuccess )
       {
-         PW_HP_MODBUS( "HP-MODBUS: Failed to get 1st coils: %u",mbusRes );
+         PW_HP_MODBUS( "Failed to get 1st coils: %u",mbusRes );
          delay( 50 );
          s_master->clearResponseBuffer();
          mbusRes = s_master->readCoils( 0x0,numRegs );
@@ -290,7 +292,7 @@ bool  getHPData()
 
          if ( mbusRes )
          {
-            PW_HP_MODBUS( "HP-MODBUS: Failed to get discretes: %u",mbusRes );
+            PW_HP_MODBUS( "Failed to get discretes: %u",mbusRes );
          }
          else
          {
@@ -325,7 +327,7 @@ bool  getHPData()
 
          if ( mbusRes )
          {
-            PW_HP_MODBUS( "HP-MODBUS: Failed to get holding: %u",mbusRes );
+            PW_HP_MODBUS( "Failed to get holding: %u",mbusRes );
          }
          else
          {
@@ -349,7 +351,7 @@ bool  getHPData()
 
          if ( mbusRes )
          {
-            PW_HP_MODBUS( "HP-MODBUS: Failed to get inputs: %u",mbusRes );
+            PW_HP_MODBUS( "Failed to get inputs: %u",mbusRes );
          }
          else
          {
@@ -363,7 +365,38 @@ bool  getHPData()
             PW_HP_MODBUS( dbg.c_str() );
          }
       }
+
+#if 1
+      {
+         static uint16_t x = 24;
+         for ( int i = x; i < x+8; i++ )
+         {
+            s_master->clearResponseBuffer();
+            delay( 50 );
+            mbusRes = s_master->readInputRegisters( i,1 );
+
+            if ( mbusRes )
+            {
+               PW_HP_MODBUS( "Failed to get input: %d %u",i,mbusRes );
+            }
+            else
+            {
+               PW_HP_MODBUS( "Input: %u %u",i,s_master->getResponseBuffer( 0 ) );
+               File file = SD.open( "/registers.log",FILE_APPEND );
+               if ( file )
+               {
+                  char a[ 40 ];
+                  sprintf( a,"%u %u",i,s_master->getResponseBuffer( 0 ) );
+                  file.println( a );
+                  file.close();
+               }
+            }
+         }
+         x += 8;
+      }
+#endif
    }
+
 
    return (mbusRes == ModbusMaster::ku8MBSuccess);
 }

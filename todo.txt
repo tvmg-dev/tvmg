@@ -384,6 +384,13 @@ config processing.  We log to UDP if enabled after networking is up.
 
 On boot we send the modbus log email & start-up
 
+touch was 10 if touched, 62 if not, use existing threshold
+
+# modbus reg - up to reg 24 (25 from 1) ok, failed to 48
+# no, 14 & 15 not read
+
+begin/end the http client - keep it open for X seconds at least..
+
 
 
 
