@@ -240,9 +240,22 @@ bool PowerModule::getPower( uint8_t index )
 
 // temporary get HP data
 
+float_t  power,flowRate,dhw,compressor;
+
+void  getHPValues( float_t *pow,float_t *frate, float_t *dhwTemp, float_t *comp )
+{
+   *pow = power;
+   *frate = flowRate;
+   *dhwTemp = dhw;
+   *comp = compressor;
+}
+
 bool  getHPData()
 {
    uint8_t mbusRes = 1;
+
+   dhw = -1.0f;
+
    if ( s_master )
    {
       s_master->setSlaveId( 32 );
@@ -363,6 +376,45 @@ bool  getHPData()
                dbg += " ";
             }
             PW_HP_MODBUS( dbg.c_str() );
+
+            dhw = s_master->getResponseBuffer( 5 ) * 0.1f;
+            flowRate = s_master->getResponseBuffer( 8 ) * 0.1f;
+            power = (s_master->getResponseBuffer( 3 ) - s_master->getResponseBuffer( 2 )) * 0.1f * 3.9f * flowRate / 60.0f;
+            power *= 1000.0f;
+            if ( power > 12500 )
+            {
+               power = 12500;
+            }
+         }
+      }
+
+      if ( ! mbusRes )
+      {
+         numRegs = 9;
+         delay( 50 );
+         s_master->clearResponseBuffer();
+         mbusRes = s_master->readInputRegisters( 16,numRegs );
+
+         if ( mbusRes )
+         {
+            PW_HP_MODBUS( "Failed to get inputs2: %u",mbusRes );
+         }
+         else
+         {
+            String dbg = "Inputs2: ";
+
+            for ( int i = 0; i < numRegs; i++ )
+            {
+               dbg += String( s_master->getResponseBuffer( i ),DEC );
+               dbg += " ";
+            }
+            PW_HP_MODBUS( dbg.c_str() );
+
+            compressor = s_master->getResponseBuffer( 8 );
+            if ( compressor < 10 )
+            {
+               power = 0.0f;
+            }
          }
       }
 

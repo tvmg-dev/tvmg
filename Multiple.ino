@@ -375,7 +375,9 @@ void setup( void )
 
 #define LOOP_PERIOD_MS  5000
 
+extern void getHPValues( float_t *pow,float_t *frate, float_t *dhwtemp, float_t *comp );
 extern bool getHPData();
+
 uint32_t hpSamples = 0;
 uint32_t hpErrors = 0;
 
@@ -427,7 +429,7 @@ void loop(void)
       }
       END_TIMING;
 
-      if ( GET_REGISTRY_INT( LG_MODBUS ) == 1 && (targetMillis - lastHpMillis) > 20000  )
+      if ( GET_REGISTRY_INT( LG_MODBUS ) == 1 && (targetMillis - lastHpMillis) > 25000  )
       {
          START_TIMING( "LG Modbus" );
          hpSamples++;
@@ -439,9 +441,28 @@ void loop(void)
 
          char buff[ 64 ];
          sprintf( buff,"t: %u - e: %u",hpSamples,hpErrors );
-
          userIO->updateLine( 5,buff );
          lastHpMillis = targetMillis;
+
+         {
+            float_t  power,flowRate,dhw,compressor;
+            uint32_t powerId = 500002;
+            uint32_t dhwId = 500003;
+            uint32_t flowRateId = 500004;
+            uint32_t compressorId = 500005;
+
+            getHPValues( &power,&flowRate,&dhw,&compressor );
+
+            PW_MSG( "power %.1f, flow %.1f, dhw %.1f, compressor %.0f",power,flowRate,dhw,compressor );
+
+            if ( dhw > 0.5 )
+            {
+               networking->sendToEmonCMS( powerId,power );
+               networking->sendToEmonCMS( dhwId,dhw );
+               networking->sendToEmonCMS( flowRateId,flowRate );
+               networking->sendToEmonCMS( compressorId,compressor );
+            }
+         }
       }
    }
 
