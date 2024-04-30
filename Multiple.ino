@@ -365,8 +365,14 @@ void setup( void )
    if ( SD.exists ( "/registers.log" ) )
    {
       networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus regs","/registers.log" );
-      //SD.remove( "/hpmodbus.log");
+      SD.remove( "/registers.log");
    }
+   if ( SD.exists ( "/hpmodbus.log" ) )
+   {
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Logs","/hpmodbus.log" );
+      SD.remove( "/hpmodbus.log");
+   }
+
 #endif
 }
 

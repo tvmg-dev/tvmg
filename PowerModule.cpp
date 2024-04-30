@@ -333,7 +333,7 @@ bool  getHPData()
 
       if ( ! mbusRes )
       {
-         numRegs = 6;
+         numRegs = 23;
          delay( 50 );
          s_master->clearResponseBuffer();
          mbusRes = s_master->readHoldingRegisters( 0x0,numRegs );
@@ -420,31 +420,35 @@ bool  getHPData()
 
 #if 1
       {
-         static uint16_t x = 24;
-         for ( int i = x; i < x+8; i++ )
+         if ( GET_REGISTRY_INT( LG_MODBUS_START_REG) > 0 )
          {
-            s_master->clearResponseBuffer();
-            delay( 50 );
-            mbusRes = s_master->readInputRegisters( i,1 );
-
-            if ( !mbusRes || i % 128 == 0 )
+            static uint16_t x = GET_REGISTRY_INT( LG_MODBUS_START_REG);
+            for ( int i = x; i < x+8; i++ )
             {
-               PW_HP_MODBUS( "Input: %u %u",i,s_master->getResponseBuffer( 0 ) );
-               File file = SD.open( "/registers.log",FILE_APPEND );
-               if ( file )
+               s_master->clearResponseBuffer();
+               delay( 50 );
+               mbusRes = s_master->readInputRegisters( i,1 );
+
+               if ( !mbusRes || i % 128 == 0 )
                {
-                  char a[ 40 ];
-                  sprintf( a,"%u %u",i,s_master->getResponseBuffer( 0 ) );
-                  file.println( a );
-                  file.close();
+                  PW_HP_MODBUS( "IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
+                  PW_HP_MODBUS( "IR: %u %u",i,s_master->getResponseBuffer( 0 ) );
+                  File file = SD.open( "/registers.log",FILE_APPEND );
+                  if ( file )
+                  {
+                     char a[ 40 ];
+                     sprintf( a,"IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
+                     file.println( a );
+                     file.close();
+                  }
+               }
+               else if ( i % 128 != 0 )
+               {
+                  PW_ERROR( "!input: %d %u",i,mbusRes );
                }
             }
-            else
-            {
-               PW_HP_MODBUS( "Failed to get input: %d %u",i,mbusRes );
-            }
+            x += 8;
          }
-         x += 8;
       }
 #endif
    }
