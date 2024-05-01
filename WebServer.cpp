@@ -300,7 +300,7 @@ void WebServer::setupAsyncServer()
          {
             m_userIO->setFirmwareUpdateInProgress( true );
             m_userIO->clear();
-            m_userIO->updateLine( 0,"Updating..." );
+            m_userIO->updateLine( 5,"Updating..." );
 
             char line[ 128 ];
             snprintf( line,MAX_OLED_COLUMNS," %s",filename.c_str() );
@@ -335,7 +335,7 @@ void WebServer::setupAsyncServer()
             line[ 0 ] = progress[ i++ % 4 ];
             line[ 1 ] = 0;
 
-            m_userIO->updateLine( 3,line,false );
+            m_userIO->updateLine( 5,line,false );
          }
 
          if(Update.write(data, len) != len)
@@ -350,7 +350,7 @@ void WebServer::setupAsyncServer()
          {
             if ( m_userIO )
             {
-               m_userIO->updateLine( 3,"Completed Ok" );
+               m_userIO->updateLine( 5,"Completed Ok" );
             }
 
             PW_MSG( "Finished update");

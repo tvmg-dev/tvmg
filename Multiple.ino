@@ -115,7 +115,7 @@ void newConfiguration( void )
 // button 1 is for debug emails, button 2 is for toggling OLED cycling
 // or refreshing current display
 
-int  threshold = 40;
+int  touchThreshold = 40;
 bool wasButton1Pressed = false;
 bool wasButton2Pressed = false;
 bool userIOHoldScreen = false;   // if true then don't cycle screens
@@ -270,7 +270,6 @@ void setup( void )
       clearFailedRebootCount();
    }
 
-
    // Instantiate the storage module, and initialise it.  If the SD card
    // is not operational the storage module will not save data but at least
    // the system will continue to operate.
@@ -309,10 +308,14 @@ void setup( void )
    if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
    {
       touch_value_t  touchVal = touchRead( hwConfig->TouchButton1 );
-      if ( touchVal < threshold )
+      if ( touchVal < touchThreshold )
       {
-         userIO->updateLine( 4,"Touch on boot",false );
-         delay( 5000 );
+         while( 1 )
+         {
+            userIO->show( UserIO::NETWORK_STATUS );
+            userIO->updateLine( 3,"  !! BOOT HOLD !!",false );
+            delay( 5000 );
+         }
       }
   }
 
@@ -349,10 +352,12 @@ void setup( void )
    measurement->initialise();
 
    // intialise touch
-   // Touch ISR will be activated when reading is lower than the threshold
+   // Touch ISR will be activated when reading is lower than the touchThreshold
 
-   touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,threshold );
-   touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,threshold );
+   touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,touchThreshold );
+   touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,touchThreshold );
+
+   // Send emails
 
    char subject[ 128 ];
    char initialMsg[ 128 ];
@@ -361,19 +366,22 @@ void setup( void )
    snprintf( initialMsg,128,"Initial boot up completed\nVersion : [%s]\nIP : [%s]\nStarting monitoring...\n\n",VERSION_STR,networking->getIPAddress().c_str()  );
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
-#if 1
+
    if ( SD.exists ( "/registers.log" ) )
    {
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus regs","/registers.log" );
-      SD.remove( "/registers.log");
-   }
-   if ( SD.exists ( "/hpmodbus.log" ) )
-   {
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Logs","/hpmodbus.log" );
-      SD.remove( "/hpmodbus.log");
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus regs","/registers.log" ) )
+      {
+         SD.remove( "/registers.log");
+      }
    }
 
-#endif
+   if ( SD.exists ( "/hpmodbus.log" ) )
+   {
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Logs","/hpmodbus.log" ) )
+      {
+         SD.remove( "/hpmodbus.log");
+      }
+   }
 }
 
 // ---------------------------------------------------------------------

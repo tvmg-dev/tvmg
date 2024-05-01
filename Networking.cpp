@@ -2,6 +2,8 @@
 #include <ESPmDNS.h>
 #include <EMailSender.h>
 
+#include <mutex>
+
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
@@ -17,6 +19,8 @@
 extern UserIO  *userIO;
 
 const char* ntpServer = "pool.ntp.org";
+
+std::mutex  networkingMutex;
 
 // emoncms.org certificate is signed by 'ZeroSSL RSA Domain Secure Site CA'
 // (in turn signed by USERTrust RSA Certification Authority).  The ZeroSSL
@@ -138,6 +142,11 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    static uint32_t   lastSentMillis = 0;
    char        path[ 128 ];
    time_t      utc;
+
+   // possible fix for lack of emails, take mutex before doing anything
+   // still have UDP traffic ??
+
+   std::lock_guard<std::mutex> lock(networkingMutex);
 
    // If we've not processed a send request for KEEP_ALIVE_MS then force
    // the connection to drop. Maybe unecessary but don't want to try and
@@ -265,11 +274,17 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
 
       PW_MSG( "Sending to %s [%s]",recipient,subject );
 
-      EMailSender::Response resp = m_sender->send( recipient,message );
+      EMailSender::Response resp;
+
+      {
+         std::lock_guard<std::mutex> lock(networkingMutex);
+
+         resp = m_sender->send( recipient,message );
+      }
 
       if ( !resp.status )
       {
-         PW_WARN( "Failed to send email");
+         PW_WARN( "Failed to send email %s, %s", resp.code.c_str(),resp.desc.c_str() );
       }
 
       return resp.status;
@@ -327,23 +342,17 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       message.message = msg;
       message.mime = "text/plain";
 
-      PW_MSG( "Suspend emon task" );
-      if ( backgroundHandle != NULL )
-      {
-         vTaskSuspend( backgroundHandle );
-      }
+      EMailSender::Response resp;
 
-      EMailSender::Response resp = m_sender->send( recipient,message,attachments );
-
-      PW_MSG( "Resume emon task" );
-      if ( backgroundHandle != NULL )
       {
-         vTaskResume( backgroundHandle );
+         std::lock_guard<std::mutex> lock(networkingMutex);
+
+         resp = m_sender->send( recipient,message,attachments );
       }
 
       if ( !resp.status )
       {
-         PW_WARN( "Failed to send email");
+         PW_WARN( "Failed to send email %s, %s", resp.code.c_str(),resp.desc.c_str() );
       }
 
       return resp.status;

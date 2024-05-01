@@ -277,9 +277,8 @@ void TemperatureModule::addUDPListener()
                cJSON_ArrayForEach( sensor,sensors )
                {
                   uint8_t  id = static_cast<uint8_t>( cJSON_GetObjectItem( sensor,"id" )->valueint );
-                  float_t  value = static_cast<float>( cJSON_GetObjectItem( sensor,"value" )->valuedouble );
+                  float_t  value = static_cast<float_t>( cJSON_GetObjectItem( sensor,"value" )->valuedouble );
 
-                  // TODO, add mutex protection around values here !
                   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
                   {
                      PrivateSensor *tempSensor = &m_sensors[ i ];
