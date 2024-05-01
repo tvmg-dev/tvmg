@@ -379,12 +379,18 @@ bool  getHPData()
 
             dhw = s_master->getResponseBuffer( 5 ) * 0.1f;
             flowRate = s_master->getResponseBuffer( 8 ) * 0.1f;
+
             power = (s_master->getResponseBuffer( 3 ) - s_master->getResponseBuffer( 2 )) * 0.1f * 3.9f * flowRate / 60.0f;
             power *= 1000.0f;
             if ( power > 12500 )
             {
                power = 12500;
             }
+            else if ( power < 0 )
+            {
+               power = 0.0f;
+            }
+
          }
       }
 

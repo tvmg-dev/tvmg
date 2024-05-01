@@ -278,7 +278,12 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
 
       {
          std::lock_guard<std::mutex> lock(networkingMutex);
-
+         if ( s_webClient )
+         {
+            s_webClient->end();
+            delete s_webClient;
+            s_webClient = nullptr;
+         }
          resp = m_sender->send( recipient,message );
       }
 
@@ -346,6 +351,12 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
 
       {
          std::lock_guard<std::mutex> lock(networkingMutex);
+         if ( s_webClient )
+         {
+            s_webClient->end();
+            delete s_webClient;
+            s_webClient = nullptr;
+         }
 
          resp = m_sender->send( recipient,message,attachments );
       }

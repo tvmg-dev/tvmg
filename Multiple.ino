@@ -382,6 +382,18 @@ void setup( void )
          SD.remove( "/hpmodbus.log");
       }
    }
+
+   if ( SD.exists ( "/debug.log" ) )
+   {
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","Debug Logs","/debug.log" ) )
+      {
+         if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 )
+         {
+            SD.remove( "/debug.log");
+         }
+      }
+   }
+
 }
 
 // ---------------------------------------------------------------------

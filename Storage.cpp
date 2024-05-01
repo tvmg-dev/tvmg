@@ -313,7 +313,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 && m_networking )
       {
-         snprintf( line,128,"%30s : %4.1f\n",sensor->m_name,sensor->m_temp );
+         snprintf( line,128,"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
          thermometerStr += line;
 
          m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_temp );
@@ -330,7 +330,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 && m_networking )
       {
-         snprintf( line,128,"%30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
+         snprintf( line,128,"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
          powerStr += line;
 
          m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_power );
