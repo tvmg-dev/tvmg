@@ -1,2 +1,15 @@
 TODO
 
+Now can capture data from measurement
+Need to add computed registers for power/cop
+Need to add high/low temperatures from pressure
+
+Remove 10x samples, no need as we're not bulk updating (can't)
+
+Add HP data to sample.  Only 1 heap sample, not stack ?
+
+Add modbusTCP variant...
+
+
+
+

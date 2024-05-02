@@ -5,6 +5,7 @@
 
 #include "Measurement.h"
 #include "Networking.h"
+#include "LGHeatPump.h"
 
 class U8G2_SSD1306_128X64_NONAME_F_HW_I2C;
 
@@ -30,6 +31,7 @@ public:
    void  initialise();
    void  setMeasurement( Measurement *measurement );
    void  setNetworking( Networking *network );
+   void  setLGHeatPump( LGHeatPump *heatpump );
 
    void  updateLine( uint8_t lineNum,char *line,bool isForLog = true );
    void  clear();
@@ -57,6 +59,7 @@ private:
    OLEDDisplayLine      m_currentLines[ MAX_OLED_ROWS ];
    Measurement          *m_measurement;
    Networking           *m_networking;
+   LGHeatPump           *m_heatPump;
    Measurement::Sample  m_sample;
    bool                 m_firmwareUpdateInProgress;
    time_t               m_startTime;

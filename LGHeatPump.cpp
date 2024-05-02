@@ -10,32 +10,30 @@
 
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
 
-#if 0
-   modbus type, name, address, value, feed-id, valid
-   modbus-type = calc ==> not read
+#define  MB_COIL     0x10000
+#define  MB_DISCRETE 0x20000
+#define  MB_HOLDING  0x30000
+#define  MB_INPUTR   0x40000
 
-// handle breaks ?
-   if type != last type, request data
-   || address != last address + 1, request data
+#define  HEATING_ENABLED   (MB_COIL | 0x0001)
+#define  DHW_ENABLED       (MB_COIL | 0x0002)
+#define  SILENT_ENABLED    (MB_COIL | 0x0003)
 
-   calculated fields
-      high press. temp
-      low press. temp
-      power
-      compression ratio
+#define  COMPRESSOR_STATUS (MB_DISCRETE | 0x0004)
 
-   coil name, register, value
-   coil, Heating, 0, 0,
+#define  TARGET_TEMP       (MB_HOLDING | 0x0003 )
 
+#define  DHW_TEMP          (MB_INPUTR | 0x0006 )
 
-#endif
-
+//std::map<int,int reg> m_registerMap{{1,2},{3,5}};
 
 LGHeatPump::LGHeatPump( ModbusMaster *master )
    : m_isValid( false ),
      m_registers( nullptr ),
      m_numRegisters( 0 ),
      m_modbusRTU( master ),
+     m_modbusRequests( 0 ),
+     m_modbusFailures( 0 ),
      m_millisLastAquisition( -LG_MIN_SAMPLING_PERIOD_MS )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
@@ -94,9 +92,15 @@ LGHeatPump::LGHeatPump( ModbusMaster *master )
                      lgReg->m_scalingFactor = 1;
                   }
 
-                  PW_DEBUG( "LG %u %u %s %u %.1f",
+                  // add to the lookup map, key = (type << 16 | modbus-addr + 1)
+
+                  uint32_t parameter = cJSON_GetObjectItem( reg,"type" )->valueint << 16 | lgReg->m_address + 1;
+
+                  m_registerMap[ parameter ] = m_numRegisters - 1;
+
+                  PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
                            lgReg->m_type,lgReg->m_address,lgReg->m_name,
-                           lgReg->m_emonFeedId,lgReg->m_scalingFactor );
+                           lgReg->m_emonFeedId,lgReg->m_scalingFactor,parameter,m_numRegisters - 1 );
 
                }
                else
@@ -113,8 +117,6 @@ LGHeatPump::LGHeatPump( ModbusMaster *master )
 
       cJSON_Delete( root );
       close( file );
-
-      PW_MSG( "LG parsed lg.dat ok" );
    }
 }
 
@@ -190,9 +192,86 @@ bool  LGHeatPump::getContiguousRange( ModbusType type,uint8_t *start,uint8_t *en
    return true;
 }
 
+bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
+{
+   uint8_t mbusRes = 1;
+   uint8_t numRegs = 1 + end - start;
+   String  typeStr;
+
+   m_modbusRequests++;
+
+   delay( 50 );
+   m_modbusRTU->clearResponseBuffer();
+
+   switch( type )
+   {
+      case COIL: mbusRes = m_modbusRTU->readCoils( m_registers[ start ].m_address,numRegs );
+                 typeStr = "coils";
+                 break;
+      case DISCRETE: mbusRes = m_modbusRTU->readDiscreteInputs( m_registers[ start ].m_address,numRegs );
+                 typeStr = "discretes";
+                 break;
+      case HOLDING: mbusRes = m_modbusRTU->readHoldingRegisters( m_registers[ start ].m_address,numRegs );
+                 typeStr = "holding";
+                 break;
+      case INPUTR: mbusRes = m_modbusRTU->readInputRegisters( m_registers[ start ].m_address,numRegs );
+                 typeStr = "inputs";
+                 break;
+      default: PW_WARN( "Invalid modbus request type" );
+               return false;
+   }
+
+   if ( mbusRes != ModbusMaster::ku8MBSuccess )
+   {
+      PW_ERROR( "Failed to get %u %s from %u [error %u]",numRegs,typeStr.c_str(),m_registers[ start ].m_address,numRegs,mbusRes );
+      m_modbusFailures++;
+      return false;
+   }
+
+   String dbg = typeStr;
+   if ( type == COIL || type == DISCRETE )
+   {
+      for ( int i = 0; i < numRegs; i++ )
+      {
+         uint8_t  reg = i / 16;
+         uint16_t word = m_modbusRTU->getResponseBuffer( reg );
+         uint8_t  bit = i % 16;
+         bool     state = word & (1 << bit);
+
+         m_registers[ start + i ].m_rawValue = state;
+         m_registers[ start + i ].m_value = state;
+
+         if ( state )
+         {
+            dbg += " ON";
+         }
+         else
+         {
+            dbg += " OFF";
+         }
+      }
+   }
+   else
+   {
+      for ( int i = 0; i < numRegs; i++ )
+      {
+         m_registers[ start + i ].m_rawValue = static_cast<int16_t>(m_modbusRTU->getResponseBuffer( i ));
+         m_registers[ start + i ].m_value = m_registers[ start + i ].m_rawValue * m_registers[ start + i ].m_scalingFactor;
+         dbg += " ";
+         dbg += String( m_registers[ start + i ].m_value );
+      }
+   }
+
+   PW_HP_MODBUS( dbg.c_str() );
+
+   return true;
+}
+
 void  LGHeatPump::getLGData()
 {
    PW_MSG( "GetLGData" );
+
+   START_TIMING( "LG Data Aquisition" );
    if ( m_modbusRTU )
    {
       m_modbusRTU->setSlaveId( 32 );
@@ -204,6 +283,9 @@ void  LGHeatPump::getLGData()
       {
          PW_DEBUG( "LG Modbus coils from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
+
+         (void) getModbusData( COIL,start,end );
+
          start = end + 1;
       }
 
@@ -212,6 +294,9 @@ void  LGHeatPump::getLGData()
       {
          PW_DEBUG( "LG Modbus discretes from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
+
+         (void) getModbusData( DISCRETE,start,end );
+
          start = end + 1;
       }
 
@@ -220,6 +305,9 @@ void  LGHeatPump::getLGData()
       {
          PW_DEBUG( "LG Modbus holding from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
+
+         (void) getModbusData( HOLDING,start,end );
+
          start = end + 1;
       }
 
@@ -228,8 +316,70 @@ void  LGHeatPump::getLGData()
       {
          PW_DEBUG( "LG Modbus inputs from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
+
+         (void) getModbusData( INPUTR,start,end );
          start = end + 1;
       }
 
+      for ( int i = 0; i < m_numRegisters; i++ )
+      {
+         PW_HP_MODBUS( "HP: %s %.1f",m_registers[ i ].m_name,m_registers[ i ].m_value );
+      }
    }
+   END_TIMING;
+
+   bool  state;
+   float_t  value;
+
+   (void) getStatus( COMPRESSOR_STATUS,&state );
+   (void) getStatus( SILENT_ENABLED,&state );
+
+   (void) getValue( TARGET_TEMP,&value );
+   (void) getValue( DHW_TEMP,&value );
+}
+
+bool  LGHeatPump::getStatus( uint32_t parameter,bool *state )
+{
+   bool  registerOk = false;
+
+   std::map<uint32_t, uint8_t >::const_iterator it = m_registerMap.find( parameter );
+   if ( it == m_registerMap.end() )
+   {
+      PW_ERROR( "No register found for %x",parameter );
+   }
+   else
+   {
+      uint8_t  index = it->second;
+      *state = m_registers[ index ].m_rawValue;
+      registerOk = true;
+      PW_HP_MODBUS( "%s:%u",m_registers[ index ].m_name,*state );
+   }
+
+   return registerOk;
+}
+
+bool  LGHeatPump::getValue( uint32_t parameter,float_t *value )
+{
+   bool  registerOk = false;
+
+   std::map<uint32_t, uint8_t >::const_iterator it = m_registerMap.find( parameter );
+   if ( it == m_registerMap.end() )
+   {
+      PW_ERROR( "No register found for %x",parameter );
+   }
+   else
+   {
+      uint8_t  index = it->second;
+      *value = m_registers[ index ].m_value;
+      registerOk = true;
+      PW_HP_MODBUS( "%s:%.1f",m_registers[ index ].m_name,*value );
+   }
+
+   return registerOk;
+}
+
+void  LGHeatPump::getModbusStats( uint32_t *requests,uint32_t *failures )
+{
+   *requests = m_modbusRequests;
+   *failures = m_modbusFailures;
 }

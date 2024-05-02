@@ -338,6 +338,10 @@ void setup( void )
 
    lgThermaV = new LGHeatPump( powerModule->getModbus() );
 
+   // User IO needs HP collection stats
+
+   userIO->setLGHeatPump( lgThermaV );
+
    // Instantiate the measurement module, but don't initialise it just yet
 
    measurement = new Measurement( tempModule,powerModule,lgThermaV,storageModule );

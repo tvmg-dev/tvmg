@@ -20,6 +20,7 @@ UserIO::UserIO()
         m_currentLines(),
         m_measurement( nullptr ),
         m_networking( nullptr ),
+        m_heatPump( nullptr ),
         m_sample(),
         m_firmwareUpdateInProgress( false ),
         m_startTime(0)
@@ -108,6 +109,11 @@ void  UserIO::show( OLEDDisplayLine lines[] )
 void  UserIO::setNetworking( Networking *network )
 {
    m_networking = network;
+}
+
+void  UserIO::setLGHeatPump( LGHeatPump *heatpump )
+{
+   m_heatPump = heatpump;
 }
 
 void  UserIO::showNetwork()
@@ -283,13 +289,27 @@ void  UserIO::showCommsStatus()
    char  line[ MAX_OLED_COLUMNS ];
    uint32_t sends,qFails,fails;
 
-   m_networking->getEMONStats( &sends,&qFails,&fails );
+   if ( m_networking )
+   {
+      m_networking->getEMONStats( &sends,&qFails,&fails );
 
-   snprintf( line,MAX_OLED_COLUMNS,"EMON: sent %u",sends );
-   storeLine( 0,line );
+      snprintf( line,MAX_OLED_COLUMNS,"EMON: sent %u",sends );
+      storeLine( 0,line );
 
-   snprintf( line,MAX_OLED_COLUMNS," [QF,EF] %u,%u",qFails,fails );
-   storeLine( 1,line );
+      snprintf( line,MAX_OLED_COLUMNS," [QF,EF] %u,%u",qFails,fails );
+      storeLine( 1,line );
+   }
+
+   if ( m_heatPump )
+   {
+      m_heatPump->getModbusStats( &sends,&fails );
+
+      snprintf( line,MAX_OLED_COLUMNS,"HP Modbus" );
+      storeLine( 3,line );
+
+      snprintf( line,MAX_OLED_COLUMNS," [Req,Err] %u,%u",sends,fails );
+      storeLine( 4,line );
+   }
 
    show( m_currentLines );
 }
