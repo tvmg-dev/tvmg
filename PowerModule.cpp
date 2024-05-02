@@ -101,14 +101,7 @@ PowerModule::~PowerModule()
 
 ModbusMaster *PowerModule::getModbus()
 {
-   if ( !m_masterStarted )
-   {
-      return nullptr;
-   }
-   else
-   {
-      return m_master;
-   }
+   return m_master;
 }
 
 void PowerModule::initialise( void )

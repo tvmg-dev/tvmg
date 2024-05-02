@@ -6,16 +6,10 @@
 #include "utils.h"
 #include "TemperatureModule.h"
 #include "PowerModule.h"
+#include "LGHeatPump.h"
 
-class PowerModule;
 class Storage;
 class Networking;
-
-#define  MAX_SENSOR_NAME
-
-class MeasurementSensor;
-
-//Measurement::Sample & operator = (const Measurement::Sample &other )
 
 class Measurement
 {
@@ -32,7 +26,7 @@ public:
       Sample & operator=(const Sample &other );
    };
 
-   Measurement( TemperatureModule *tempModule, PowerModule *powerModule,Storage *storage );
+   Measurement( TemperatureModule *tempModule, PowerModule *powerModule,LGHeatPump *heatPump,Storage *storage );
    ~Measurement();
    void     initialise();
    void     takeSample();
@@ -43,6 +37,7 @@ private:
 
    TemperatureModule *m_tempModule;
    PowerModule       *m_powerModule;
+   LGHeatPump        *m_heatPump;
    Storage           *m_storageModule;
    Networking        *m_networking;
    Sample            *m_samples;

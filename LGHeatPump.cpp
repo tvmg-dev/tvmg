@@ -52,6 +52,11 @@ LGHeatPump::LGHeatPump( ModbusMaster *master )
    {
       m_registers = new LGRegister[ MAX_REGISTERS ];
 
+      for ( uint8_t i = 0; i < MAX_REGISTERS; i++ )
+      {
+         m_registers[ i ].m_type = INVALID;
+      }
+
       PW_MSG( "size of reg %u",MAX_REGISTERS * sizeof( LGRegister ) );
 
       String data = file.readStringUntil( '@' );
@@ -89,7 +94,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master )
                      lgReg->m_scalingFactor = 1;
                   }
 
-                  PW_MSG( "LG %u %u %s %u %.1f",
+                  PW_DEBUG( "LG %u %u %s %u %.1f",
                            lgReg->m_type,lgReg->m_address,lgReg->m_name,
                            lgReg->m_emonFeedId,lgReg->m_scalingFactor );
 
@@ -109,7 +114,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master )
       cJSON_Delete( root );
       close( file );
 
-      PW_MSG( "LG parsed ok" );
+      PW_MSG( "LG parsed lg.dat ok" );
    }
 }
 
@@ -141,7 +146,90 @@ bool LGHeatPump::readNextSensor( uint8_t index )
    return true;
 }
 
+bool  LGHeatPump::getContiguousRange( ModbusType type,uint8_t *start,uint8_t *end )
+{
+   uint16_t i,startAddress,endAddress;
+
+   if ( *start >= m_numRegisters )
+   {
+      return false;
+   }
+
+   // locate first register of given type from the start index
+   for ( i = *start; i < m_numRegisters; i++ )
+   {
+      if  ( m_registers[ i ].m_type == type )
+      {
+         break;
+      }
+   }
+
+   // if we located a register, then set the start & end index & modbus address,
+   // early return if we didn't locate a register of specified from the type
+
+   if ( i == m_numRegisters )
+   {
+      return false;
+   }
+   else
+   {
+      *start = i;
+      startAddress = m_registers[ i ].m_address;
+      *end = i;
+      endAddress = startAddress;
+   }
+
+   i++;
+   while ( i < m_numRegisters && m_registers[ i ].m_type == type && m_registers[ i ].m_address == endAddress + 1 )
+   {
+      *end = i;
+      endAddress++;
+      i++;
+   }
+
+   return true;
+}
+
 void  LGHeatPump::getLGData()
 {
-   PW_MSG( "Fetch LG Data" );
+   PW_MSG( "GetLGData" );
+   if ( m_modbusRTU )
+   {
+      m_modbusRTU->setSlaveId( 32 );
+
+      uint8_t  start,end;
+
+      start = 0;
+      while ( getContiguousRange( COIL, &start, &end ) )
+      {
+         PW_DEBUG( "LG Modbus coils from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
+                                       end,m_registers[ end ].m_address );
+         start = end + 1;
+      }
+
+      start = 0;
+      while ( getContiguousRange( DISCRETE, &start, &end ) )
+      {
+         PW_DEBUG( "LG Modbus discretes from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
+                                       end,m_registers[ end ].m_address );
+         start = end + 1;
+      }
+
+      start = 0;
+      while ( getContiguousRange( HOLDING, &start, &end ) )
+      {
+         PW_DEBUG( "LG Modbus holding from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
+                                       end,m_registers[ end ].m_address );
+         start = end + 1;
+      }
+
+      start = 0;
+      while ( getContiguousRange( INPUTR, &start, &end ) )
+      {
+         PW_DEBUG( "LG Modbus inputs from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
+                                       end,m_registers[ end ].m_address );
+         start = end + 1;
+      }
+
+   }
 }

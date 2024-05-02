@@ -14,6 +14,7 @@
 #include "Storage.h"
 #include "Networking.h"
 #include "WebServer.h"
+#include "LGHeatPump.h"
 
 // ---------------------------------------------------------------------
 
@@ -25,6 +26,7 @@ UserIO            *userIO = nullptr;
 Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
+LGHeatPump        *lgThermaV = nullptr;
 
 // ---------------------------------------------------------------------
 // Reboot handling code, if we have 3 reboots then we consider WiFi has
@@ -334,9 +336,11 @@ void setup( void )
    heatPumpModule = new HeatPumpModule();
    heatPumpModule->initialise();
 
+   lgThermaV = new LGHeatPump( powerModule->getModbus() );
+
    // Instantiate the measurement module, but don't initialise it just yet
 
-   measurement = new Measurement( tempModule,powerModule,storageModule );
+   measurement = new Measurement( tempModule,powerModule,lgThermaV,storageModule );
    userIO->setMeasurement( measurement );
 
    // let's tell storage we have networking available
@@ -357,7 +361,7 @@ void setup( void )
    touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,touchThreshold );
    touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,touchThreshold );
 
-   // Send emails
+   // Send emails, attachments if available
 
    char subject[ 128 ];
    char initialMsg[ 128 ];
@@ -369,7 +373,7 @@ void setup( void )
 
    if ( SD.exists ( "/registers.log" ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus regs","/registers.log" ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Registers","Modbus regs","/registers.log" ) )
       {
          SD.remove( "/registers.log");
       }
@@ -377,7 +381,7 @@ void setup( void )
 
    if ( SD.exists ( "/hpmodbus.log" ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Logs","/hpmodbus.log" ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Log","Modbus Logs","/hpmodbus.log" ) )
       {
          SD.remove( "/hpmodbus.log");
       }

@@ -61,9 +61,10 @@ Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &
    return( *this );
 }
 
-Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModule,Storage *storage )
+Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModule,LGHeatPump *heatPump,Storage *storage )
            : m_tempModule( tempModule ),
              m_powerModule( powerModule ),
+             m_heatPump( heatPump ),
              m_storageModule( storage ),
              m_networking( nullptr ),
              m_samples( nullptr ),
@@ -141,6 +142,13 @@ void  Measurement::takeSample( void )
 
       PW_DEBUG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
 
+      i++;
+   }
+
+   PW_DEBUG( "LG: Read next" );
+   i = 0;
+   while ( m_heatPump->readNextSensor( i ) )
+   {
       i++;
    }
 

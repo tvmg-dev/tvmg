@@ -22,15 +22,15 @@ private:
       INVALID,
       COIL,
       DISCRETE,
-      INPUTR,
       HOLDING,
+      INPUTR,
       CALCULATED,
    };
 
    typedef struct {
       char        m_name[ MAX_HPREG_NAME + 1 ];    // Friendly name
       ModbusType  m_type;                          // coil etc,
-      uint8_t     m_address;                       // address on modbus
+      uint16_t    m_address;                       // address on modbus
       uint32_t    m_emonFeedId;                    // for emon
       float_t     m_scalingFactor;                 // conversion factor
       int16_t     m_rawValue;                      // treat all as signed values
@@ -39,6 +39,7 @@ private:
    } LGRegister;
 
    void  getLGData();
+   bool  getContiguousRange( ModbusType type,uint8_t *start,uint8_t *end );
 
    bool           m_isValid;
    LGRegister     *m_registers;

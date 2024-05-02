@@ -119,13 +119,6 @@ void Storage::initialise( void )
       {
          PW_WARN( "SD card has failed !" );
       }
-      else if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG) != 1 && SD.exists( "/debug.log" ) )
-      {
-         if ( ! SD.remove( "/debug.log" ) )
-         {
-            PW_WARN( "Failed to remove log file, likely SD error" );
-         }
-      }
 #if 0
    File root = SD.open( "/" );
    printDirectory( root,0 );
