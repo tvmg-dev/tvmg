@@ -1,0 +1,43 @@
+{
+    "type": "THERMAV",
+    "registers": [
+        {
+            "type": 1,
+            "name": "heating",
+            "addr": 0,
+            "emonFeedId": 0
+        },
+        {
+            "type": 1,
+            "name": "dhw",
+            "addr": 1,
+            "emonFeedId": 0
+        },
+        {
+            "type": 3,
+            "name": "mode",
+            "addr": 0,
+            "emonFeedId": 0
+        },
+        {
+            "type": 3,
+            "name": "control",
+            "addr": 1,
+            "emonFeedId": 0
+        },
+        {
+            "type": 3,
+            "name": "target",
+            "addr": 2,
+            "emonFeedId": 0,
+            "scaling": 0.1
+        },
+        {
+            "type": 3,
+            "name": "wcoffset",
+            "addr": 4,
+            "emonFeedId": 0
+        }
+    ]
+}
+@

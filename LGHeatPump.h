@@ -1,0 +1,52 @@
+#ifndef LG_HEATPUMP_MODULE_H
+#define LG_HEATPUMP_MODULE_H
+
+#include "utils.h"
+
+#define MAX_HPREG_NAME  20
+#define MAX_REGISTERS   50
+
+class ModbusMaster;
+
+class LGHeatPump
+{
+public:
+   LGHeatPump( ModbusMaster *master );
+   ~LGHeatPump();
+   void  initialise();
+   bool  isAvailable();
+   bool  readNextSensor( uint8_t index );
+
+private:
+   enum ModbusType {
+      INVALID,
+      COIL,
+      DISCRETE,
+      INPUTR,
+      HOLDING,
+      CALCULATED,
+   };
+
+   typedef struct {
+      char        m_name[ MAX_HPREG_NAME + 1 ];    // Friendly name
+      ModbusType  m_type;                          // coil etc,
+      uint8_t     m_address;                       // address on modbus
+      uint32_t    m_emonFeedId;                    // for emon
+      float_t     m_scalingFactor;                 // conversion factor
+      int16_t     m_rawValue;                      // treat all as signed values
+      float_t     m_value;                         // after scaling
+      bool        m_isValid;
+   } LGRegister;
+
+   void  getLGData();
+
+   bool           m_isValid;
+   LGRegister     *m_registers;
+   uint8_t        m_numRegisters;
+   ModbusMaster   *m_modbusRTU;
+
+   int32_t        m_millisLastAquisition;       // milliseconds since last acquisition
+
+};
+
+#endif
