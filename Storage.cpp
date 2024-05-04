@@ -318,11 +318,9 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    }
 
    i = 0;
-   while ( sample.m_powerSensors[ i ] )
+   const PowerSensor *sensor;
+   while( ( sensor = sample.m_powerSensors[ i++ ] ) )
    {
-      const PowerSensor  *sensor;
-      sensor = &sample.m_actualPowers[ i ];
-
       if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 && m_networking )
       {
          snprintf( line,128,"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
@@ -330,7 +328,6 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
          m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_power );
       }
-      i++;
    }
 
    struct tm timeInfo;

@@ -32,7 +32,6 @@ Measurement::Sample::Sample( const Measurement::Sample &other )
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
       m_powerSensors[ i ] = other.m_powerSensors[ i ];
-      m_actualPowers[ i ] = other.m_actualPowers[ i ];
    }
 }
 
@@ -49,7 +48,6 @@ Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &
       for ( int i = 0; i <  MAX_POWER_SENSORS; i++ )
       {
          m_powerSensors[ i ] = other.m_powerSensors[ i ];
-         m_actualPowers[ i ] = other.m_actualPowers[ i ];
       }
    }
 
@@ -120,16 +118,11 @@ void  Measurement::takeSample( void )
 
    i = 0;
    PowerSensor *powerSensor;
-   while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) != nullptr )
+   while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) )
    {
-      newSample.m_powerSensors[ i ] = powerSensor;
-      newSample.m_actualPowers[ i ] = *powerSensor;
-
-      powerSensor = &newSample.m_actualPowers[ i ];
+      newSample.m_powerSensors[ i++ ] = powerSensor;
 
       PW_DEBUG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
-
-      i++;
 
       if ( powerSensor->m_id == HEAT_PUMP_ID )
       {

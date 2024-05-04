@@ -191,13 +191,11 @@ void  UserIO::showStorage()
 void  UserIO::showEnergy()
 {
    char  line[ MAX_OLED_COLUMNS ];
+   const PowerSensor *sensor;
 
    int i = 0;
-   while( m_sample.m_powerSensors[ i ] )
+   while( ( sensor = m_sample.m_powerSensors[ i ] ) )
    {
-      const PowerSensor  *sensor;
-      sensor = &m_sample.m_actualPowers[ i ];
-
       storeLine( i * 2,sensor->m_name );
       snprintf( line,MAX_OLED_COLUMNS,"%.0f W %.0f kWh",sensor->m_power,sensor->m_energy / 1000.0 );
       storeLine( 1 + i * 2,line );

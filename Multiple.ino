@@ -168,16 +168,12 @@ void  handleTouch1()
       }
    }
 
-   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+   int i = 0;
+   const PowerSensor *sensor;
+   while( ( sensor = sample.m_powerSensors[ i++ ] ) )
    {
-      if ( sample.m_powerSensors[ i ] )
-      {
-         const PowerSensor  *sensor;
-         sensor = &sample.m_actualPowers[ i ];
-
-         snprintf( message,128,"%30s,%.1f\n",sensor->m_name,sensor->m_power,sensor->m_energy );
-         msgString += message;
-      }
+      snprintf( message,128,"%30s,%.1f\n",sensor->m_name,sensor->m_power,sensor->m_energy );
+      msgString += message;
    }
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
 
