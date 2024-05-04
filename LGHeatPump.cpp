@@ -180,7 +180,7 @@ void  LGHeatPump::setCurrentKW( float_t kw )
    m_currentKW = kw;
 }
 
-LGHeatPump::LGRegister *LGHeatPump::readNextSensor( uint8_t index )
+LGRegister *LGHeatPump::readNextSensor( uint8_t index )
 {
    if ( index >= m_numRegisters )
    {

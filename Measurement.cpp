@@ -8,11 +8,6 @@
 #include "PowerModule.h"
 #include "Networking.h"
 
-// If we're sampling at 30 seconds, then 10 samples would be 5 minutes
-// so we use this to not only limit RAM use but trigger sending to emoncms
-
-#define MAX_MEASUREMENTS_IN_RAM 10
-
 Measurement::Sample::Sample()
 {
    m_sampleTime = 0;
@@ -67,25 +62,16 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
              m_heatPump( heatPump ),
              m_storageModule( storage ),
              m_networking( nullptr ),
-             m_samples( nullptr ),
-             m_numSamples( 0 ),
-             m_read( MAX_MEASUREMENTS_IN_RAM ),m_write( MAX_MEASUREMENTS_IN_RAM ),
              m_lastSample(),
              m_millisLastAquisition( 0 )
 {
    PW_DEBUG( "Measurement::Measurement()" );
    PW_MSG( "Measurement Module Startup" );
-
-   m_samples = new Sample[ MAX_MEASUREMENTS_IN_RAM ];
 }
 
 Measurement::~Measurement()
 {
    PW_DEBUG( "Measurement::~Measurement()" );
-
-   free( static_cast<void *> ( m_samples ) );
-
-   delete m_storageModule;
 }
 
 void  Measurement::initialise( void )
@@ -153,7 +139,7 @@ void  Measurement::takeSample( void )
    }
 
    i = 0;
-   LGHeatPump::LGRegister *lgRegister;
+   LGRegister *lgRegister;
    while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) != nullptr )
    {
       PW_DEBUG( "LG: %s %f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
@@ -169,19 +155,11 @@ void  Measurement::takeSample( void )
    // We only store data at the sample period, we may be taking measurements
    // more often than that.
 
-   if ( start - m_millisLastAquisition >= SAMPLING_PERIOD_MS && m_samples )
+   if ( start - m_millisLastAquisition >= SAMPLING_PERIOD_MS )
    {
-      m_write = m_write % MAX_MEASUREMENTS_IN_RAM;
-
-      PW_DEBUG( "%u Samples, Writing to %u",m_numSamples + 1,m_write );
-      m_samples[ m_write ] = m_lastSample;
-
       m_millisLastAquisition = start;
 
       saveLastSample();
-
-      m_write++;
-      m_numSamples++;
    }
    else
    {

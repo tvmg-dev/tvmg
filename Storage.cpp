@@ -298,6 +298,8 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    char     line[ 128 ];
    String   thermometerStr, powerStr;
 
+   // First send data to emon
+
    int i = 0;
    while ( sample.m_tempSensors[ i ] )
    {
@@ -333,7 +335,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
    struct tm timeInfo;
 
-   // Before we try and store, send emoncms & perform daily update mail if needed
+   // perform daily update mail if needed
 
    localtime_r( &sample.m_sampleTime,&timeInfo );
 
@@ -365,6 +367,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
    }
 
+   // save sample to store
    saveSampleToBackingStore( sample );
 }
 

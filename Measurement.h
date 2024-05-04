@@ -40,9 +40,6 @@ private:
    LGHeatPump        *m_heatPump;
    Storage           *m_storageModule;
    Networking        *m_networking;
-   Sample            *m_samples;
-   uint16_t          m_numSamples;
-   uint16_t          m_read,m_write;
    Sample            m_lastSample;
    uint32_t          m_millisLastAquisition;
 };

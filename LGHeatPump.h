@@ -58,29 +58,29 @@
 
 class ModbusMaster;
 
+enum ModbusType {
+   INVALID,
+   COIL,
+   DISCRETE,
+   HOLDING,
+   INPUTR,
+   CALCULATED,
+};
+
+typedef struct {
+   char        m_name[ MAX_HPREG_NAME + 1 ];    // Friendly name
+   ModbusType  m_type;                          // coil etc,
+   uint16_t    m_address;                       // address on modbus
+   uint32_t    m_emonFeedId;                    // for emon
+   float_t     m_scalingFactor;                 // conversion factor
+   int16_t     m_rawValue;                      // treat all as signed values
+   float_t     m_value;                         // after scaling
+   bool        m_isValid;
+} LGRegister;
+
 class LGHeatPump
 {
 public:
-   enum ModbusType {
-      INVALID,
-      COIL,
-      DISCRETE,
-      HOLDING,
-      INPUTR,
-      CALCULATED,
-   };
-
-   typedef struct {
-      char        m_name[ MAX_HPREG_NAME + 1 ];    // Friendly name
-      ModbusType  m_type;                          // coil etc,
-      uint16_t    m_address;                       // address on modbus
-      uint32_t    m_emonFeedId;                    // for emon
-      float_t     m_scalingFactor;                 // conversion factor
-      int16_t     m_rawValue;                      // treat all as signed values
-      float_t     m_value;                         // after scaling
-      bool        m_isValid;
-   } LGRegister;
-
    LGHeatPump( ModbusMaster *master );
    ~LGHeatPump();
    void  initialise();
