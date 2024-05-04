@@ -198,6 +198,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
      }
    }
 
+#if 1
    if ( level == LOGGING_LEVEL::HP_MODBUS )
    {
       File file = SD.open( "/hpmodbus.log",FILE_APPEND );
@@ -207,6 +208,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
          file.close();
       }
    }
+#endif
 }
 
 Timing::Timing( const String &name )

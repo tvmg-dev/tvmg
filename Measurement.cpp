@@ -96,7 +96,8 @@ void  Measurement::initialise( void )
 void  Measurement::takeSample( void )
 {
    PW_DEBUG( "Measurement::takeSample" );
-   uint  start;
+   uint     start;
+   float_t  hpKW = 1;
 
    Sample   newSample;
 
@@ -143,12 +144,23 @@ void  Measurement::takeSample( void )
       PW_DEBUG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
 
       i++;
+
+      if ( powerSensor->m_id == HEAT_PUMP_ID )
+      {
+         hpKW = powerSensor->m_power;
+         m_heatPump->setCurrentKW( hpKW );
+      }
    }
 
-   PW_DEBUG( "LG: Read next" );
    i = 0;
-   while ( m_heatPump->readNextSensor( i ) )
+   LGHeatPump::LGRegister *lgRegister;
+   while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) != nullptr )
    {
+      PW_DEBUG( "LG: %s %f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
+      if ( lgRegister->m_emonFeedId )
+      {
+         PW_HP_MODBUS( "LG: Would send as %u",lgRegister->m_emonFeedId );
+      }
       i++;
    }
 

@@ -333,16 +333,20 @@ void setup( void )
 
    // Instantiate the heat pump collecting module
 
+#if 0
    heatPumpModule = new HeatPumpModule();
    heatPumpModule->initialise();
+#endif
 
    lgThermaV = new LGHeatPump( powerModule->getModbus() );
+   lgThermaV->initialise();
 
    // User IO needs HP collection stats
 
    userIO->setLGHeatPump( lgThermaV );
 
-   // Instantiate the measurement module, but don't initialise it just yet
+   // Instantiate the measurement module, but don't initialise it just yet,
+   // userIO needs access to data
 
    measurement = new Measurement( tempModule,powerModule,lgThermaV,storageModule );
    userIO->setMeasurement( measurement );

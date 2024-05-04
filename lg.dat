@@ -140,7 +140,7 @@
       "type": 4,
       "name": "DHW",
       "addr": 5,
-      "emonFeedId": 0,
+      "emonFeedId": 500003,
       "scaling": 0.1
   },
   {
@@ -159,7 +159,7 @@
       "type": 4,
       "name": "flow-rate",
       "addr": 8,
-      "emonFeedId": 0,
+      "emonFeedId": 500004,
       "scaling": 0.1
   },
   {
@@ -244,6 +244,30 @@
       "type": 4,
       "name": "compressor-hz",
       "addr": 24,
+      "emonFeedId": 500005
+  },
+  {
+      "type": 8,
+      "name": "heat-output",
+      "addr": 0,
+      "emonFeedId": 500002
+  },
+  {
+      "type": 8,
+      "name": "low-press-temp",
+      "addr": 1,
+      "emonFeedId": 0
+  },
+  {
+      "type": 8,
+      "name": "high-press-temp",
+      "addr": 2,
+      "emonFeedId": 0
+  },
+  {
+      "type": 8,
+      "name": "cal-cop",
+      "addr": 3,
       "emonFeedId": 0
   }
 ]

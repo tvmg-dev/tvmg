@@ -10,31 +10,72 @@
 
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
 
-#define  MB_COIL     0x10000
-#define  MB_DISCRETE 0x20000
-#define  MB_HOLDING  0x30000
-#define  MB_INPUTR   0x40000
+// R32 refrigerant - pressure to temperature lookup, interpolate
+// pressures read from LG to temperature equivalents
 
-#define  HEATING_ENABLED   (MB_COIL | 0x0001)
-#define  DHW_ENABLED       (MB_COIL | 0x0002)
-#define  SILENT_ENABLED    (MB_COIL | 0x0003)
+static std::map<float_t,float_t> r32Lookup = {
+   {172,-30},
+   {195,-28},
+   {220,-26},
+   {247,-24},
+   {275,-22},
+   {304,-20},
+   {336,-18},
+   {369,-16},
+   {405,-14},
+   {442,-12},
+   {481,-10},
+   {523,-8},
+   {567,-6},
+   {613,-4},
+   {661,-2},
+   {712,0},
+   {765,2},
+   {821,4},
+   {880,6},
+   {941,8},
+   {1006,10},
+   {1073,12},
+   {1143,14},
+   {1217,16},
+   {1293,18},
+   {1373,20},
+   {1457,22},
+   {1544,24},
+   {1634,26},
+   {1728,28},
+   {1826,30},
+   {1928,32},
+   {2034,34},
+   {2144,36},
+   {2258,38},
+   {2377,40},
+   {2500,42},
+   {2628,44},
+   {2760,46},
+   {2898,48},
+   {3040,50},
+   {3187,52},
+   {3340,54},
+   {3498,56},
+   {3662,58},
+   {3832,60},
+   {4008,62},
+   {4190,64},
+   {4378,66},
+   {4573,68},
+   {4776,70},
+   {4985,72},
+};
 
-#define  COMPRESSOR_STATUS (MB_DISCRETE | 0x0004)
-
-#define  TARGET_TEMP       (MB_HOLDING | 0x0003 )
-
-#define  DHW_TEMP          (MB_INPUTR | 0x0006 )
-
-//std::map<int,int reg> m_registerMap{{1,2},{3,5}};
-
-LGHeatPump::LGHeatPump( ModbusMaster *master )
-   : m_isValid( false ),
+LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_registers( nullptr ),
      m_numRegisters( 0 ),
      m_modbusRTU( master ),
      m_modbusRequests( 0 ),
      m_modbusFailures( 0 ),
-     m_millisLastAquisition( -LG_MIN_SAMPLING_PERIOD_MS )
+     m_millisLastAquisition( -LG_MIN_SAMPLING_PERIOD_MS ),
+     m_currentKW(0)
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
@@ -131,21 +172,27 @@ void LGHeatPump::initialise()
 
 bool  LGHeatPump::isAvailable()
 {
+   return (m_numRegisters > 0);
 }
 
-bool LGHeatPump::readNextSensor( uint8_t index )
+void  LGHeatPump::setCurrentKW( float_t kw )
+{
+   m_currentKW = kw;
+}
+
+LGHeatPump::LGRegister *LGHeatPump::readNextSensor( uint8_t index )
 {
    if ( index >= m_numRegisters )
    {
-      return false;
+      return nullptr;
    }
 
-   if ( millis() - m_millisLastAquisition > LG_MIN_SAMPLING_PERIOD_MS && !index )
+   if ( !index && millis() - m_millisLastAquisition > LG_MIN_SAMPLING_PERIOD_MS )
    {
       getLGData();
       m_millisLastAquisition = millis();
    }
-   return true;
+   return &m_registers[ index ];
 }
 
 bool  LGHeatPump::getContiguousRange( ModbusType type,uint8_t *start,uint8_t *end )
@@ -262,7 +309,7 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
       }
    }
 
-   PW_HP_MODBUS( dbg.c_str() );
+   PW_DEBUG( dbg.c_str() );
 
    return true;
 }
@@ -321,21 +368,93 @@ void  LGHeatPump::getLGData()
          start = end + 1;
       }
 
+      // Now generate calculated data, need active compressor
+      bool state;
+
+      setValue( HEATING_POWER,0 );
+      setValue( HIGH_PRESS_TEMP,0 );
+      setValue( LOW_PRESS_TEMP,0 );
+      setValue( COP,0 );
+
+      if ( getStatus( COMPRESSOR_STATUS,&state ) )
+      {
+         if ( state )
+         {
+            float_t  flowRate,flowTemp,returnTemp,currentPower = 0;
+
+            if ( getValue( FLOW_RATE,&flowRate ) && getValue( INLET_TEMP,&returnTemp ) && getValue( OUTLET_TEMP,&flowTemp ) )
+            {
+               if ( flowTemp > returnTemp )
+               {
+                  currentPower = flowRate * 3.9 * (flowTemp - returnTemp) / 0.06;
+                  setValue( HEATING_POWER,currentPower );
+               }
+            }
+
+            float_t pressure,temp;
+
+            if ( getValue( HIGH_PRESSURE,&pressure ) )
+            {
+               temp = convertR32PressureToTemp( pressure );
+               setValue( HIGH_PRESS_TEMP,temp );
+            }
+
+            if ( getValue( LOW_PRESSURE,&pressure ) )
+            {
+               temp = convertR32PressureToTemp( pressure );
+               setValue( LOW_PRESS_TEMP,temp );
+            }
+
+            if ( m_currentKW > 0.0 )
+            {
+               setValue( COP,currentPower / m_currentKW );
+            }
+         }
+      }
+
       for ( int i = 0; i < m_numRegisters; i++ )
       {
          PW_HP_MODBUS( "HP: %s %.1f",m_registers[ i ].m_name,m_registers[ i ].m_value );
       }
    }
+
    END_TIMING;
+}
 
+void  LGHeatPump::dumpData()
+{
    bool  state;
-   float_t  value;
 
-   (void) getStatus( COMPRESSOR_STATUS,&state );
+   (void) getStatus( HEATING_ENABLED,&state );
+   (void) getStatus( DHW_ENABLED,&state );
    (void) getStatus( SILENT_ENABLED,&state );
+   (void) getStatus( WATER_FLOW_STATUS,&state );
+   (void) getStatus( WATER_PUMP_STATUS,&state );
+   (void) getStatus( EXT_WATER_PUMP_STATUS,&state );
+   (void) getStatus( COMPRESSOR_STATUS,&state );
+   (void) getStatus( DEFROST_STATUS,&state );
+   (void) getStatus( DHW_HEATING,&state );
+   (void) getStatus( LEGIONELLA_STATUS,&state );
+   (void) getStatus( SILENT_STATUS,&state );
+   (void) getStatus( BOOST_WATER,&state );
 
-   (void) getValue( TARGET_TEMP,&value );
+   float_t value;
+
+   (void) getValue( ERROR_CODE,&value );
+   (void) getValue( UNIT_CYCLE,&value );
+   (void) getValue( INLET_TEMP,&value );
+   (void) getValue( OUTLET_TEMP,&value );
    (void) getValue( DHW_TEMP,&value );
+   (void) getValue( ROOM_TEMP,&value );
+   (void) getValue( FLOW_RATE,&value );
+   (void) getValue( OUTSIDE_TEMP,&value );
+   (void) getValue( PIPE_IN_TEMP,&value );
+   (void) getValue( SUCTION_TEMP,&value );
+   (void) getValue( DISCHARGE_TEMP,&value );
+   (void) getValue( HEX_TEMP,&value );
+   (void) getValue( HIGH_PRESSURE,&value );
+   (void) getValue( LOW_PRESSURE,&value );
+   (void) getValue( COMPRESSOR_HZ,&value );
 }
 
 bool  LGHeatPump::getStatus( uint32_t parameter,bool *state )
@@ -352,7 +471,7 @@ bool  LGHeatPump::getStatus( uint32_t parameter,bool *state )
       uint8_t  index = it->second;
       *state = m_registers[ index ].m_rawValue;
       registerOk = true;
-      PW_HP_MODBUS( "%s:%u",m_registers[ index ].m_name,*state );
+      PW_DEBUG( "HP: %s:%u",m_registers[ index ].m_name,*state );
    }
 
    return registerOk;
@@ -372,7 +491,26 @@ bool  LGHeatPump::getValue( uint32_t parameter,float_t *value )
       uint8_t  index = it->second;
       *value = m_registers[ index ].m_value;
       registerOk = true;
-      PW_HP_MODBUS( "%s:%.1f",m_registers[ index ].m_name,*value );
+      PW_DEBUG( "HP: %s:%.1f",m_registers[ index ].m_name,*value );
+   }
+
+   return registerOk;
+}
+
+bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
+{
+   bool  registerOk = false;
+
+   std::map<uint32_t, uint8_t >::const_iterator it = m_registerMap.find( parameter );
+   if ( it == m_registerMap.end() )
+   {
+      PW_ERROR( "No register found for %x",parameter );
+   }
+   else
+   {
+      uint8_t  index = it->second;
+      m_registers[ index ].m_value = value;
+      PW_DEBUG( "HP: set %s:%.1f",m_registers[ index ].m_name,value );
    }
 
    return registerOk;
@@ -382,4 +520,37 @@ void  LGHeatPump::getModbusStats( uint32_t *requests,uint32_t *failures )
 {
    *requests = m_modbusRequests;
    *failures = m_modbusFailures;
+}
+
+float_t  LGHeatPump::convertR32PressureToTemp( float_t pressure )
+{
+   std::map<float_t, float_t >::const_iterator it = r32Lookup.begin();
+   float_t lowT = -1,highT = -1;
+   float_t lowP = -1,highP = -1;
+   float_t temp = -100;
+
+   while ( it != r32Lookup.end() )
+   {
+      if ( it->first <= pressure )
+      {
+         lowP = it->first;
+         lowT = it->second;
+      }
+      else
+      {
+         highP = it->first;
+         highT = it->second;
+         break;
+      }
+      ++it;
+   }
+
+   if ( it != r32Lookup.end() )
+   {
+      float_t gradient = (highT - lowT) / (highP - lowP);
+      temp = lowT + gradient * (pressure - lowP);
+      PW_DEBUG( "R32 pressure %f : %f [%f ] - %f [%f] = %f",pressure,lowP,lowT,highP,highT,temp );
+   }
+
+   return temp;
 }
