@@ -19,6 +19,10 @@ Measurement::Sample::Sample()
    {
       m_powerSensors[ i ] = nullptr;
    }
+   for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
+   {
+      m_lgRegisters[ i ] = nullptr;
+   }
 }
 
 Measurement::Sample::Sample( const Measurement::Sample &other )
@@ -32,6 +36,10 @@ Measurement::Sample::Sample( const Measurement::Sample &other )
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
       m_powerSensors[ i ] = other.m_powerSensors[ i ];
+   }
+   for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
+   {
+      m_lgRegisters[ i ] = other.m_lgRegisters[ i ];
    }
 }
 
@@ -48,6 +56,10 @@ Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &
       for ( int i = 0; i <  MAX_POWER_SENSORS; i++ )
       {
          m_powerSensors[ i ] = other.m_powerSensors[ i ];
+      }
+      for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
+      {
+         m_lgRegisters[ i ] = other.m_lgRegisters[ i ];
       }
    }
 
@@ -133,15 +145,12 @@ void  Measurement::takeSample( void )
 
    i = 0;
    LGRegister *lgRegister;
-   while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) != nullptr )
+   while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
    {
-      PW_DEBUG( "LG: %s %f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
-      if ( lgRegister->m_emonFeedId )
-      {
-         PW_HP_MODBUS( "LG: Would send as %u",lgRegister->m_emonFeedId );
-      }
-      i++;
+      newSample.m_lgRegisters[ i++ ] = lgRegister;
+ //     PW_DEBUG( "LG: %s %.1f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
    }
+   PW_DEBUG( "Retrieved %d LG registers",i );
 
    m_lastSample = newSample;
 

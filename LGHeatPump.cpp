@@ -89,14 +89,12 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
    }
    else
    {
-      m_registers = new LGRegister[ MAX_REGISTERS ];
+      m_registers = new LGRegister[ MAX_HP_REGISTERS ];
 
-      for ( uint8_t i = 0; i < MAX_REGISTERS; i++ )
+      for ( uint8_t i = 0; i < MAX_HP_REGISTERS; i++ )
       {
          m_registers[ i ].m_type = INVALID;
       }
-
-      PW_MSG( "size of reg %u",MAX_REGISTERS * sizeof( LGRegister ) );
 
       String data = file.readStringUntil( '@' );
 
@@ -116,7 +114,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
             cJSON *reg;
             cJSON_ArrayForEach( reg,registers )
             {
-               if ( m_numRegisters < MAX_REGISTERS  )
+               if ( m_numRegisters < MAX_HP_REGISTERS  )
                {
                   LGRegister *lgReg = &m_registers[ m_numRegisters++ ];
 
@@ -414,7 +412,7 @@ void  LGHeatPump::getLGData()
 
       for ( int i = 0; i < m_numRegisters; i++ )
       {
-         PW_HP_MODBUS( "HP: %s %.1f",m_registers[ i ].m_name,m_registers[ i ].m_value );
+         PW_HP_MODBUS( "%s %.1f",m_registers[ i ].m_name,m_registers[ i ].m_value );
       }
    }
 
@@ -553,4 +551,52 @@ float_t  LGHeatPump::convertR32PressureToTemp( float_t pressure )
    }
 
    return temp;
+}
+
+#include <SD.h>
+#include <FS.h>
+ModbusMaster *s_master = nullptr;
+
+void  getHPData()
+{
+   uint8_t mbusRes = 1;
+
+   if ( s_master )
+   {
+      s_master->setSlaveId( 32 );
+
+#if 1
+      {
+         if ( GET_REGISTRY_INT( LG_MODBUS_START_REG) > 0 )
+         {
+            static uint16_t x = GET_REGISTRY_INT( LG_MODBUS_START_REG);
+            for ( int i = x; i < x+8; i++ )
+            {
+               s_master->clearResponseBuffer();
+               delay( 50 );
+               mbusRes = s_master->readInputRegisters( i,1 );
+
+               if ( !mbusRes || i % 128 == 0 )
+               {
+                  PW_HP_MODBUS( "IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
+                  PW_HP_MODBUS( "IR: %u %u",i,s_master->getResponseBuffer( 0 ) );
+                  File file = SD.open( "/registers.log",FILE_APPEND );
+                  if ( file )
+                  {
+                     char a[ 40 ];
+                     sprintf( a,"IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
+                     file.println( a );
+                     file.close();
+                  }
+               }
+               else if ( i % 128 != 0 )
+               {
+                  PW_ERROR( "!input: %d %u",i,mbusRes );
+               }
+            }
+            x += 8;
+         }
+      }
+#endif
+   }
 }

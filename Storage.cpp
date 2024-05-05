@@ -271,6 +271,25 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
          dataString += line;
       }
 
+      for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
+      {
+         const LGRegister  *lgReg;
+         lgReg = sample.m_lgRegisters[ i ];
+
+         if ( !lgReg )
+         {
+            break;
+         }
+
+         if ( isNewFile )
+         {
+            snprintf( line,128,",%s (value)",lgReg->m_name );
+            hdrString += line;
+         }
+         snprintf( line,128,",%.1f",lgReg->m_value );
+         dataString += line;
+      }
+
       if ( isNewFile )
       {
          PW_DEBUG( hdrString.c_str() );
@@ -296,7 +315,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 void  Storage::storeSample( const Measurement::Sample &sample )
 {
    char     line[ 128 ];
-   String   thermometerStr, powerStr;
+   String   thermometerStr, powerStr,lgStr;
 
    // First send data to emon
 
@@ -330,6 +349,19 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       }
    }
 
+   i = 0;
+   const LGRegister *lgReg;
+   while( ( lgReg = sample.m_lgRegisters[ i++ ] ) )
+   {
+      if ( lgReg->m_emonFeedId != 0 && m_networking )
+      {
+         snprintf( line,128,"%-30s : %.1f\n",lgReg->m_name,lgReg->m_value );
+         lgStr += line;
+
+         m_networking->sendToEmonCMS( lgReg->m_emonFeedId,lgReg->m_value );
+      }
+   }
+
    struct tm timeInfo;
 
    // perform daily update mail if needed
@@ -359,6 +391,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       updateStr += line;
       updateStr += thermometerStr;
       updateStr += powerStr;
+      updateStr += lgStr;
       updateStr += "\n\n";
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );

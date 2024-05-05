@@ -19,6 +19,7 @@ public:
       TempSensor  *m_tempSensors[ MAX_TEMP_SENSORS + 1 ];         // The 1 after is null pointer to terminate the list
       TempSensor   m_actualTemps[ MAX_TEMP_SENSORS ];             // local copy as remotes can update via UDP in another thread
       PowerSensor *m_powerSensors[ MAX_POWER_SENSORS + 1 ];       // The 1 after is null pointer to terminate the list
+      LGRegister  *m_lgRegisters[ MAX_HP_REGISTERS + 1 ];
 
       Sample();
       Sample( const Sample &other );
