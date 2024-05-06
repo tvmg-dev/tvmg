@@ -120,14 +120,14 @@
       "type": 4,
       "name": "inlet",
       "addr": 2,
-      "emonFeedId": 0,
+      "emonFeedId": 476740,
       "scaling": 0.1
   },
   {
       "type": 4,
       "name": "outlet",
       "addr": 3,
-      "emonFeedId": 0,
+      "emonFeedId": 476741,
       "scaling": 0.1
   },
   {
@@ -184,14 +184,14 @@
       "type": 4,
       "name": "oat",
       "addr": 12,
-      "emonFeedId": 0,
+      "emonFeedId": 501088,
       "scaling": 0.1
   },
   {
       "type": 4,
       "name": "pipe-in",
       "addr": 16,
-      "emonFeedId": 0,
+      "emonFeedId": 501085,
       "scaling": 0.1
   },
   {
@@ -205,21 +205,21 @@
       "type": 4,
       "name": "suction",
       "addr": 18,
-      "emonFeedId": 0,
+      "emonFeedId": 501079,
       "scaling": 0.1
   },
   {
       "type": 4,
       "name": "discharge",
       "addr": 19,
-      "emonFeedId": 0,
+      "emonFeedId": 501081,
       "scaling": 0.1
   },
   {
       "type": 4,
       "name": "hex",
       "addr": 20,
-      "emonFeedId": 0,
+      "emonFeedId": 501080,
       "scaling": 0.1
   },
   {
@@ -256,19 +256,25 @@
       "type": 8,
       "name": "low-press-temp",
       "addr": 1,
-      "emonFeedId": 0
+      "emonFeedId": 501078
   },
   {
       "type": 8,
       "name": "high-press-temp",
       "addr": 2,
-      "emonFeedId": 0
+      "emonFeedId": 501077
   },
   {
       "type": 8,
       "name": "cal-cop",
       "addr": 3,
-      "emonFeedId": 0
+      "emonFeedId": 501076
+  },
+  {
+      "type": 8,
+      "name": "compress-ratio",
+      "addr": 4,
+      "emonFeedId": 501075
   }
 ]
 }

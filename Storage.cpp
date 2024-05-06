@@ -283,7 +283,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 
          if ( isNewFile )
          {
-            snprintf( line,128,",%s (value)",lgReg->m_name );
+            snprintf( line,128,",%s",lgReg->m_name );
             hdrString += line;
          }
          snprintf( line,128,",%.1f",lgReg->m_value );

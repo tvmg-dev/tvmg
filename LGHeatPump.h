@@ -55,6 +55,8 @@
 #define  LOW_PRESS_TEMP    (MB_CALCULATED | 0x0002 )
 #define  HIGH_PRESS_TEMP   (MB_CALCULATED | 0x0003 )
 #define  COP               (MB_CALCULATED | 0x0004 )
+#define  COMPRESSION_RATIO (MB_CALCULATED | 0x0005 )
+
 
 class ModbusMaster;
 

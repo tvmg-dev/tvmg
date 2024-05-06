@@ -382,7 +382,6 @@ void  TemperatureModule::localBroadcastData()
 {
    cJSON *root,*array;
 
-
    if ( !m_numLocalSensors )
    {
       PW_WARN( "No local temp sensors to broadcast" );

@@ -373,6 +373,7 @@ void  LGHeatPump::getLGData()
       setValue( HIGH_PRESS_TEMP,0 );
       setValue( LOW_PRESS_TEMP,0 );
       setValue( COP,0 );
+      setValue( COMPRESSION_RATIO,1 );
 
       if ( getStatus( COMPRESSOR_STATUS,&state ) )
       {
@@ -389,17 +390,17 @@ void  LGHeatPump::getLGData()
                }
             }
 
-            float_t pressure,temp;
+            float_t highPressure,lowPressure,temp;
 
-            if ( getValue( HIGH_PRESSURE,&pressure ) )
+            if ( getValue( HIGH_PRESSURE,&highPressure ) )
             {
-               temp = convertR32PressureToTemp( pressure );
+               temp = convertR32PressureToTemp( highPressure );
                setValue( HIGH_PRESS_TEMP,temp );
             }
 
-            if ( getValue( LOW_PRESSURE,&pressure ) )
+            if ( getValue( LOW_PRESSURE,&lowPressure ) )
             {
-               temp = convertR32PressureToTemp( pressure );
+               temp = convertR32PressureToTemp( lowPressure );
                setValue( LOW_PRESS_TEMP,temp );
             }
 
@@ -407,6 +408,8 @@ void  LGHeatPump::getLGData()
             {
                setValue( COP,currentPower / m_currentKW );
             }
+
+            setValue( COMPRESSION_RATIO,(highPressure + 100) / (lowPressure + 100) );
          }
       }
 
