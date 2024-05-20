@@ -193,14 +193,25 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 
          m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName,false );
 
-         if ( GET_REGISTRY_INT( SEND_DAILY_DEBUG ) == 1 && SD.exists( "/debug.log" ) )
+         if ( SD.exists( DEBUG_LOG ) )
          {
-            m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Debug log","/debug.log",false );
+            if ( GET_REGISTRY_INT( SEND_DAILY_DEBUG ) == 1 )
+            {
+               m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Debug log",DEBUG_LOG,false );
+            }
+
+            if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 )
+            {
+               SD.remove( DEBUG_LOG );
+            }
          }
 
-         if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 && SD.exists( "/debug.log" ) )
+         if ( SD.exists ( LGSTATUS_LOG ) )
          {
-            SD.remove( "/debug.log" );
+            if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG ) )
+            {
+               // SD.remove( LGMODBUS_LOG );
+            }
          }
       }
 
@@ -418,7 +429,7 @@ void  Storage::getStatus( char *line )
       totalMiB = SD.totalBytes() / (1024 * 1024);
       usedMiB = SD.usedBytes() / (1024 * 1024);
 
-      snprintf( line,MAX_OLED_COLUMNS,"SD Used %u of %u MiB",usedMiB,totalMiB );
+      snprintf( line,MAX_OLED_COLUMNS,"SD: %u MiB free",totalMiB - usedMiB );
    }
    else
    {

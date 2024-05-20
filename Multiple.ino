@@ -178,8 +178,9 @@ void  handleTouch1()
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
 
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName() );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log","/debug.log" );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data","/hpmodbus.log" );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG );
 }
 
 void  handleTouch2()
@@ -375,29 +376,37 @@ void setup( void )
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
 
-   if ( SD.exists ( "/registers.log" ) )
+   if ( SD.exists ( LGREGISTERS_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Registers","Modbus regs","/registers.log" ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Registers","Modbus regs",LGREGISTERS_LOG ) )
       {
-         SD.remove( "/registers.log");
+         SD.remove( LGREGISTERS_LOG);
       }
    }
 
-   if ( SD.exists ( "/hpmodbus.log" ) )
+   if ( SD.exists ( LGMODBUS_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Log","Modbus Logs","/hpmodbus.log" ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Log","Modbus Logs",LGMODBUS_LOG ) )
       {
-         SD.remove( "/hpmodbus.log");
+         SD.remove( LGMODBUS_LOG );
       }
    }
 
-   if ( SD.exists ( "/debug.log" ) )
+   if ( SD.exists ( LGSTATUS_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","Debug Logs","/debug.log" ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG ) )
+      {
+         // SD.remove( LGMODBUS_LOG );
+      }
+   }
+
+   if ( SD.exists ( DEBUG_LOG ) )
+   {
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","Debug Logs",DEBUG_LOG ) )
       {
          if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 )
          {
-            SD.remove( "/debug.log");
+            SD.remove( DEBUG_LOG );
          }
       }
    }

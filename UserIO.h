@@ -23,6 +23,7 @@ public:
       ENERGY,
       TEMPERATURES,
       COMMS_STATUS,
+      LG_STATUS,
       NONE
    };
 
@@ -41,15 +42,17 @@ public:
    void  update();
    void  setFirmwareUpdateInProgress( bool inProgress );
    bool  isFirmwareUpdateInProgress();
+   void  storeLine( uint8_t lineNum,char *line );
 
 private:
    void  show( OLEDDisplayLine lines[] );
-   void  storeLine( uint8_t lineNum,char *line );
    void  showNetwork();
    void  showStorage();
    void  showEnergy();
    void  showTemps();
    void  showCommsStatus();
+   void  showLGStatus();
+
    TempSensor *findTempSensor( uint8_t id );
    bool  isPowerDataAvailable();
 

@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v9.3.1"
+#define VERSION_STR        "v9.4.6"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
@@ -15,6 +15,8 @@
 #define MAX_REGISTRY_ENTRIES 32
 #define MAX_KEY_LENGTH       64
 #define MAX_VALUE_LENGTH     64
+
+#define DEBUG_LOG          "/debug.log"
 
 extern void    setRegistryEntry( char *key,char *value );
 extern int32_t getRegistryInt( char *key );

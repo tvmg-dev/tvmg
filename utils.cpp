@@ -9,6 +9,7 @@
 #include "Config.h"
 
 #include "Networking.h"
+#include "LGHeatPump.h"
 
 static char buffer[ 4096 ];
 
@@ -190,7 +191,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
    if ( logToFile == isTrue )
    {
-     File file = SD.open( "/debug.log",FILE_APPEND );
+     File file = SD.open( DEBUG_LOG,FILE_APPEND );
      if ( file )
      {
          file.println( debugString.c_str() );
@@ -198,17 +199,15 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
      }
    }
 
-#if 1
    if ( level == LOGGING_LEVEL::HP_MODBUS )
    {
-      File file = SD.open( "/hpmodbus.log",FILE_APPEND );
+      File file = SD.open( LGMODBUS_LOG,FILE_APPEND );
       if ( file )
       {
          file.println( debugString.c_str() );
          file.close();
       }
    }
-#endif
 }
 
 Timing::Timing( const String &name )

@@ -2,11 +2,16 @@
 #define LG_HEATPUMP_MODULE_H
 
 #include <map>
+#include <time.h>
 
 #include "utils.h"
 
 #define MAX_HPREG_NAME     20
 #define MAX_HP_REGISTERS   50
+
+#define  LGREGISTERS_LOG   "/registers.log"
+#define  LGMODBUS_LOG      "/hpmodbus.log"
+#define  LGSTATUS_LOG      "/lgstatus.log"
 
 // Define the registers available
 
@@ -34,6 +39,7 @@
 #define  CONTROL_METHOD    (MB_HOLDING | 0x0002 )
 #define  TARGET_TEMP       (MB_HOLDING | 0x0003 )
 #define  WC_OFFSET_TEMP    (MB_HOLDING | 0x0005 )
+#define  DHW_TARGET_TEMP   (MB_HOLDING | 0x0009 )
 
 #define  ERROR_CODE        (MB_INPUTR | 0x0001 )
 #define  UNIT_CYCLE        (MB_INPUTR | 0x0002 )
@@ -59,6 +65,7 @@
 
 
 class ModbusMaster;
+class UserIO;
 
 enum ModbusType {
    INVALID,
@@ -80,6 +87,25 @@ typedef struct {
    bool        m_isValid;
 } LGRegister;
 
+typedef struct {
+   time_t   m_time;
+
+   int16_t  m_error;
+
+   int16_t  m_inlet;
+   int16_t  m_outlet;
+   int16_t  m_dhw;
+   int16_t  m_heatingTarget;
+   int16_t  m_dhwTarget;
+
+   int16_t  m_isActive;
+   bool     m_isHeating;
+   bool     m_isDHW;
+   bool     m_isLegionella;
+   bool     m_isImmersion;
+   bool     m_isSilent;
+} LGStatus;
+
 class LGHeatPump
 {
 public:
@@ -90,6 +116,7 @@ public:
    LGRegister *readNextSensor( uint8_t index );
    void  getModbusStats( uint32_t *requests,uint32_t *failures );
    void  setCurrentKW( float_t kw );
+   void  updateUserIO( UserIO *userIO );
 
 private:
    void  getLGData();
@@ -98,10 +125,14 @@ private:
    void  dumpData();
    bool  getStatus( uint32_t parameter,bool *state );
    bool  getValue( uint32_t parameter,float_t *value );
+   int16_t  getRawValue( uint32_t parameter );
    bool  setValue( uint32_t parameter,float_t value );
    float_t  convertR32PressureToTemp( float_t pressure );
+   bool  valueChanged( uint32_t parameter );
+   void  updateStatus();
 
    LGRegister     *m_registers;
+   LGStatus       m_currentStatus;
    uint8_t        m_numRegisters;
    ModbusMaster   *m_modbusRTU;
    uint32_t       m_modbusRequests;

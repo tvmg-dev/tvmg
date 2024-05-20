@@ -177,12 +177,12 @@ void  UserIO::showStorage()
    }
 
    uint32_t freeHeap = ESP.getFreeHeap();
-   snprintf( line,MAX_OLED_COLUMNS,"Free : %u KiB",freeHeap / 1024 );
+   snprintf( line,MAX_OLED_COLUMNS,"Heap Free: %u KiB",freeHeap / 1024 );
    storeLine( 2,line );
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
    storeLine( 4,"SPIFFS" );
-   snprintf( line,MAX_OLED_COLUMNS,"%u of %u KiB",spiffs->usedBytes()/1024, spiffs->totalBytes()/1024 );
+   snprintf( line,MAX_OLED_COLUMNS,"Used %u of %u KiB",spiffs->usedBytes()/1024, spiffs->totalBytes()/1024 );
    storeLine( 5,line );
 
    show( m_currentLines );
@@ -294,7 +294,7 @@ void  UserIO::showCommsStatus()
       snprintf( line,MAX_OLED_COLUMNS,"EMON: sent %u",sends );
       storeLine( 0,line );
 
-      snprintf( line,MAX_OLED_COLUMNS," [QF,EF] %u,%u",qFails,fails );
+      snprintf( line,MAX_OLED_COLUMNS,"[QF,EF] %u,%u",qFails,fails );
       storeLine( 1,line );
    }
 
@@ -302,11 +302,24 @@ void  UserIO::showCommsStatus()
    {
       m_heatPump->getModbusStats( &sends,&fails );
 
-      snprintf( line,MAX_OLED_COLUMNS,"HP Modbus" );
+      snprintf( line,MAX_OLED_COLUMNS,"LG: sent %u", sends );
       storeLine( 3,line );
 
-      snprintf( line,MAX_OLED_COLUMNS," [Req,Err] %u,%u",sends,fails );
+      snprintf( line,MAX_OLED_COLUMNS," fail: %u",fails );
       storeLine( 4,line );
+   }
+
+   show( m_currentLines );
+}
+
+void  UserIO::showLGStatus()
+{
+   char  line[ MAX_OLED_COLUMNS ];
+   uint32_t sends,fails;
+   if ( m_heatPump )
+   {
+      clear();
+      m_heatPump->updateUserIO( this );
    }
 
    show( m_currentLines );
@@ -336,6 +349,9 @@ void  UserIO::show( ScreenType type )
          break;
       case COMMS_STATUS:
          showCommsStatus();
+         break;
+      case LG_STATUS:
+         showLGStatus();
          break;
       default :
          PW_WARN( "Unknown display type" );
@@ -379,6 +395,16 @@ void  UserIO::showNext()
          }
          break;
       case COMMS_STATUS:
+         if ( m_heatPump )
+         {
+            m_currentScreen = LG_STATUS;
+         }
+         else
+         {
+            m_currentScreen = NETWORK_STATUS;
+         }
+         break;
+      case LG_STATUS:
          m_currentScreen = NETWORK_STATUS;
          break;
       default:

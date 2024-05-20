@@ -98,10 +98,17 @@
       "addr": 3,
       "emonFeedId": 0,
       "scaling": 0.1
-  },  {
+  },
+  {
       "type": 3,
       "name": "wcoffset",
       "addr": 4,
+      "emonFeedId": 0
+  },
+  {
+      "type": 3,
+      "name": "dhwTarget",
+      "addr": 8,
       "emonFeedId": 0
   },
   {

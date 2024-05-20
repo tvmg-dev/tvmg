@@ -1,3 +1,5 @@
+#include <SD.h>
+
 #include <WiFi.h>
 #include <cJSON.h>
 
@@ -7,6 +9,7 @@
 
 #include "hwconfig.h"
 #include "config.h"
+#include "UserIO.h"
 
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
 
@@ -70,6 +73,7 @@ static std::map<float_t,float_t> r32Lookup = {
 
 LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_registers( nullptr ),
+     m_currentStatus(),
      m_numRegisters( 0 ),
      m_modbusRTU( master ),
      m_modbusRequests( 0 ),
@@ -78,6 +82,8 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_currentKW(0)
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
+
+   m_currentStatus.m_time = 0;
 
    // Parse the /lg.dat file for info
 
@@ -417,9 +423,135 @@ void  LGHeatPump::getLGData()
       {
          PW_HP_MODBUS( "%s %.1f",m_registers[ i ].m_name,m_registers[ i ].m_value );
       }
+
+      updateStatus();
    }
 
    END_TIMING;
+}
+
+bool  LGHeatPump::valueChanged( uint32_t parameter )
+{
+   bool  hasChanged = false;
+
+   int16_t newValue = getRawValue( parameter );
+
+   if ( newValue == -9999 )
+   {
+      PW_ERROR( "Failed to get raw value for 0x%x",parameter );
+   }
+   else
+   {
+      switch ( parameter )
+      {
+         case ERROR_CODE: if ( m_currentStatus.m_error != newValue ) { hasChanged = true; }
+            break;
+         case TARGET_TEMP: if ( m_currentStatus.m_heatingTarget != newValue ) { hasChanged = true; }
+            break;
+         case DHW_TARGET_TEMP: if ( m_currentStatus.m_dhwTarget != newValue ) { hasChanged = true; }
+            break;
+         case DHW_HEATING: if ( m_currentStatus.m_isDHW != newValue ) { hasChanged = true; }
+            break;
+         case LEGIONELLA_STATUS: if ( m_currentStatus.m_isLegionella != newValue ) { hasChanged = true; }
+            break;
+         case BOOST_WATER: if ( m_currentStatus.m_isImmersion != newValue ) { hasChanged = true; }
+            break;
+         case SILENT_STATUS: if ( m_currentStatus.m_isSilent != newValue ) { hasChanged = true; }
+            break;
+         case UNIT_CYCLE: if ( m_currentStatus.m_isActive != newValue ) { hasChanged = true; }
+            break;
+         case HEATING_ENABLED: if ( m_currentStatus.m_isHeating != newValue ) { hasChanged = true; }
+            break;
+         default:
+            hasChanged = false;
+      }
+   }
+
+   if ( hasChanged )
+   {
+      PW_MSG( "Changed Parameter 0x%x to %d",parameter,newValue );
+   }
+
+   return hasChanged;
+}
+
+void  LGHeatPump::updateStatus()
+{
+   bool  updateState = false;
+
+   // Check conditions for updating..
+
+   if ( !m_currentStatus.m_time )
+   {
+      File file = SD.open( LGSTATUS_LOG,FILE_APPEND );
+      if ( file )
+      {
+         file.println( "date,time,error,silent,inlet,outlet,active,heating,heating-target,"
+                       "dhw,dhw-temp,dhw-target,legionella,immersion" );
+         file.close();
+      }
+      updateState = true;
+   }
+   else
+   {
+      updateState |= valueChanged( ERROR_CODE );
+      updateState |= valueChanged( TARGET_TEMP );
+      updateState |= valueChanged( DHW_TARGET_TEMP );
+      updateState |= valueChanged( UNIT_CYCLE );
+      updateState |= valueChanged( HEATING_ENABLED );
+      updateState |= valueChanged( DHW_HEATING );
+      updateState |= valueChanged( LEGIONELLA_STATUS );
+      updateState |= valueChanged( BOOST_WATER );
+      updateState |= valueChanged( SILENT_STATUS );
+   }
+
+   if ( updateState )
+   {
+      struct tm timeInfo;
+      char  line[ 80 ];
+      char  timeStr[ 32 ];
+
+      time( &m_currentStatus.m_time );
+      localtime_r( &m_currentStatus.m_time,&timeInfo );
+      strftime( timeStr,32,"%Y%m%d,%H:%M:%S",&timeInfo );
+
+      m_currentStatus.m_error = getRawValue( ERROR_CODE );
+      m_currentStatus.m_inlet = getRawValue( INLET_TEMP );
+      m_currentStatus.m_outlet = getRawValue( OUTLET_TEMP );
+      m_currentStatus.m_dhw = getRawValue( DHW_TEMP );
+      m_currentStatus.m_heatingTarget = getRawValue( TARGET_TEMP );
+      m_currentStatus.m_dhwTarget = getRawValue( DHW_TARGET_TEMP );
+      m_currentStatus.m_isActive = getRawValue( UNIT_CYCLE );
+      m_currentStatus.m_isHeating = getRawValue( HEATING_ENABLED );
+      m_currentStatus.m_isDHW = getRawValue( DHW_HEATING );
+      m_currentStatus.m_isLegionella = getRawValue( LEGIONELLA_STATUS );
+      m_currentStatus.m_isImmersion = getRawValue( BOOST_WATER );
+      m_currentStatus.m_isSilent = getRawValue( SILENT_STATUS );
+
+      snprintf( line,80,"%s,%d,%d,%.1f,%.1f,%d,%d,%.1f,%d,%.1f,%.1f,%d,%d",
+               timeStr,
+               m_currentStatus.m_error,
+               m_currentStatus.m_isSilent,
+               m_currentStatus.m_inlet * 0.1,
+               m_currentStatus.m_outlet * 0.1,
+               m_currentStatus.m_isActive,
+               m_currentStatus.m_isHeating,
+               m_currentStatus.m_heatingTarget * 0.1,
+               m_currentStatus.m_isDHW,
+               m_currentStatus.m_dhw * 0.1,
+               m_currentStatus.m_dhwTarget * 0.1,
+               m_currentStatus.m_isLegionella,
+               m_currentStatus.m_isImmersion );
+
+      PW_MSG( line );
+
+      File file = SD.open( LGSTATUS_LOG,FILE_APPEND );
+      if ( file )
+      {
+         file.println( line );
+         file.close();
+      }
+   }
 }
 
 void  LGHeatPump::dumpData()
@@ -498,6 +630,25 @@ bool  LGHeatPump::getValue( uint32_t parameter,float_t *value )
    return registerOk;
 }
 
+int16_t  LGHeatPump::getRawValue( uint32_t parameter )
+{
+   int16_t  value = -9999;
+
+   std::map<uint32_t, uint8_t >::const_iterator it = m_registerMap.find( parameter );
+   if ( it == m_registerMap.end() )
+   {
+      PW_ERROR( "No register found for %x",parameter );
+   }
+   else
+   {
+      uint8_t  index = it->second;
+      value = m_registers[ index ].m_rawValue;
+      PW_DEBUG( "HP-Raw: %s:%u",m_registers[ index ].m_name,value );
+   }
+
+   return value;
+}
+
 bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
 {
    bool  registerOk = false;
@@ -521,6 +672,68 @@ void  LGHeatPump::getModbusStats( uint32_t *requests,uint32_t *failures )
 {
    *requests = m_modbusRequests;
    *failures = m_modbusFailures;
+}
+
+void  LGHeatPump::updateUserIO( UserIO *userIO )
+{
+   char line[ MAX_OLED_COLUMNS ];
+
+   if ( !getRawValue( COMPRESSOR_STATUS ) )
+   {
+      snprintf( line,MAX_OLED_COLUMNS,"Compress: OFF" );
+      userIO->storeLine( 0,line );
+      return;
+   }
+
+   float_t cr;
+   char powerChar = '+';
+   if ( getRawValue( SILENT_STATUS ) )
+   {
+      powerChar = '-';
+   }
+
+   (void) getValue( COMPRESSION_RATIO,&cr );
+   snprintf( line,MAX_OLED_COLUMNS,"%d Hz %c %.1f",getRawValue( COMPRESSOR_HZ ),powerChar,cr );
+   userIO->storeLine( 0,line );
+
+   float pwr;
+   (void) getValue( HEATING_POWER,&pwr );
+   snprintf( line,MAX_OLED_COLUMNS,"%.0f [%.0f]",pwr,m_currentKW );
+   userIO->storeLine( 1,line );
+
+   float_t cop,carnotCOP,copRatio;
+   float_t highT,lowT;
+   (void) getValue( COP,&cop );
+   (void) getValue( LOW_PRESS_TEMP,&lowT );
+   (void) getValue( HIGH_PRESS_TEMP,&highT );
+   if ( highT - lowT > 1.0F )
+   {
+      carnotCOP = (273 + highT) / ( highT - lowT );
+      copRatio = 100.0 * (cop / carnotCOP);
+   }
+   else
+   {
+      carnotCOP = 1;
+      copRatio = 1;
+   }
+   PW_DEBUG( "HP COP %.1f %.1f %.0f",cop,carnotCOP,copRatio );
+
+   snprintf( line,MAX_OLED_COLUMNS,"%.1f %.1f %.0f",cop,carnotCOP,copRatio );
+   userIO->storeLine( 2,line );
+
+   snprintf( line,MAX_OLED_COLUMNS,"Evap %.1f cond %.1f",lowT,highT );
+   userIO->storeLine( 3,line );
+
+   float_t inlet,outlet;
+   (void) getValue( INLET_TEMP,&inlet );
+   (void) getValue( OUTLET_TEMP,&outlet );
+   snprintf( line,MAX_OLED_COLUMNS,"i: %.1f o: %.1f",inlet,outlet );
+   userIO->storeLine( 4,line );
+
+   float_t  flowRate;
+   (void) getValue( FLOW_RATE,&flowRate );
+   snprintf( line,MAX_OLED_COLUMNS,"%.1f l/min",flowRate );
+   userIO->storeLine( 5,line );
 }
 
 float_t  LGHeatPump::convertR32PressureToTemp( float_t pressure )
@@ -583,7 +796,7 @@ void  getHPData()
                {
                   PW_HP_MODBUS( "IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
                   PW_HP_MODBUS( "IR: %u %u",i,s_master->getResponseBuffer( 0 ) );
-                  File file = SD.open( "/registers.log",FILE_APPEND );
+                  File file = SD.open( LGREGISTERS_LOG,FILE_APPEND );
                   if ( file )
                   {
                      char a[ 40 ];
