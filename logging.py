@@ -9,7 +9,7 @@ sock.bind(("", 51003))
 oldLog = ""
 
 while True:
-   data = sock.recv(1024)
+   data = sock.recv(2048)
    newLog = data.decode()
    if newLog != oldLog:
       print( f"{newLog}" )

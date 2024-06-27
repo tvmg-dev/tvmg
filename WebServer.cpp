@@ -405,11 +405,18 @@ void WebServer::setupAsyncServer()
       {
          savePath = request->getParam(param_save_path)->value();
       }
-      PW_DEBUG( "Saving to %s : contents :",savePath.c_str() );
-      PW_DEBUG( "%s",inputMessage.c_str() );
+      PW_DEBUG( "Saving %d bytes to %s : contents :",inputMessage.length(),savePath.c_str() );
       writeFile(s_spiffs, savePath.c_str(), inputMessage.c_str());
-
       request->redirect("/manager");
+
+      // if more than 2k then limit it due to size of debug buffer
+      if ( inputMessage.length() > 2047 )
+      {
+         inputMessage.remove( 2046 );
+      }
+
+      PW_DEBUG( "%s",inputMessage.c_str() );
+
    });
 
 

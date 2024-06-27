@@ -11,7 +11,7 @@
 #include "Networking.h"
 #include "LGHeatPump.h"
 
-static char buffer[ 4096 ];
+static char buffer[ 2048 ];
 
 static bool  isTrueVal = true;
 static bool  isFalseVal = false;
@@ -185,8 +185,15 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
          subNet = WiFi.localIP();
          subNet[ 3 ] = 255;
       }
+      uint16_t len = strlen(debugString.c_str());
+      if ( len > 2048 )
+      {
+         len = 2048;
+         String tooBig = "Message is too big for UDP, limiting";
+         (void) Networking::getUDP()->writeTo( (const uint8_t *) tooBig.c_str(),strlen(tooBig.c_str()),subNet,UDPDebugPort );
+      }
 
-      (void) Networking::getUDP()->writeTo( (const uint8_t *) debugString.c_str(),strlen(debugString.c_str()),subNet,UDPDebugPort );
+      (void) Networking::getUDP()->writeTo( (const uint8_t *) debugString.c_str(),len,subNet,UDPDebugPort );
    }
 
    if ( logToFile == isTrue )
