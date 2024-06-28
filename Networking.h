@@ -47,9 +47,9 @@ public:
 private:
    Emailer           *m_emailer;
    WebServer         *m_webServer;
-   static    AsyncUDP   *s_udp;
-
-   Status  m_status;
+   static  AsyncUDP  *s_udp;
+   Status            m_status;
+   String            m_emonCert;
 };
 
 #endif

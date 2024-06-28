@@ -11,7 +11,7 @@
 #include "Networking.h"
 #include "LGHeatPump.h"
 
-static char buffer[ 2048 ];
+static char buffer[ 4096 ];
 
 static bool  isTrueVal = true;
 static bool  isFalseVal = false;
