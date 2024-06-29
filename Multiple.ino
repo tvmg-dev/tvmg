@@ -335,8 +335,11 @@ void setup( void )
    heatPumpModule->initialise();
 #endif
 
-   lgThermaV = new LGHeatPump( powerModule->getModbus() );
-   lgThermaV->initialise();
+   if ( GET_REGISTRY_INT( LG_MODBUS ) > 0 )
+   {
+      lgThermaV = new LGHeatPump( powerModule->getModbus() );
+      lgThermaV->initialise();
+   }
 
    // User IO needs HP collection stats
 

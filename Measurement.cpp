@@ -139,18 +139,24 @@ void  Measurement::takeSample( void )
       if ( powerSensor->m_id == HEAT_PUMP_ID )
       {
          hpKW = powerSensor->m_power;
-         m_heatPump->setCurrentKW( hpKW );
+         if ( m_heatPump )
+         {
+            m_heatPump->setCurrentKW( hpKW );
+         }
       }
    }
 
-   i = 0;
-   LGRegister *lgRegister;
-   while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
+   if ( m_heatPump )
    {
-      newSample.m_lgRegisters[ i++ ] = lgRegister;
+      i = 0;
+      LGRegister *lgRegister;
+      while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
+      {
+         newSample.m_lgRegisters[ i++ ] = lgRegister;
  //     PW_DEBUG( "LG: %s %.1f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
+      }
+      PW_DEBUG( "Retrieved %d LG registers",i );
    }
-   PW_DEBUG( "Retrieved %d LG registers",i );
 
    m_lastSample = newSample;
 
