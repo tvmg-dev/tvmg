@@ -89,6 +89,7 @@ typedef struct {
 
 typedef struct {
    time_t   m_time;
+   uint16_t m_updates;
 
    int16_t  m_error;
 

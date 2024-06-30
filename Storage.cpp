@@ -355,6 +355,8 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
    }
 }
 
+#define  DAILY_EMAIL_HOUR  14
+
 void  Storage::storeSample( const Measurement::Sample &sample )
 {
    char     line[ 128 ];
@@ -413,12 +415,12 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    // if the dailyUpdate has been sent and the time is no longer in the
    // 5pm hour, then reset the update flag for next time
 
-   if ( m_dailyUpdate && timeInfo.tm_hour != 17 )
+   if ( m_dailyUpdate && timeInfo.tm_hour != DAILY_EMAIL_HOUR )
    {
       PW_DEBUG( "Resetting daily update flag" );
       m_dailyUpdate = false;
    }
-   else if ( timeInfo.tm_hour == 17 && !m_dailyUpdate && m_networking )
+   else if ( timeInfo.tm_hour == DAILY_EMAIL_HOUR && !m_dailyUpdate && m_networking )
    {
       PW_MSG( "Sending daily update" );
 
@@ -442,7 +444,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       {
          if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG ) )
          {
-            SD.remove( LGMODBUS_LOG );
+            SD.remove( LGSTATUS_LOG );
          }
       }
    }

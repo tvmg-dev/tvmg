@@ -84,6 +84,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
    m_currentStatus.m_time = 0;
+   m_currentStatus.m_updates = 0;
 
    // Parse the /lg.dat file for info
 
@@ -491,6 +492,7 @@ void  LGHeatPump::updateStatus()
          file.close();
       }
       updateState = true;
+      m_currentStatus.m_updates = 0;
    }
    else
    {
@@ -505,11 +507,28 @@ void  LGHeatPump::updateStatus()
       updateState |= valueChanged( SILENT_STATUS );
    }
 
-   if ( updateState )
+   if ( !updateState )
+   {
+      return;
+   }
+
+   if ( m_currentStatus.m_updates == 1000 )
+   {
+      PW_WARN( "LG event log limit reached" );
+   }
+   else
    {
       struct tm timeInfo;
       char  line[ 80 ];
       char  timeStr[ 32 ];
+
+      // limit to 1000 entries - so if error arises we can see it and
+      // we won't write too much data to the log.  Its a daily file too.
+      // This isn't perfect as the count resets to zero on power cycle
+      // so could get more than 1000 but should be low chance of lots of
+      // power cycles and some systemic faiure with the LG.
+
+      m_currentStatus.m_updates++;
 
       time( &m_currentStatus.m_time );
       localtime_r( &m_currentStatus.m_time,&timeInfo );
