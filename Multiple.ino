@@ -328,12 +328,7 @@ void setup( void )
    powerModule = new PowerModule;
    powerModule->initialise();
 
-   // Instantiate the heat pump collecting module
-
-#if 0
-   heatPumpModule = new HeatPumpModule();
-   heatPumpModule->initialise();
-#endif
+   // Instantiate the heat pump collecting module if active
 
    if ( GET_REGISTRY_INT( LG_MODBUS ) > 0 )
    {
@@ -421,12 +416,6 @@ void setup( void )
 
 #define LOOP_PERIOD_MS  5000
 
-extern void getHPValues( float_t *pow,float_t *frate, float_t *dhwtemp, float_t *comp );
-extern bool getHPData();
-
-uint32_t hpSamples = 0;
-uint32_t hpErrors = 0;
-
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis,lastHpMillis = 0;
@@ -447,12 +436,15 @@ void loop(void)
       {
          START_TIMING( "Handle Touch1" );
          handleTouch1();
+         wasButton2Pressed = false;
          END_TIMING;
       }
-      else if ( wasButton2Pressed )
+
+      if ( wasButton2Pressed )
       {
          START_TIMING( "Handle Touch2" );
          handleTouch2();
+         wasButton1Pressed = false;
          END_TIMING;
       }
 
@@ -493,7 +485,11 @@ void loop(void)
 
    END_TIMING;
 
-   PW_DEBUG( "Loop Delay %u",deltaMillis );
+   PW_MSG( "Loop Delay %u",deltaMillis );
 
+   int64_t  start = esp_timer_get_time();
    delay( deltaMillis );
+   int64_t  end = esp_timer_get_time();
+
+   PW_MSG( "%lld %lld %lld",start,end,end-start );
 }

@@ -12,7 +12,7 @@ class Storage
 public:
    Storage();
    ~Storage();
-   void  initialise( void );
+   void  initialise();
    void  storeSample( const Measurement::Sample &sample );
    char  *getCurrentFileName();
    void  setNetworking( Networking *network );
@@ -20,6 +20,7 @@ public:
 
 private:
    void  saveSampleToBackingStore( const Measurement::Sample &sample );
+   void  removeOldSamples();
 
    char        m_currentFileName[ MAX_FILENAME +1 ];
    Networking  *m_networking;

@@ -11,6 +11,10 @@
 
 #define WRITE_TEST_FILE "/test.dat"
 
+// Delete files that are 40 days old as determined by their filenames
+
+#define  DELETE_OLDER_THAN_SECONDS     (40 * 24 * 60 * 60)
+
 Storage::Storage()
        : m_currentFileName(),
          m_networking( nullptr ),
@@ -27,45 +31,6 @@ Storage::Storage()
 Storage::~Storage()
 {
    PW_DEBUG( "Storage::~Storage()" );
-}
-
-void printDirectory( File dir, int numTabs )
-{
-
-   while (true)
-   {
-      File entry = dir.openNextFile();
-      if (!entry) {
-         if (numTabs == 0)
-         {
-            PW_DEBUG( "Done" );
-         }
-         return;
-      }
-
-      String line;
-
-      for (uint8_t i = 0; i < numTabs; i++)
-      {
-         line += "  ";
-      }
-
-      line += entry.name();
-
-      if ( entry.isDirectory() )
-      {
-         PW_DEBUG( line.c_str() );
-         printDirectory(entry, numTabs + 1);
-      }
-      else
-      {
-         line += "      ";
-         line += String( entry.size(), DEC );
-         PW_DEBUG( line.c_str() );
-      }
-
-      entry.close();
-   }
 }
 
 void Storage::initialise( void )
@@ -119,12 +84,83 @@ void Storage::initialise( void )
       {
          PW_WARN( "SD card has failed !" );
       }
-#if 0
-   File root = SD.open( "/" );
-   printDirectory( root,0 );
-   root.close();
-#endif
+      else
+      {
+         removeOldSamples();
+      }
    }
+}
+
+void Storage::removeOldSamples()
+{
+   // clean up root directory
+
+   time_t currentTime;
+   time( &currentTime );
+
+   File root = SD.open( "/" );
+
+   while (true)
+   {
+      File entry = root.openNextFile();
+      if (!entry)
+      {
+         break;
+      }
+
+      if ( !entry.isDirectory() )
+      {
+         String fileName = entry.name();
+         entry.close();
+
+         // Get current time and then convert to a tm struct based on the
+         // filename which is in yyyymmdd.dat format.
+
+         struct tm timeInfo;
+         localtime_r( &currentTime,&timeInfo );
+
+         char year[ 5 ],month[ 3 ],day[ 3 ];
+
+         year[ 0 ] = 0;
+         month[ 0 ] = 0;
+         day[ 0 ] = 0;
+
+         uint16_t iyear,imonth,iday;
+
+         sscanf( fileName.c_str(),"%4s%2s%2s",year,month,day );
+
+         iday = atoi( day );
+         imonth = atoi( month );
+         iyear = atoi( year );
+
+         // Basic sanity test
+         if ( iyear < 2023 || iday > 31 || imonth > 12 )
+         {
+            PW_DEBUG( "Ignoring %s",fileName );
+            continue;
+         }
+
+         timeInfo.tm_year = iyear - 1900;
+         timeInfo.tm_mon = imonth - 1;
+         timeInfo.tm_mday = iday;
+
+         time_t   fileTime = mktime( &timeInfo );
+         time_t   timeDiff = currentTime - fileTime;
+
+         if ( timeDiff < 0 || timeDiff > DELETE_OLDER_THAN_SECONDS )
+         {
+            String fullPath = "/" + fileName;
+            PW_MSG( "Deleting %s",fullPath.c_str() );
+            SD.remove( fullPath.c_str() );
+         }
+         else if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
+         {
+            PW_DEBUG( fileName.c_str() );
+         }
+      }
+   }
+
+   root.close();
 }
 
 void  Storage::setNetworking( Networking *network )
@@ -205,19 +241,15 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
                SD.remove( DEBUG_LOG );
             }
          }
-
-         if ( SD.exists ( LGSTATUS_LOG ) )
-         {
-            if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG ) )
-            {
-               // SD.remove( LGMODBUS_LOG );
-            }
-         }
       }
 
       // set new current filename
 
       strcpy( m_currentFileName,fileName );
+
+      // Let's remove old files if present
+
+      removeOldSamples();
    }
 
    // set current filename if not already set
@@ -373,10 +405,9 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       }
    }
 
+   // perform daily update mails if needed
+
    struct tm timeInfo;
-
-   // perform daily update mail if needed
-
    localtime_r( &sample.m_sampleTime,&timeInfo );
 
    // if the dailyUpdate has been sent and the time is no longer in the
@@ -406,6 +437,14 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       updateStr += "\n\n";
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
+
+      if ( SD.exists ( LGSTATUS_LOG ) )
+      {
+         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG ) )
+         {
+            SD.remove( LGMODBUS_LOG );
+         }
+      }
    }
 
    // save sample to store
