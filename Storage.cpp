@@ -355,7 +355,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
    }
 }
 
-#define  DAILY_EMAIL_HOUR  14
+#define  DAILY_EMAIL_HOUR  17
 
 void  Storage::storeSample( const Measurement::Sample &sample )
 {

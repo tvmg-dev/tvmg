@@ -484,12 +484,16 @@ void  LGHeatPump::updateStatus()
 
    if ( !m_currentStatus.m_time )
    {
-      File file = SD.open( LGSTATUS_LOG,FILE_APPEND );
-      if ( file )
+      // don't add a line if the log exists, e.g. power cycle
+      if ( ! SD.exists( LGSTATUS_LOG ) )
       {
-         file.println( "date,time,error,silent,inlet,outlet,active,heating,heating-target,"
-                       "dhw,dhw-temp,dhw-target,legionella,immersion" );
-         file.close();
+         File file = SD.open( LGSTATUS_LOG,FILE_APPEND );
+         if ( file )
+         {
+            file.println( "date,time,error,silent,inlet,outlet,active,heating,heating-target,"
+                          "dhw,dhw-temp,dhw-target,legionella,immersion" );
+            file.close();
+         }
       }
       updateState = true;
       m_currentStatus.m_updates = 0;

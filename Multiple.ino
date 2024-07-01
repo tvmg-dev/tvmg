@@ -15,6 +15,7 @@
 #include "Networking.h"
 #include "WebServer.h"
 #include "LGHeatPump.h"
+#include "GrundfosUPS3.h"
 
 // ---------------------------------------------------------------------
 
@@ -27,6 +28,7 @@ Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
 LGHeatPump        *lgThermaV = nullptr;
+GrundfosUPS3      *grundfosUPS3 = nullptr;
 
 // ---------------------------------------------------------------------
 // Reboot handling code, if we have 3 reboots then we consider WiFi has
@@ -122,12 +124,12 @@ bool wasButton1Pressed = false;
 bool wasButton2Pressed = false;
 bool userIOHoldScreen = false;   // if true then don't cycle screens
 
-void gotTouch1Event()
+void IRAM_ATTR gotTouch1Event()
 {
   wasButton1Pressed = true;
 }
 
-void gotTouch2Event()
+void IRAM_ATTR gotTouch2Event()
 {
   wasButton2Pressed = true;
 }
@@ -409,6 +411,13 @@ void setup( void )
       }
    }
 
+   if ( GET_REGISTRY_INT( UPS3_PUMP ) > 0 )
+   {
+      grundfosUPS3 = new GrundfosUPS3( GET_REGISTRY_INT( UPS3_PUMP ) );
+      grundfosUPS3->initialise();
+   }
+
+
 }
 
 // ---------------------------------------------------------------------
@@ -419,7 +428,9 @@ void setup( void )
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis,lastHpMillis = 0;
-   static uint32_t loops = 1;
+   static uint32_t loops = 0;
+
+   loops++;
 
    START_TIMING( "Main Loop" );
 
@@ -465,6 +476,12 @@ void loop(void)
       {
          userIO->showNext();
       }
+
+      if ( grundfosUPS3 && (loops % 4) == 0 )
+      {
+         grundfosUPS3->test2();
+      }
+
       END_TIMING;
    }
 
@@ -487,9 +504,5 @@ void loop(void)
 
    PW_MSG( "Loop Delay %u",deltaMillis );
 
-   int64_t  start = esp_timer_get_time();
    delay( deltaMillis );
-   int64_t  end = esp_timer_get_time();
-
-   PW_MSG( "%lld %lld %lld",start,end,end-start );
 }
