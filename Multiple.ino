@@ -502,7 +502,7 @@ void loop(void)
 
    END_TIMING;
 
-   PW_MSG( "Loop Delay %u",deltaMillis );
+   PW_MSG( "Loop Delay %u %d",deltaMillis,ESP.getFreeHeap() / 1024 );
 
    delay( deltaMillis );
 }

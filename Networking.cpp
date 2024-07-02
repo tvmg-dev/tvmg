@@ -72,7 +72,7 @@ void  backgroundThread( void *params )
             else
             {
                PW_MSG( "EMONCMS: Would send to emon [%u], %.2f",data->emonFeedId,data->value );
-               delay( random( 1000,2500 ) );
+               delay( random( 100,250 ) );
             }
 
             delete data;
@@ -117,6 +117,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
       // take this opportunity to show some stats
       PW_MSG( "EMONCMS: Sent %u, failed [Q,E] [%u,%u]",emonSendRequests,emonQFailures,emonSendFailures );
+      delay( 200 );
    }
 
    // Create a new HTTPClient if we need to, and we try to connect to the
@@ -124,8 +125,12 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
    if ( !s_webClient )
    {
+      PW_MSG( "EMONCMS: Create new HTTPClient" );
+      delay( 20 );
       s_webClient = new HTTPClient();
       s_webClient->setReuse( true );
+      PW_MSG( "EMONCMS: begin HTTPClient" );
+   delay( 20 );
 
       if ( ! s_webClient->begin( *s_emoncmsClient,"https://emoncms.org" ) )
       {
@@ -498,7 +503,7 @@ void Networking::initialise()
    // Now create out background task helper, up to 20 emon messages
    // may be queued.
 
-   dataQueue = xQueueCreate( 20,sizeof( struct EmonData *) );
+   dataQueue = xQueueCreate( 40,sizeof( struct EmonData *) );
    if ( ! dataQueue )
    {
       PW_ERROR( "Failed to create XQueue" );
@@ -612,18 +617,25 @@ bool Networking::sendEmailWithAttachment( const char *recipient,const char *subj
 
 void Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
 {
-   // Create a new data item and add to the queue - the background task will delete
-   // the data.
-
-   emonSendRequests++;
-
-   EmonData *data = new EmonData;
-   data->emonFeedId = emonFeedId;
-   data->value = value;
-
    if ( dataQueue )
    {
-      PW_DEBUG( "EMONCMS:Sending to Q (cpu%u) - %u %.1f",xPortGetCoreID(),data->emonFeedId,data->value );
+      // Create a new data item and add to the queue - the background task will delete
+      // the data.
+
+      emonSendRequests++;
+
+      EmonData *data = static_cast<EmonData *>( malloc( sizeof( EmonData ) ) );
+      if ( !data )
+      {
+         PW_ERROR( "Failed to allocate EmonData" );
+         emonQFailures++;
+         return;
+      }
+
+      data->emonFeedId = emonFeedId;
+      data->value = value;
+
+      PW_DEBUG( "EMONCMS:Sending to Q (cpu%u) - %u %.1f %d",xPortGetCoreID(),data->emonFeedId,data->value,ESP.getFreeHeap() / 1024 );
 
       if ( xQueueSend( dataQueue,(void *) &data,0 ) != pdTRUE )
       {

@@ -1,6 +1,7 @@
 #include <time.h>
 #include <WiFi.h>
 #include <AsyncUDP.h>
+#include <mutex>
 
 #include <SD.h>
 #include <FS.h>
@@ -31,6 +32,8 @@ static bool logFileOk = true;
 
 static IPAddress   subNet;
 static uint16_t    UDPDebugPort = 0;
+
+std::mutex  loggingMutex;
 
 bool  isDebugEnabled()
 {
@@ -166,6 +169,8 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    {
       debugString += "HPMOD: ";
    }
+
+   std::lock_guard<std::mutex> lock(loggingMutex);
 
    va_list args;
    va_start( args,format );
