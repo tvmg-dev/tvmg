@@ -8,6 +8,7 @@
 #include "TemperatureModule.h"
 #include "PowerModule.h"
 #include "HeatPumpModule.h"
+#include "HeatMeter.h"
 #include "UserIO.h"
 #include "Measurement.h"
 #include "Config.h"
@@ -23,6 +24,7 @@ TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
 HeatPumpModule    *heatPumpModule = nullptr;
 Storage           *storageModule = nullptr;
+HeatMeterModule   *heatMeterModule = nullptr;
 UserIO            *userIO = nullptr;
 Measurement       *measurement = nullptr;
 Config            *config = nullptr;
@@ -343,16 +345,23 @@ void setup( void )
 
    userIO->setLGHeatPump( lgThermaV );
 
+#if 0
+   // Instantitate the UPS3 pump if active
+
    if ( GET_REGISTRY_INT( UPS3_PUMP ) > 0 )
    {
-      grundfosUPS3 = new GrundfosUPS3( GET_REGISTRY_INT( UPS3_PUMP ) );
+      grundfosUPS3 = new GrundfosUPS3( GET_REGISTRY_INT( UPS3_PUMP ),"CS2" );
       grundfosUPS3->initialise();
    }
+#endif
+
+   heatMeterModule = new HeatMeterModule( tempModule );
+   heatMeterModule->initialise();
 
    // Instantiate the measurement module, but don't initialise it just yet,
    // userIO needs access to data
 
-   measurement = new Measurement( tempModule,powerModule,lgThermaV,storageModule );
+   measurement = new Measurement( tempModule,powerModule,lgThermaV,heatMeterModule,storageModule );
    userIO->setMeasurement( measurement );
 
    // let's tell storage we have networking available

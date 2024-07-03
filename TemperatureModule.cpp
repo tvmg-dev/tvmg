@@ -376,6 +376,22 @@ bool TemperatureModule::getTemperatures()
    return true;
 }
 
+float_t TemperatureModule::getTemperature( uint8_t tempId )
+{
+   float_t  temp = TEMPERATURE_INVALID;
+
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+   {
+      if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_sensor.m_id == tempId )
+      {
+         temp = m_sensors[ i ].m_sensor.m_temp;
+      }
+   }
+
+   return( temp );
+}
+
+
 void  TemperatureModule::getAddressString( DeviceAddress addr,char *addrString )
 {
    for (int i = 0; i < sizeof( DeviceAddress ); i++ )

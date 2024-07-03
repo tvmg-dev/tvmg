@@ -23,6 +23,10 @@ Measurement::Sample::Sample()
    {
       m_lgRegisters[ i ] = nullptr;
    }
+   for ( int i = 0; i < MAX_HEAT_METERS; i++ )
+   {
+      m_heatMeterSensors[ i ] = nullptr;
+   }
 }
 
 Measurement::Sample::Sample( const Measurement::Sample &other )
@@ -40,6 +44,10 @@ Measurement::Sample::Sample( const Measurement::Sample &other )
    for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
    {
       m_lgRegisters[ i ] = other.m_lgRegisters[ i ];
+   }
+   for ( int i = 0; i < MAX_HEAT_METERS; i++ )
+   {
+      m_heatMeterSensors[ i ] = other.m_heatMeterSensors[ i ];
    }
 }
 
@@ -61,15 +69,21 @@ Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &
       {
          m_lgRegisters[ i ] = other.m_lgRegisters[ i ];
       }
+      for ( int i = 0; i < MAX_HEAT_METERS; i++ )
+      {
+         m_heatMeterSensors[ i ] = other.m_heatMeterSensors[ i ];
+      }
    }
 
    return( *this );
 }
 
-Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModule,LGHeatPump *heatPump,Storage *storage )
+Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModule,LGHeatPump *heatPump,
+                                          HeatMeterModule *hmModule, Storage *storage )
            : m_tempModule( tempModule ),
              m_powerModule( powerModule ),
              m_heatPump( heatPump ),
+             m_heatMeterModule( hmModule ),
              m_storageModule( storage ),
              m_networking( nullptr ),
              m_lastSample(),
@@ -156,6 +170,19 @@ void  Measurement::takeSample( void )
  //     PW_DEBUG( "LG: %s %.1f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
       }
       PW_DEBUG( "Retrieved %d LG registers",i );
+   }
+
+   if ( m_heatMeterModule )
+   {
+      i = 0;
+      HeatingPowerSensor *heatMeterSensor;
+
+      while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i ) ) )
+      {
+         newSample.m_heatMeterSensors[ i++ ] = heatMeterSensor;
+
+         PW_DEBUG( "%s %.1f %.1f",heatMeterSensor->m_name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
+      }
    }
 
    m_lastSample = newSample;

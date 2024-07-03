@@ -94,7 +94,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
          logTiming = isTrue;
       }
 
-      if ( GET_REGISTRY_INT( LOG_MEMSTATS ) != 1 )
+      if ( GET_REGISTRY_INT( LOG_MEMSTATS ) == 1 )
       {
          logMemStats = isTrue;
       }

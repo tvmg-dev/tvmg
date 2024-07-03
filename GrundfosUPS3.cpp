@@ -98,32 +98,27 @@ static std::map<String,GrundfosUPS3::Mode> ups3ModeMap = {
    { "PP2",GrundfosUPS3::PROPORTIONAL_PRESSURE2 },
 };
 
-GrundfosUPS3::GrundfosUPS3( uint8_t pwmGPIO )
+GrundfosUPS3::GrundfosUPS3( uint8_t pwmGPIO,const char *mode )
             : m_pwmGPIO( pwmGPIO ),
               m_power( 0.0 ),
               m_quality( 0 ),
               m_mode( CONSTANT_SPEED1 )
 {
+   const char *actualMode = "CS1";
    s_pwmGPIO = m_pwmGPIO;
 
-   String mode = GET_REGISTRY_STRING( UPS3_MODE );
-   if ( !mode.length() )
+   std::map<String,GrundfosUPS3::Mode>::const_iterator it = ups3ModeMap.find( String( mode ) );
+   if ( it == ups3ModeMap.end() )
    {
-      PW_ERROR( "No UPS3_MODE in config.dat" );
+      PW_ERROR( "Not found %s mode for UPS3",mode );
    }
    else
    {
-      static std::map<String,GrundfosUPS3::Mode>::const_iterator it = ups3ModeMap.find( mode );
-
-      if ( it == ups3ModeMap.end() )
-      {
-         PW_ERROR( "Not found %s mode for UPS3",mode.c_str() );
-      }
-      else
-      {
-         PW_MSG( "mode %s enum %u",it->first.c_str(),it->second );
-      }
+      m_mode = it->second;
+      actualMode = it->first.c_str();
    }
+
+   PW_MSG( "UPS3 - gpio(%u), mode %d (%s)",m_pwmGPIO,m_mode,actualMode );
 }
 
 GrundfosUPS3::~GrundfosUPS3()
@@ -168,7 +163,7 @@ void  GrundfosUPS3::sample()
 
    m_quality = highCount + lowCount;
    m_power = 0;
-   if ( m_quality < 85 && highCount && lowCount || !timeBetweenPositiveEdges )
+   if ( m_quality < 85 || !timeBetweenPositiveEdges || ! highCount || ! lowCount )
    {
       PW_WARN( "Poor quality from UPS3 - quality %u",m_quality );
       return;

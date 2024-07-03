@@ -16,7 +16,7 @@ public:
       PROPORTIONAL_PRESSURE2,
    };
 
-   GrundfosUPS3( uint8_t pwmGPIO );
+   GrundfosUPS3( uint8_t pwmGPIO,const char *mode );
    ~GrundfosUPS3();
    void  initialise();
    void  sample();

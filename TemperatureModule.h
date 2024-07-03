@@ -48,6 +48,7 @@ public:
    ~TemperatureModule();
    void  initialise();
    TempSensor  *readNextSensor( uint8_t index );
+   float_t     getTemperature( uint8_t tempId );
 
 private:
    typedef struct {
