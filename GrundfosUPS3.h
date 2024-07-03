@@ -6,14 +6,27 @@
 class GrundfosUPS3
 {
 public:
+   enum  Mode {
+      CONSTANT_SPEED1,
+      CONSTANT_SPEED2,
+      CONSTANT_SPEED3,
+      CONSTANT_PRESSURE1,
+      CONSTANT_PRESSURE2,
+      PROPORTIONAL_PRESSURE1,
+      PROPORTIONAL_PRESSURE2,
+   };
+
    GrundfosUPS3( uint8_t pwmGPIO );
    ~GrundfosUPS3();
    void  initialise();
-   void  test();
-   void  test2();
+   void  sample();
+   float_t  getFlowRate();
 
 private:
-   uint8_t        m_pwmGPIO;
+   uint8_t  m_pwmGPIO;
+   float_t  m_power;
+   uint8_t  m_quality;
+   Mode     m_mode;
 };
 
 #endif

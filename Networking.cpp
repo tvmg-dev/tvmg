@@ -31,7 +31,7 @@ static String           s_emoncmsApiKey;
 static uint32_t emonSendRequests = 0,emonQFailures = 0, emonSendFailures = 0;
 
 // Example feed data insertion -
-// s_webClient://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
+// https://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
 
 struct   EmonData {
    uint32_t emonFeedId;
@@ -117,7 +117,6 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
       // take this opportunity to show some stats
       PW_MSG( "EMONCMS: Sent %u, failed [Q,E] [%u,%u]",emonSendRequests,emonQFailures,emonSendFailures );
-      delay( 200 );
    }
 
    // Create a new HTTPClient if we need to, and we try to connect to the
@@ -126,11 +125,9 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    if ( !s_webClient )
    {
       PW_MSG( "EMONCMS: Create new HTTPClient" );
-      delay( 20 );
       s_webClient = new HTTPClient();
       s_webClient->setReuse( true );
-      PW_MSG( "EMONCMS: begin HTTPClient" );
-   delay( 20 );
+      PW_DEBUG( "EMONCMS: begin HTTPClient" );
 
       if ( ! s_webClient->begin( *s_emoncmsClient,"https://emoncms.org" ) )
       {
@@ -147,15 +144,18 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
    snprintf( path,128,"/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,s_emoncmsApiKey.c_str() );
 
-   PW_MSG( "EMONCMS: Send %s",path );
+   PW_MSG( "EMONCMS: Will %s",path );
 
    // Send the GET request - which will force a connect if necessary
 
    s_webClient->setURL( path );
    int httpCode = s_webClient->GET();
 
+   PW_MSG( "EMONCMS: Sent %d",httpCode );
+
    // Check success from HTTP perspective, then check success from emon REST perspective
 
+#if 0
    if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
    {
       String payload = s_webClient->getString();
@@ -170,6 +170,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
       emonSendFailures++;
       PW_ERROR( "EMONCMS: GET failed [%s]",s_webClient->errorToString(httpCode).c_str() );
    }
+#endif
 
    lastSentMillis = millis();
 }

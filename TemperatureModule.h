@@ -75,6 +75,7 @@ private:
    uint8_t           m_numRemoteSensors;
 
    int32_t           m_millisLastAquisition;       // milliseconds since last acquisition
+   bool              m_fakeMeasurements;
 };
 
 #endif

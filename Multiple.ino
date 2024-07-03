@@ -338,9 +338,16 @@ void setup( void )
       lgThermaV->initialise();
    }
 
-   // User IO needs HP collection stats
+   // User IO needs HP collection stats, could be a null ptr but UserIO will
+   // deal with it
 
    userIO->setLGHeatPump( lgThermaV );
+
+   if ( GET_REGISTRY_INT( UPS3_PUMP ) > 0 )
+   {
+      grundfosUPS3 = new GrundfosUPS3( GET_REGISTRY_INT( UPS3_PUMP ) );
+      grundfosUPS3->initialise();
+   }
 
    // Instantiate the measurement module, but don't initialise it just yet,
    // userIO needs access to data
@@ -410,14 +417,6 @@ void setup( void )
          }
       }
    }
-
-   if ( GET_REGISTRY_INT( UPS3_PUMP ) > 0 )
-   {
-      grundfosUPS3 = new GrundfosUPS3( GET_REGISTRY_INT( UPS3_PUMP ) );
-      grundfosUPS3->initialise();
-   }
-
-
 }
 
 // ---------------------------------------------------------------------
@@ -427,7 +426,7 @@ void setup( void )
 
 void loop(void)
 {
-   static uint32_t targetMillis = 0,deltaMillis,currentMillis,lastHpMillis = 0;
+   static uint32_t targetMillis = 0,deltaMillis,currentMillis;
    static uint32_t loops = 0;
 
    loops++;
@@ -477,9 +476,9 @@ void loop(void)
          userIO->showNext();
       }
 
-      if ( grundfosUPS3 && (loops % 4) == 0 )
+      if ( grundfosUPS3 )
       {
-         grundfosUPS3->test2();
+         grundfosUPS3->sample();
       }
 
       END_TIMING;
@@ -502,7 +501,7 @@ void loop(void)
 
    END_TIMING;
 
-   PW_MSG( "Loop Delay %u %d",deltaMillis,ESP.getFreeHeap() / 1024 );
+   PW_MSG( "Loop Delay %u",deltaMillis );
 
    delay( deltaMillis );
 }

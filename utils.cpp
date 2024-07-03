@@ -27,6 +27,7 @@ static bool *hpModBusEnabled = nullptr;
 static bool *logTimestamps = nullptr;
 static bool *logToFile = nullptr;
 static bool *logTiming = nullptr;
+static bool *logMemStats = nullptr;
 
 static bool logFileOk = true;
 
@@ -59,6 +60,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       logToFile = isFalse;
       logTiming = isFalse;
       logToUDP = isFalse;
+      logMemStats = isFalse;
 
       if ( GET_REGISTRY_INT( DISABLED_SERIAL_LOGGING ) != 1 )
       {
@@ -90,6 +92,11 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       if ( GET_REGISTRY_INT( LOG_TIMING ) == 1 )
       {
          logTiming = isTrue;
+      }
+
+      if ( GET_REGISTRY_INT( LOG_MEMSTATS ) != 1 )
+      {
+         logMemStats = isTrue;
       }
 
       if ( GET_REGISTRY_INT( LOG_HP_MODBUS ) == 1 )
@@ -136,15 +143,20 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
       localtime_r( &now,&timeInfo );
 
-      // Can get the stack free effectively, seem to have about 2.5k left
-      // with the 512 byte buffer used in sending daily update - starts at
-      // about 7k and we're at around 3.5k when loop() entered.
-
-      // uint32_t wmark = uxTaskGetStackHighWaterMark( NULL );
-
       strftime( line,20,"%H:%M:%S",&timeInfo );
       sprintf( msStr,".%03u - ",ms );
       strcat( line,msStr );
+
+      debugString += line;
+   }
+
+   if ( logMemStats == isTrue )
+   {
+      char line[ 64 ];
+
+      // get stack watermark for current task, current core and free heap
+
+      sprintf( line,"[%u,%u,%u] - ",xPortGetCoreID(),uxTaskGetStackHighWaterMark( NULL ),ESP.getFreeHeap() / 1024 );
 
       debugString += line;
    }

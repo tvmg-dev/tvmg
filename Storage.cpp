@@ -153,7 +153,7 @@ void Storage::removeOldSamples()
             PW_MSG( "Deleting %s",fullPath.c_str() );
             SD.remove( fullPath.c_str() );
          }
-         else if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
+         else if ( isDebugEnabled() )
          {
             PW_DEBUG( fileName.c_str() );
          }

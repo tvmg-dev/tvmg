@@ -617,7 +617,7 @@ bool  LGHeatPump::getStatus( uint32_t parameter,bool *state )
 {
    bool  registerOk = false;
 
-   std::map<uint32_t, uint8_t >::const_iterator it = m_registerMap.find( parameter );
+   std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
       PW_ERROR( "No register found for %x",parameter );
@@ -637,7 +637,7 @@ bool  LGHeatPump::getValue( uint32_t parameter,float_t *value )
 {
    bool  registerOk = false;
 
-   std::map<uint32_t, uint8_t >::const_iterator it = m_registerMap.find( parameter );
+   std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
       PW_ERROR( "No register found for %x",parameter );
@@ -657,7 +657,7 @@ int16_t  LGHeatPump::getRawValue( uint32_t parameter )
 {
    int16_t  value = -9999;
 
-   std::map<uint32_t, uint8_t >::const_iterator it = m_registerMap.find( parameter );
+   std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
       PW_ERROR( "No register found for %x",parameter );
@@ -676,7 +676,7 @@ bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
 {
    bool  registerOk = false;
 
-   std::map<uint32_t, uint8_t >::const_iterator it = m_registerMap.find( parameter );
+   std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
       PW_ERROR( "No register found for %x",parameter );

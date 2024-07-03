@@ -49,7 +49,8 @@ TemperatureModule::TemperatureModule()
            m_sensors(),
            m_numLocalSensors( 0 ),
            m_numRemoteSensors( 0 ),
-           m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
+           m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS ),
+           m_fakeMeasurements( false )
 {
    PW_DEBUG( "TemperatureModule::TemperatureModule()" );
    PW_MSG( "Temperature Module Startup" );
@@ -135,6 +136,12 @@ TemperatureModule::TemperatureModule()
       PW_MSG( "Registered %d local thermometers",m_numLocalSensors );
       PW_MSG( "Registered %d remote thermometers",m_numRemoteSensors );
    }
+
+   if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
+   {
+      m_fakeMeasurements = true;
+   }
+
 }
 
 TemperatureModule::~TemperatureModule()
@@ -301,7 +308,7 @@ void TemperatureModule::addUDPListener()
 bool TemperatureModule::getTemperatures()
 {
    // If faking, then incremenent local temperatures and also broadcast
-   if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
+   if ( m_fakeMeasurements )
    {
       for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
       {
@@ -325,7 +332,7 @@ bool TemperatureModule::getTemperatures()
    }
 
    unsigned long start;
-   if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
+   if ( isDebugEnabled() )
    {
       start = millis();
    }
@@ -357,7 +364,7 @@ bool TemperatureModule::getTemperatures()
    // Using %ul as format specifier fails - can Serial.println to see value too
    // It appears to take ~ 520 ms if only code running
 
-   if ( GET_REGISTRY_INT( DEBUG_LEVEL_ENABLED ) == 1 )
+   if ( isDebugEnabled() )
    {
       PW_DEBUG( "Took %u ms to request temperatures", millis() - start );
    }
