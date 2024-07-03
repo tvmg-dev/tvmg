@@ -343,6 +343,8 @@ void setup( void )
 
    userIO->setLGHeatPump( lgThermaV );
 
+   // Instantiate the HeatMeterModule
+
    heatMeterModule = new HeatMeterModule( tempModule );
    heatMeterModule->initialise();
 

@@ -6,6 +6,7 @@
 #include "Measurement.h"
 #include "Networking.h"
 #include "LGHeatPump.h"
+#include "HeatMeter.h"
 
 class U8G2_SSD1306_128X64_NONAME_F_HW_I2C;
 
@@ -22,6 +23,7 @@ public:
       STORAGE_STATUS,
       ENERGY,
       TEMPERATURES,
+      HEAT_METERS,
       COMMS_STATUS,
       LG_STATUS,
       NONE
@@ -46,16 +48,19 @@ public:
 
 private:
    void  show( OLEDDisplayLine lines[] );
+   bool  setNextScreen();
    void  showNetwork();
    void  showStorage();
    void  showEnergy();
    void  showTemps();
+   void  showHeatMeters();
+   bool  showHeatMeter( uint8_t lineNum,uint8_t id );
    void  showCommsStatus();
    void  showLGStatus();
 
    TempSensor *findTempSensor( uint8_t id );
    bool  isPowerDataAvailable();
-
+   bool  isHeatMeterDataAvailable();
 
    U8G2_SSD1306_128X64_NONAME_F_HW_I2C *m_display;
    ScreenType           m_currentScreen;

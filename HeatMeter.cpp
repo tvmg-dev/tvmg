@@ -107,9 +107,7 @@ HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const Str
            m_name(),
            m_flowTempId( flowTempId ),
            m_returnTempId( returnTempId ),
-           m_shc( shc ),
-           m_flowTemp( 0.0 ),
-           m_returnTemp( 0.0 )
+           m_shc( shc )
 {
    PW_DEBUG( "HeatMeter::HeatMeter %d",id );
 
@@ -121,7 +119,8 @@ HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const Str
    m_sensor.m_emonFlowId = emonFlowId;
    m_sensor.m_power = 0;
    m_sensor.m_flowRate = 0;
-
+   m_sensor.m_flowTemp = 0;
+   m_sensor.m_returnTemp = 0;
 }
 
 HeatMeter::~HeatMeter()
@@ -145,17 +144,17 @@ void  HeatMeter::takeMeasurement()
       m_flowMeter->sample();
       m_sensor.m_flowRate = m_flowMeter->getFlowRate();
 
-      m_flowTemp = m_tempModule->getTemperature( m_flowTempId );
-      m_returnTemp = m_tempModule->getTemperature( m_returnTempId );
+      m_sensor.m_flowTemp = m_tempModule->getTemperature( m_flowTempId );
+      m_sensor.m_returnTemp = m_tempModule->getTemperature( m_returnTempId );
 
-      m_sensor.m_power = m_sensor.m_flowRate * m_shc * (m_flowTemp - m_returnTemp ) / 60.0;
+      m_sensor.m_power = m_sensor.m_flowRate * m_shc * (m_sensor.m_flowTemp - m_sensor.m_returnTemp ) / 60.0;
       if ( m_sensor.m_power < 0 )
       {
          m_sensor.m_power = 0;
       }
 
       PW_MSG( "%s %.1f kW %.1f l/min",m_name,m_sensor.m_power,m_sensor.m_flowRate );
-      PW_DEBUG( "%s %.1f %.1f",m_name,m_flowTemp,m_returnTemp );
+      PW_DEBUG( "%s %.1f %.1f",m_name,m_sensor.m_flowTemp,m_sensor.m_returnTemp );
    }
 }
 

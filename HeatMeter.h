@@ -9,6 +9,10 @@
 #define MAX_HEAT_METERS 5
 #define MAX_HM_NAME     32
 
+#define  GROUND_HM         60
+#define  FIRST_HM          70
+#define  SECOND_HM         80
+
 typedef struct {
    uint8_t  m_id;          // should be unique ID
    char    *m_name;        // name (don't store the name here to keep the structure size to minimum)
@@ -16,6 +20,8 @@ typedef struct {
    uint32_t m_emonFlowId;  // Feed ID for emonCMS flow rate
    float_t  m_power;       // power
    float_t  m_flowRate;    // flow rate
+   float_t  m_flowTemp;
+   float_t  m_returnTemp;
 } HeatMeterSensor;
 
 class HeatMeter
@@ -37,8 +43,6 @@ private:
    uint8_t     m_flowTempId;
    uint8_t     m_returnTempId;
    float_t     m_shc;
-   float_t     m_flowTemp;
-   float_t     m_returnTemp;
 };
 
 class HeatMeterModule

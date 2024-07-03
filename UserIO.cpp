@@ -282,6 +282,46 @@ void  UserIO::showTemps()
    show( m_currentLines );
 }
 
+void  UserIO::showHeatMeters()
+{
+   int   lineNum = 0;
+
+   if ( showHeatMeter( lineNum,SECOND_HM ) )
+   {
+      lineNum += 2;
+   }
+   if ( showHeatMeter( lineNum,FIRST_HM ) )
+   {
+      lineNum += 2;
+   }
+
+   showHeatMeter( lineNum,GROUND_HM );
+
+   show( m_currentLines );
+}
+
+bool  UserIO::showHeatMeter( uint8_t lineNum,uint8_t id )
+{
+   char line[ MAX_OLED_COLUMNS + 1 ];
+   bool  ret = false;
+
+   for ( int i = 0; i < MAX_HEAT_METERS; i++ )
+   {
+      HeatMeterSensor *sensor;
+      sensor = m_sample.m_heatMeterSensors[ i ];
+      if ( sensor && sensor->m_id == id )
+      {
+         snprintf( line,MAX_OLED_COLUMNS,"Loft : %3.1f %3.1f",sensor->m_flowTemp,sensor->m_returnTemp );
+         storeLine( lineNum++,line );
+         snprintf( line,MAX_OLED_COLUMNS,"%5.0f W : %3.1f l/min",sensor->m_power,sensor->m_flowRate );
+         storeLine( lineNum++,line );
+         ret = true;
+      }
+   }
+
+   return( ret );
+}
+
 void  UserIO::showCommsStatus()
 {
    char  line[ MAX_OLED_COLUMNS ];
@@ -347,6 +387,9 @@ void  UserIO::show( ScreenType type )
       case TEMPERATURES:
          showTemps();
          break;
+      case HEAT_METERS:
+         showHeatMeters();
+         break;
       case COMMS_STATUS:
          showCommsStatus();
          break;
@@ -358,6 +401,65 @@ void  UserIO::show( ScreenType type )
    }
 }
 
+bool  UserIO::setNextScreen()
+{
+   bool  retVal = true;
+
+   // advance the current screen
+   switch( m_currentScreen )
+   {
+      case NETWORK_STATUS:
+         m_currentScreen = STORAGE_STATUS;
+         break;
+      case STORAGE_STATUS:
+         m_currentScreen = ENERGY;
+         break;
+      case ENERGY:
+         m_currentScreen = TEMPERATURES;
+         break;
+      case TEMPERATURES:
+         m_currentScreen = HEAT_METERS;
+         break;
+      case HEAT_METERS:
+         m_currentScreen = COMMS_STATUS;
+         break;
+      case COMMS_STATUS:
+         m_currentScreen = LG_STATUS;
+         break;
+      case LG_STATUS:
+      case NONE:
+         m_currentScreen = NETWORK_STATUS;
+         break;
+   }
+
+   // Now check if possible
+   switch ( m_currentScreen )
+   {
+      case ENERGY:
+         retVal = isPowerDataAvailable();
+         break;
+      case COMMS_STATUS:
+         if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) != 1 )
+         {
+            retVal = false;
+         }
+         break;
+      case LG_STATUS:
+         if ( !m_heatPump )
+         {
+            retVal = false;
+         }
+         break;
+      case HEAT_METERS:
+         retVal = isHeatMeterDataAvailable();
+         break;
+      default:
+         break;
+   }
+
+   return (retVal);
+}
+
 void  UserIO::showNext()
 {
    if ( m_firmwareUpdateInProgress )
@@ -366,50 +468,9 @@ void  UserIO::showNext()
       return;
    }
 
-   switch ( m_currentScreen )
+   while ( ! setNextScreen() )
    {
-      case NETWORK_STATUS:
-         m_currentScreen = STORAGE_STATUS;
-         break;
-      case STORAGE_STATUS:
-         if ( isPowerDataAvailable() )
-         {
-            m_currentScreen = ENERGY;
-         }
-         else
-         {
-            m_currentScreen = TEMPERATURES;
-         }
-         break;
-      case ENERGY:
-         m_currentScreen = TEMPERATURES;
-         break;
-      case TEMPERATURES:
-         if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) == 1 )
-         {
-            m_currentScreen = COMMS_STATUS;
-         }
-         else
-         {
-            m_currentScreen = NETWORK_STATUS;
-         }
-         break;
-      case COMMS_STATUS:
-         if ( m_heatPump )
-         {
-            m_currentScreen = LG_STATUS;
-         }
-         else
-         {
-            m_currentScreen = NETWORK_STATUS;
-         }
-         break;
-      case LG_STATUS:
-         m_currentScreen = NETWORK_STATUS;
-         break;
-      default:
-         m_currentScreen = TEMPERATURES;
-         break;
+      PW_DEBUG( "Skip screen" );
    }
 
    show( m_currentScreen );
@@ -442,6 +503,19 @@ bool  UserIO::isPowerDataAvailable()
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
       if ( m_sample.m_powerSensors[ i ] )
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+bool  UserIO::isHeatMeterDataAvailable()
+{
+   for ( int i = 0; i < MAX_HEAT_METERS; i++ )
+   {
+      if ( m_sample.m_heatMeterSensors[ i ] )
       {
          return true;
       }
