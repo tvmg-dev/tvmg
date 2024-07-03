@@ -175,7 +175,7 @@ void  Measurement::takeSample( void )
    if ( m_heatMeterModule )
    {
       i = 0;
-      HeatingPowerSensor *heatMeterSensor;
+      HeatMeterSensor *heatMeterSensor;
 
       while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i ) ) )
       {

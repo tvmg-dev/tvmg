@@ -16,7 +16,6 @@
 #include "Networking.h"
 #include "WebServer.h"
 #include "LGHeatPump.h"
-#include "GrundfosUPS3.h"
 
 // ---------------------------------------------------------------------
 
@@ -30,7 +29,6 @@ Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
 LGHeatPump        *lgThermaV = nullptr;
-GrundfosUPS3      *grundfosUPS3 = nullptr;
 
 // ---------------------------------------------------------------------
 // Reboot handling code, if we have 3 reboots then we consider WiFi has
@@ -345,16 +343,6 @@ void setup( void )
 
    userIO->setLGHeatPump( lgThermaV );
 
-#if 0
-   // Instantitate the UPS3 pump if active
-
-   if ( GET_REGISTRY_INT( UPS3_PUMP ) > 0 )
-   {
-      grundfosUPS3 = new GrundfosUPS3( GET_REGISTRY_INT( UPS3_PUMP ),"CS2" );
-      grundfosUPS3->initialise();
-   }
-#endif
-
    heatMeterModule = new HeatMeterModule( tempModule );
    heatMeterModule->initialise();
 
@@ -483,11 +471,6 @@ void loop(void)
       else
       {
          userIO->showNext();
-      }
-
-      if ( grundfosUPS3 )
-      {
-         grundfosUPS3->sample();
       }
 
       END_TIMING;
