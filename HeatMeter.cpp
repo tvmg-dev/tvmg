@@ -56,6 +56,7 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
 
                   m_sensors[ m_numLocalSensors ] = new HeatMeter( new GrundfosUPS3( gpio,mode.c_str() ),m_tempModule,
                                                             name.c_str(),id,emonFlowId,emonPowerId,flowTempId,returnTempId,shc );
+                  m_sensors[ m_numLocalSensors ]->initialise();
                }
 
                m_numLocalSensors++;
