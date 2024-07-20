@@ -355,7 +355,7 @@ void  UserIO::showCommsStatus()
 void  UserIO::showLGStatus()
 {
    char  line[ MAX_OLED_COLUMNS ];
-   uint32_t sends,fails;
+
    if ( m_heatPump )
    {
       clear();
