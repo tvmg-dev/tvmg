@@ -440,11 +440,11 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
 
-      if ( SD.exists ( LGSTATUS_LOG ) )
+      if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
       {
-         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG ) )
+         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG,true ) )
          {
-            SD.remove( LGSTATUS_LOG );
+            Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
          }
       }
    }

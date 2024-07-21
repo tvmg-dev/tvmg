@@ -479,22 +479,12 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
 void  LGHeatPump::updateStatus()
 {
    bool  updateState = false;
+   bool  addHeader = false;
 
    // Check conditions for updating..
 
    if ( !m_currentStatus.m_time )
    {
-      // don't add a line if the log exists, e.g. power cycle
-      if ( ! SD.exists( LGSTATUS_LOG ) )
-      {
-         File file = SD.open( LGSTATUS_LOG,FILE_APPEND );
-         if ( file )
-         {
-            file.println( "date,time,error,silent,inlet,outlet,active,heating,heating-target,"
-                          "dhw,dhw-temp,dhw-target,legionella,immersion" );
-            file.close();
-         }
-      }
       updateState = true;
       m_currentStatus.m_updates = 0;
    }
@@ -568,9 +558,21 @@ void  LGHeatPump::updateStatus()
 
       PW_MSG( line );
 
-      File file = SD.open( LGSTATUS_LOG,FILE_APPEND );
+      // we may need to write header if the log file doesn't exist
+      if ( ! Config::instance()->getSPIFFS()->exists( LGSTATUS_LOG ) )
+      {
+         addHeader = true;
+      }
+
+      File file = Config::instance()->getSPIFFS()->open( LGSTATUS_LOG,FILE_APPEND );
       if ( file )
       {
+         if ( addHeader )
+         {
+            file.println( "date,time,error,silent,inlet,outlet,active,heating,heating-target,"
+                          "dhw,dhw-temp,dhw-target,legionella,immersion" );
+         }
+
          file.println( line );
          file.close();
       }

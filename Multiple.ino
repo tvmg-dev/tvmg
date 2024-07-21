@@ -182,7 +182,7 @@ void  handleTouch1()
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName() );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG,true );
 }
 
 void  handleTouch2()
@@ -398,14 +398,6 @@ void setup( void )
       }
    }
 
-   if ( SD.exists ( LGSTATUS_LOG ) )
-   {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG ) )
-      {
-         // SD.remove( LGMODBUS_LOG );
-      }
-   }
-
    if ( SD.exists ( DEBUG_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","Debug Logs",DEBUG_LOG ) )
@@ -415,6 +407,11 @@ void setup( void )
             SD.remove( DEBUG_LOG );
          }
       }
+   }
+
+   if ( config->getSPIFFS()->exists( LGSTATUS_LOG ) )
+   {
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG,true );
    }
 }
 
