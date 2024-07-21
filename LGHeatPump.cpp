@@ -459,6 +459,8 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
             break;
          case SILENT_STATUS: if ( m_currentStatus.m_isSilent != newValue ) { hasChanged = true; }
             break;
+         case DEFROST_STATUS: if ( m_currentStatus.m_isDefrost != newValue ) { hasChanged = true; }
+            break;
          case UNIT_CYCLE: if ( m_currentStatus.m_isActive != newValue ) { hasChanged = true; }
             break;
          case HEATING_ENABLED: if ( m_currentStatus.m_isHeating != newValue ) { hasChanged = true; }
@@ -499,6 +501,7 @@ void  LGHeatPump::updateStatus()
       updateState |= valueChanged( LEGIONELLA_STATUS );
       updateState |= valueChanged( BOOST_WATER );
       updateState |= valueChanged( SILENT_STATUS );
+      updateState |= valueChanged( DEFROST_STATUS );
    }
 
    if ( !updateState )
@@ -540,8 +543,9 @@ void  LGHeatPump::updateStatus()
       m_currentStatus.m_isLegionella = getRawValue( LEGIONELLA_STATUS );
       m_currentStatus.m_isImmersion = getRawValue( BOOST_WATER );
       m_currentStatus.m_isSilent = getRawValue( SILENT_STATUS );
+      m_currentStatus.m_isDefrost = getRawValue( DEFROST_STATUS );
 
-      snprintf( line,80,"%s,%d,%d,%.1f,%.1f,%d,%d,%.1f,%d,%.1f,%.1f,%d,%d",
+      snprintf( line,80,"%s,%d,%d,%.1f,%.1f,%d,%d,%.1f,%d,%.1f,%.1f,%d,%d,%d",
                timeStr,
                m_currentStatus.m_error,
                m_currentStatus.m_isSilent,
@@ -554,7 +558,8 @@ void  LGHeatPump::updateStatus()
                m_currentStatus.m_dhw * 0.1,
                m_currentStatus.m_dhwTarget * 0.1,
                m_currentStatus.m_isLegionella,
-               m_currentStatus.m_isImmersion );
+               m_currentStatus.m_isImmersion,
+               m_currentStatus.m_isDefrost );
 
       PW_MSG( line );
 
@@ -570,7 +575,7 @@ void  LGHeatPump::updateStatus()
          if ( addHeader )
          {
             file.println( "date,time,error,silent,inlet,outlet,active,heating,heating-target,"
-                          "dhw,dhw-temp,dhw-target,legionella,immersion" );
+                          "dhw,dhw-temp,dhw-target,legionella,immersion,defrost" );
          }
 
          file.println( line );
@@ -594,6 +599,7 @@ void  LGHeatPump::dumpData()
    (void) getStatus( DHW_HEATING,&state );
    (void) getStatus( LEGIONELLA_STATUS,&state );
    (void) getStatus( SILENT_STATUS,&state );
+   (void) getStatus( DEFROST_STATUS,&state );
    (void) getStatus( BOOST_WATER,&state );
 
    float_t value;

@@ -105,6 +105,7 @@ typedef struct {
    bool     m_isLegionella;
    bool     m_isImmersion;
    bool     m_isSilent;
+   bool     m_isDefrost;
 } LGStatus;
 
 class LGHeatPump
