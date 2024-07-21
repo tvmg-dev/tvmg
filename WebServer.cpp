@@ -22,7 +22,7 @@ const char* http_password = "admin";
 
 const char* host = "esp32-filemanager";
 
-String allowedExtensionsForEdit = "txt, dat";
+String allowedExtensionsForEdit = "txt, dat, pub";
 
 String filesDropdownOptions = "";
 String textareaContent = "";
