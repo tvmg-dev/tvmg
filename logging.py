@@ -1,10 +1,14 @@
 # Quick logging tool to get debug info being sent over UDP to port
-# 51003 on the subnet
 
+import argparse
 import socket
 
+parser = argparse.ArgumentParser(description='logging : python -u logging <udp-port>')
+parser.add_argument('udpPort', type=int,help='UDP Port')
+args = parser.parse_args()
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.bind(("", 51003))
+sock.bind(("", args.udpPort))
 
 oldLog = ""
 
