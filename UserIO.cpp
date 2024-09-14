@@ -311,9 +311,17 @@ bool  UserIO::showHeatMeter( uint8_t lineNum,uint8_t id )
       sensor = m_sample.m_heatMeterSensors[ i ];
       if ( sensor && sensor->m_id == id )
       {
-         snprintf( line,MAX_OLED_COLUMNS,"Loft : %3.1f %3.1f",sensor->m_flowTemp,sensor->m_returnTemp );
+         snprintf( line,MAX_OLED_COLUMNS,"Temps : %3.1f %3.1f",sensor->m_flowTemp,sensor->m_returnTemp );
          storeLine( lineNum++,line );
-         snprintf( line,MAX_OLED_COLUMNS,"%5.0f W : %3.1f l/min",sensor->m_power,sensor->m_flowRate );
+         if ( sensor->m_power == HM_POWER_ERROR )
+         {
+            snprintf( line,MAX_OLED_COLUMNS,"Overflow power" );
+
+         }
+         else
+         {
+            snprintf( line,MAX_OLED_COLUMNS,"%5.0f W : %3.1f l/min",sensor->m_power,sensor->m_flowRate );
+         }
          storeLine( lineNum++,line );
          ret = true;
       }

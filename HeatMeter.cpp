@@ -140,22 +140,32 @@ void  HeatMeter::takeMeasurement()
 {
    if ( m_flowMeter && m_tempModule )
    {
-      PW_MSG( "Sampling %s HM",m_name );
+      PW_MSG( "Sampling %s",m_name );
 
       m_flowMeter->sample();
       m_sensor.m_flowRate = m_flowMeter->getFlowRate();
 
-      m_sensor.m_flowTemp = m_tempModule->getTemperature( m_flowTempId );
-      m_sensor.m_returnTemp = m_tempModule->getTemperature( m_returnTempId );
-
-      m_sensor.m_power = m_sensor.m_flowRate * m_shc * (m_sensor.m_flowTemp - m_sensor.m_returnTemp ) / 60.0;
-      if ( m_sensor.m_power < 0 )
+      if ( m_sensor.m_flowRate == FLOW_RATE_ERROR )
       {
-         m_sensor.m_power = 0;
+         m_sensor.m_power = HM_POWER_ERROR;
+      }
+      else
+      {
+         m_sensor.m_flowTemp = m_tempModule->getTemperature( m_flowTempId );
+         m_sensor.m_returnTemp = m_tempModule->getTemperature( m_returnTempId );
+
+         m_sensor.m_power = m_sensor.m_flowRate * m_shc * (m_sensor.m_flowTemp - m_sensor.m_returnTemp ) / 60.0;
+         m_sensor.m_power *= 1000;
+
+         PW_DEBUG( "%s flow %.1f ret %.1f, %.1f l/min",m_name,m_sensor.m_flowTemp,m_sensor.m_returnTemp,m_sensor.m_flowRate );
+
+         if ( m_sensor.m_power < 0 )
+         {
+            m_sensor.m_power = 0;
+         }
       }
 
-      PW_MSG( "%s %.1f kW %.1f l/min",m_name,m_sensor.m_power,m_sensor.m_flowRate );
-      PW_DEBUG( "%s %.1f %.1f",m_name,m_sensor.m_flowTemp,m_sensor.m_returnTemp );
+      PW_MSG( "%s %.0f W %.1f l/min",m_name,m_sensor.m_power,m_sensor.m_flowRate );
    }
 }
 

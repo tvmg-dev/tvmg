@@ -160,7 +160,7 @@ void  GrundfosUPS3::initialise()
 
 void  GrundfosUPS3::sample()
 {
-   PW_MSG( "UPS3 Sample (pin %u)",m_pwmGPIO );
+   PW_DEBUG( "UPS3 Sample (pin %u)",m_pwmGPIO );
 
    // start the sample looking for +ve edge, i.e. HIGH pin level
 

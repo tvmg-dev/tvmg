@@ -10,6 +10,7 @@
 #define MAX_HM_NAME     32
 
 #define  FLOW_RATE_ERROR   100
+#define  HM_POWER_ERROR    -1
 
 #define  GROUND_HM         60
 #define  FIRST_HM          70
