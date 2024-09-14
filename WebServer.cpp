@@ -200,7 +200,7 @@ String readFile(fs::FS *fs, const char * path)
 
    while(file.available())
    {
-      fileContent+=String((char)file.read());
+      fileContent += static_cast<char>( file.read() );
    }
    file.close();
 
@@ -293,7 +293,6 @@ void WebServer::setupAsyncServer()
    },
    [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
    {
-//      PW_DEBUG( "on update: %d %d %u",index,len,final );
       if(!index)
       {
          if ( m_userIO )
@@ -407,7 +406,6 @@ void WebServer::setupAsyncServer()
       }
       PW_DEBUG( "Saving %d bytes to %s : contents :",inputMessage.length(),savePath.c_str() );
       writeFile(s_spiffs, savePath.c_str(), inputMessage.c_str());
-      request->redirect("/manager");
 
       // if more than 2k then limit it due to size of debug buffer
       if ( inputMessage.length() > 2047 )
@@ -416,7 +414,7 @@ void WebServer::setupAsyncServer()
       }
 
       PW_DEBUG( "%s",inputMessage.c_str() );
-
+      request->redirect("/manager");
    });
 
 

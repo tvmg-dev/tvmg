@@ -169,13 +169,15 @@ void  GrundfosUPS3::sample()
       return;
    }
 
-   uint32_t averagePulse =  ( static_cast<uint32_t>(timeBetweenPositiveEdges) ) / highCount;
-   uint32_t highAverage = ( static_cast<uint32_t>(timeHigh) ) / lowCount;
+   PW_DEBUG( "time between %lld time high %lld",timeBetweenPositiveEdges,timeHigh );
+
+   uint32_t averagePulse =  static_cast<uint32_t>(timeBetweenPositiveEdges / highCount);
+   uint32_t highAverage = static_cast<uint32_t>(timeHigh / lowCount);
 
    PW_DEBUG( "Total duration %llu : pulse %u : high %u",timeBetweenPositiveEdges,averagePulse,highAverage );
 
-   m_power = 100.0 * highAverage / averagePulse;
-   PW_MSG( "UPS3 power %.1f W",m_power );
+   m_power = (100.0F * highAverage) / averagePulse;
+   PW_MSG( "UPS3 power %.2f W",m_power );
 }
 
 float_t  GrundfosUPS3::getFlowRate()

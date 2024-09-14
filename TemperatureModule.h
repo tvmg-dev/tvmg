@@ -14,7 +14,7 @@ class AsyncUDP;
 //---------------------------------------------------------------------
 // Temperature monitoring
 
-#define MAX_TEMP_SENSORS      11
+#define MAX_TEMP_SENSORS      13
 #define MAX_TEMP_NAME         32
 
 #define TEMPERATURE_INVALID   -100
@@ -32,6 +32,8 @@ class AsyncUDP;
 #define  FIRST_RETURN      31
 #define  LOFT_FLOW         40
 #define  LOFT_RETURN       41
+#define  LG_OUTLET         50
+#define  LG_INLET          51
 
 typedef struct {
    uint8_t  m_id;          // should be unique ID
