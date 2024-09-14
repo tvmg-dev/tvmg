@@ -9,6 +9,8 @@
 #define MAX_HEAT_METERS 5
 #define MAX_HM_NAME     32
 
+#define  FLOW_RATE_ERROR   100
+
 #define  GROUND_HM         60
 #define  FIRST_HM          70
 #define  SECOND_HM         80

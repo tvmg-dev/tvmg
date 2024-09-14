@@ -1,6 +1,9 @@
 #include <Arduino.h>
 
+#include <map>
+
 #include "GrundfosUPS3.h"
+#include "HeatMeter.h"
 
 #include "config.h"
 #include "UserIO.h"
@@ -23,6 +26,43 @@ static int        expectedLevel;
 
 static uint16_t   highCount,lowCount;
 static uint16_t   levelDiscards,timeDiscards;
+
+// map strings to operating modes
+
+static std::map<String,GrundfosUPS3::Mode> ups3ModeMap = {
+   { "CS1",GrundfosUPS3::CONSTANT_SPEED1 },
+   { "CS2",GrundfosUPS3::CONSTANT_SPEED2 },
+   { "CS3",GrundfosUPS3::CONSTANT_SPEED3 },
+   { "CP1",GrundfosUPS3::CONSTANT_PRESSURE1 },
+   { "CP2",GrundfosUPS3::CONSTANT_PRESSURE2 },
+   { "PP1",GrundfosUPS3::PROPORTIONAL_PRESSURE1 },
+   { "PP2",GrundfosUPS3::PROPORTIONAL_PRESSURE2 }
+};
+
+// We calculate flow from power via quadratic, so 3 params needed
+// x2 would be for the square of x.  Also need the min & max power
+// that can be measured - if we go below min then obviously flow is
+// zero, above we have to limit to some level TBD.
+//
+// The parameters obtained by manually using the Grundfos UPS3 pump
+// selector online chart where head/flow duty point can be inserted
+// and the power obtained.  These params are for m3/hr.
+
+typedef struct {
+   float_t  min,max;
+   float_t  x0,x1,x2;
+} UPS3FlowCoefficients;
+
+static std::map <GrundfosUPS3::Mode,UPS3FlowCoefficients> UPS3Coeffs = {
+   { GrundfosUPS3::CONSTANT_SPEED3,{ 30.4,60,-1.07,0.0405,-0.0000613 } },
+   { GrundfosUPS3::CONSTANT_SPEED2,{ 22.1,45,-1.02,0.054,-0.000148 } },
+   { GrundfosUPS3::CONSTANT_SPEED1,{ 16.8,28,-1.1,0.0796,-0.000477 } },
+   { GrundfosUPS3::CONSTANT_PRESSURE2,{ 18.84,52,-1.02,0.0641,-0.00025 } },
+   { GrundfosUPS3::CONSTANT_PRESSURE1,{ 11.3,33,-0.969,0.104,-0.000768 } },
+   { GrundfosUPS3::PROPORTIONAL_PRESSURE2,{ 6.2,33,-0.42,0.0944,-0.00101 } },
+   { GrundfosUPS3::PROPORTIONAL_PRESSURE1,{ 4.7,17,-1.04,0.306,-0.00901 } }
+};
+
 
 // handle change in GPIO
 // time between +ve edges should be 75Hz as this is the UPS3 PMW
@@ -85,18 +125,6 @@ void  IRAM_ATTR   handleEdge()
       expectedLevel = HIGH;
    }
 }
-
-// map strings to operating modes
-
-static std::map<String,GrundfosUPS3::Mode> ups3ModeMap = {
-   { "CS1",GrundfosUPS3::CONSTANT_SPEED1 },
-   { "CS2",GrundfosUPS3::CONSTANT_SPEED2 },
-   { "CS3",GrundfosUPS3::CONSTANT_SPEED3 },
-   { "CP1",GrundfosUPS3::CONSTANT_PRESSURE1 },
-   { "CP2",GrundfosUPS3::CONSTANT_PRESSURE2 },
-   { "PP1",GrundfosUPS3::PROPORTIONAL_PRESSURE1 },
-   { "PP2",GrundfosUPS3::PROPORTIONAL_PRESSURE2 },
-};
 
 GrundfosUPS3::GrundfosUPS3( uint8_t pwmGPIO,const char *mode )
             : m_pwmGPIO( pwmGPIO ),
@@ -182,5 +210,37 @@ void  GrundfosUPS3::sample()
 
 float_t  GrundfosUPS3::getFlowRate()
 {
-   return m_power;
+   UPS3FlowCoefficients coeffs;
+   float_t flowRate = 0;
+   float_t power = m_power;
+
+   if ( !UPS3Coeffs.count( m_mode ) )
+   {
+      PW_ERROR( "Flow Rate : no coeffs for current mode !" );
+   }
+   else
+   {
+      coeffs = UPS3Coeffs.at( m_mode );
+
+      if ( m_power < coeffs.min )
+      {
+         PW_WARN( "%.1f W is below UPS3 mode min (%.1f)",m_power,coeffs.min );
+      }
+      else if ( m_power > coeffs.max )
+      {
+         PW_WARN( "%.1f W is above UPS3 mode max (%.1f) limiting",m_power,coeffs.max );
+         flowRate = FLOW_RATE_ERROR;
+      }
+      else
+      {
+         // Get m3/hr, then convert to l/min
+
+         flowRate = (coeffs.x0) + (coeffs.x1 * power) + (coeffs.x2 * pow( power,2 ));
+         flowRate /= 0.06;
+
+         PW_DEBUG( "%d %.1f W = flowRate %.1f l/min",m_mode,power,flowRate );
+      }
+   }
+
+   return flowRate;
 }
