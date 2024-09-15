@@ -407,6 +407,30 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       }
    }
 
+   i = 0;
+   const HeatMeterSensor *hmSensor;
+   while( ( hmSensor = sample.m_heatMeterSensors[ i++ ] ) )
+   {
+      if ( hmSensor->m_emonPowerId && hmSensor->m_emonFlowId )
+      {
+         float_t flowRate, power;
+
+         if ( hmSensor->m_power == HM_POWER_ERROR )
+         {
+            flowRate = 0;
+            power = -1;
+         }
+         else
+         {
+            flowRate = hmSensor->m_flowRate;
+            power = hmSensor->m_power;
+         }
+
+         m_networking->sendToEmonCMS( hmSensor->m_emonFlowId,flowRate );
+         m_networking->sendToEmonCMS( hmSensor->m_emonPowerId,power );
+      }
+   }
+
    // perform daily update mails if needed
 
    struct tm timeInfo;
