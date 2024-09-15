@@ -366,11 +366,14 @@ void setup( void )
 
    measurement->initialise();
 
-   // intialise touch
+   // intialise touch for master boards
    // Touch ISR will be activated when reading is lower than the touchThreshold
 
-   touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,touchThreshold );
-   touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,touchThreshold );
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   {
+      touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,touchThreshold );
+      touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,touchThreshold );
+   }
 
    // Send emails, attachments if available
 
