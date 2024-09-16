@@ -373,6 +373,21 @@ void  LGHeatPump::getLGData()
          start = end + 1;
       }
 
+      // lets zero the flow rate if returned 5 l/min from LG
+      {
+         float_t  flowRate = 0;
+         float_t  tempFlowRate;
+
+         if ( getValue( FLOW_RATE,&tempFlowRate ) )
+         {
+            if ( fabs(tempFlowRate - 5) > 0.1 )
+            {
+               flowRate = tempFlowRate;
+            }
+         }
+         setValue( FLOW_RATE,flowRate );
+      }
+
       // Now generate calculated data, need active compressor
       bool state;
 
