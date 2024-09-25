@@ -399,7 +399,25 @@ void  LGHeatPump::getLGData()
 
       if ( getStatus( COMPRESSOR_STATUS,&state ) )
       {
-         if ( state )
+         if ( !state )
+         {
+            // If flow rate is > 0 then set to 1 (for continuous on on/off
+            // behaviour in heating when compressor isn;t active) - makes reading
+            // data in openemoncms easier !
+
+            {
+               float_t  tempFlowRate = 0;
+
+               if ( getValue( FLOW_RATE,&tempFlowRate ) )
+                  if ( tempFlowRate > 1 )
+                  {
+                     tempFlowRate = 2;
+                  }
+               }
+               setValue( FLOW_RATE,tempFlowRate );
+            }
+         }
+         else
          {
             float_t  flowRate,flowTemp,returnTemp,currentPower = 0;
 
