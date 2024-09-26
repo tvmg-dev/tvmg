@@ -79,7 +79,8 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_modbusRequests( 0 ),
      m_modbusFailures( 0 ),
      m_millisLastAquisition( -LG_MIN_SAMPLING_PERIOD_MS ),
-     m_currentKW(0)
+     m_currentKW(0),
+     m_useFlowRateWhenNotHeating( true )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
@@ -163,6 +164,11 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 
       cJSON_Delete( root );
       close( file );
+   }
+
+   if ( GET_REGISTRY_INT( LG_SET_ACTIVEFLOW_NOTHEATING ) > 0 )
+   {
+      m_useFlowRateWhenNotHeating = false;
    }
 }
 
@@ -401,14 +407,16 @@ void  LGHeatPump::getLGData()
       {
          if ( !state )
          {
-            // If flow rate is > 0 then set to 1 (for continuous on on/off
-            // behaviour in heating when compressor isn;t active) - makes reading
-            // data in openemoncms easier !
-
+            // We ordinarily report the actual flow rate when not in a
+            // compressor cycle, if we override this then we report 2.0 as the
+            // flow rate if non-zero to make graph in openemoncms easier to read if LG's
+            // pump setting in heating is not set continuous
+            if ( !m_useFlowRateWhenNotHeating )
             {
                float_t  tempFlowRate = 0;
 
                if ( getValue( FLOW_RATE,&tempFlowRate ) )
+               {
                   if ( tempFlowRate > 1 )
                   {
                      tempFlowRate = 2;
@@ -845,38 +853,34 @@ void  getHPData()
    {
       s_master->setSlaveId( 32 );
 
-#if 1
+      if ( GET_REGISTRY_INT( LG_MODBUS_START_REG ) > 0 )
       {
-         if ( GET_REGISTRY_INT( LG_MODBUS_START_REG) > 0 )
+         static uint16_t x = GET_REGISTRY_INT( LG_MODBUS_START_REG );
+         for ( int i = x; i < x+8; i++ )
          {
-            static uint16_t x = GET_REGISTRY_INT( LG_MODBUS_START_REG);
-            for ( int i = x; i < x+8; i++ )
-            {
-               s_master->clearResponseBuffer();
-               delay( 50 );
-               mbusRes = s_master->readInputRegisters( i,1 );
+            s_master->clearResponseBuffer();
+            delay( 50 );
+            mbusRes = s_master->readInputRegisters( i,1 );
 
-               if ( !mbusRes || i % 128 == 0 )
+            if ( !mbusRes || i % 128 == 0 )
+            {
+               PW_HP_MODBUS( "IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
+               PW_HP_MODBUS( "IR: %u %u",i,s_master->getResponseBuffer( 0 ) );
+               File file = SD.open( LGREGISTERS_LOG,FILE_APPEND );
+               if ( file )
                {
-                  PW_HP_MODBUS( "IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
-                  PW_HP_MODBUS( "IR: %u %u",i,s_master->getResponseBuffer( 0 ) );
-                  File file = SD.open( LGREGISTERS_LOG,FILE_APPEND );
-                  if ( file )
-                  {
-                     char a[ 40 ];
-                     sprintf( a,"IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
-                     file.println( a );
-                     file.close();
-                  }
-               }
-               else if ( i % 128 != 0 )
-               {
-                  PW_ERROR( "!input: %d %u",i,mbusRes );
+                  char a[ 40 ];
+                  sprintf( a,"IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
+                  file.println( a );
+                  file.close();
                }
             }
-            x += 8;
+            else if ( i % 128 != 0 )
+            {
+               PW_ERROR( "!input: %d %u",i,mbusRes );
+            }
          }
+         x += 8;
       }
-#endif
    }
 }

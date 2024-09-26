@@ -141,6 +141,8 @@ private:
    uint32_t       m_modbusFailures;
    int32_t        m_millisLastAquisition;       // milliseconds since last acquisition
    float_t        m_currentKW;                  // last reported
+   bool           m_useFlowRateWhenNotHeating;  // if set then still report the actual flow rate, otherwise 2
+                                                // when active (pump setting in heating for LG)
 
    std::map<uint32_t,uint8_t> m_registerMap;    // map of register address to m_registers[] index
 };
