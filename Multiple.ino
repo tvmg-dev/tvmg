@@ -343,10 +343,11 @@ void setup( void )
 
    userIO->setLGHeatPump( lgThermaV );
 
-   // Instantiate the HeatMeterModule
+   // Instantiate the HeatMeterModule, userIO also needs HM module for update
 
    heatMeterModule = new HeatMeterModule( tempModule );
    heatMeterModule->initialise();
+   userIO->setHeatMeter( heatMeterModule );
 
    // Instantiate the measurement module, but don't initialise it just yet,
    // userIO needs access to data

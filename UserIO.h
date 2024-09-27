@@ -35,6 +35,7 @@ public:
    void  setMeasurement( Measurement *measurement );
    void  setNetworking( Networking *network );
    void  setLGHeatPump( LGHeatPump *heatpump );
+   void  setHeatMeter( HeatMeterModule *heatMeter );
 
    void  updateLine( uint8_t lineNum,char *line,bool isForLog = true );
    void  clear();
@@ -53,7 +54,7 @@ private:
    void  showStorage();
    void  showEnergy();
    void  showTemps();
-   void  showHeatMeters();
+   void  showHeatMeter();
    bool  showHeatMeter( uint8_t lineNum,uint8_t id );
    void  showCommsStatus();
    void  showLGStatus();
@@ -68,6 +69,7 @@ private:
    Measurement          *m_measurement;
    Networking           *m_networking;
    LGHeatPump           *m_heatPump;
+   HeatMeterModule      *m_heatMeter;
    Measurement::Sample  m_sample;
    bool                 m_firmwareUpdateInProgress;
    time_t               m_startTime;

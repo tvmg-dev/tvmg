@@ -21,6 +21,7 @@ UserIO::UserIO()
         m_measurement( nullptr ),
         m_networking( nullptr ),
         m_heatPump( nullptr ),
+        m_heatMeter( nullptr ),
         m_sample(),
         m_firmwareUpdateInProgress( false ),
         m_startTime(0)
@@ -114,6 +115,11 @@ void  UserIO::setNetworking( Networking *network )
 void  UserIO::setLGHeatPump( LGHeatPump *heatpump )
 {
    m_heatPump = heatpump;
+}
+
+void  UserIO::setHeatMeter( HeatMeterModule *heatMeter )
+{
+   m_heatMeter = heatMeter;
 }
 
 void  UserIO::showNetwork()
@@ -282,10 +288,11 @@ void  UserIO::showTemps()
    show( m_currentLines );
 }
 
-void  UserIO::showHeatMeters()
+void  UserIO::showHeatMeter()
 {
    int   lineNum = 0;
 
+   // Only supporting 1heat meter per h/w node, we have to go through all
    if ( showHeatMeter( lineNum,SECOND_HM ) )
    {
       lineNum += 2;
@@ -396,7 +403,7 @@ void  UserIO::show( ScreenType type )
          showTemps();
          break;
       case HEAT_METERS:
-         showHeatMeters();
+         showHeatMeter();
          break;
       case COMMS_STATUS:
          showCommsStatus();
@@ -521,12 +528,9 @@ bool  UserIO::isPowerDataAvailable()
 
 bool  UserIO::isHeatMeterDataAvailable()
 {
-   for ( int i = 0; i < MAX_HEAT_METERS; i++ )
+   if ( m_heatMeter && m_heatMeter->isMeterAvailable() )
    {
-      if ( m_sample.m_heatMeterSensors[ i ] )
-      {
-         return true;
-      }
+      return true;
    }
 
    return false;

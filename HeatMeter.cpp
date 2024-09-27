@@ -99,6 +99,15 @@ HeatMeterSensor  *HeatMeterModule::readNextSensor( uint8_t index )
    return( nullptr );
 }
 
+bool  HeatMeterModule::isMeterAvailable()
+{
+   return( m_numLocalSensors > 0 );
+}
+
+void  HeatMeterModule::updateUserIO( UserIO *userIO )
+{
+}
+
 HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const String &name,uint8_t id,
                            uint32_t emonFlowId, uint32_t emonPowerId, uint8_t flowTempId,
                            uint8_t returnTempId, float_t shc )

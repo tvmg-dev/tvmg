@@ -16,6 +16,8 @@
 #define  FIRST_HM          70
 #define  SECOND_HM         80
 
+class UserIO;
+
 typedef struct {
    uint8_t  m_id;          // should be unique ID
    char    *m_name;        // name (don't store the name here to keep the structure size to minimum)
@@ -55,6 +57,8 @@ public:
    ~HeatMeterModule();
    void  initialise();
    HeatMeterSensor  *readNextSensor( uint8_t index );
+   void  updateUserIO( UserIO *userIO );
+   bool  isMeterAvailable();
 
 private:
    TemperatureModule *m_tempModule;
