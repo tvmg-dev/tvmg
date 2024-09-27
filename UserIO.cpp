@@ -290,19 +290,11 @@ void  UserIO::showTemps()
 
 void  UserIO::showHeatMeter()
 {
-   int   lineNum = 0;
-
-   // Only supporting 1heat meter per h/w node, we have to go through all
-   if ( showHeatMeter( lineNum,SECOND_HM ) )
+   if ( m_heatMeter )
    {
-      lineNum += 2;
+      clear();
+      m_heatMeter->updateUserIO( this );
    }
-   if ( showHeatMeter( lineNum,FIRST_HM ) )
-   {
-      lineNum += 2;
-   }
-
-   showHeatMeter( lineNum,GROUND_HM );
 
    show( m_currentLines );
 }
@@ -369,8 +361,6 @@ void  UserIO::showCommsStatus()
 
 void  UserIO::showLGStatus()
 {
-   char  line[ MAX_OLED_COLUMNS ];
-
    if ( m_heatPump )
    {
       clear();

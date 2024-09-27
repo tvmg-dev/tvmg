@@ -1,6 +1,7 @@
 #include <cJSON.h>
 
 #include "config.h"
+#include "UserIO.h"
 
 #include "HeatMeter.h"
 
@@ -106,6 +107,11 @@ bool  HeatMeterModule::isMeterAvailable()
 
 void  HeatMeterModule::updateUserIO( UserIO *userIO )
 {
+   char line[ MAX_OLED_COLUMNS ];
+
+   snprintf( line,MAX_OLED_COLUMNS,"PETE HERE" );
+   userIO->storeLine( 0,line );
+
 }
 
 HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const String &name,uint8_t id,
