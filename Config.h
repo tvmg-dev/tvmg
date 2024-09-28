@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v10.0.1"
+#define VERSION_STR        "v10.0.3"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2

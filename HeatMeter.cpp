@@ -109,9 +109,40 @@ void  HeatMeterModule::updateUserIO( UserIO *userIO )
 {
    char line[ MAX_OLED_COLUMNS ];
 
-   snprintf( line,MAX_OLED_COLUMNS,"PETE HERE" );
+   HeatMeter *meter = m_sensors[ 0 ];
+   if ( !meter )
+   {
+      snprintf( line,MAX_OLED_COLUMNS,"No Heat Meter" );
+      userIO->storeLine( 0,line );
+      return;
+   }
+
+   HeatMeterSensor *sensor;
+   sensor = meter->getHeatMeterSensor();
+
+   String str = meter->getMode();
+   snprintf( line,MAX_OLED_COLUMNS,"Mode  : %s",str.c_str() );
    userIO->storeLine( 0,line );
 
+   str = meter->getBasicData();
+   snprintf( line,MAX_OLED_COLUMNS,"Watts : %s",str.c_str() );
+   userIO->storeLine( 1,line );
+
+   snprintf( line,MAX_OLED_COLUMNS,"Temp : %3.1f %3.1f",sensor->m_flowTemp,sensor->m_returnTemp );
+   userIO->storeLine( 4,line );
+
+   if ( sensor->m_power == HM_POWER_ERROR )
+   {
+      snprintf( line,MAX_OLED_COLUMNS,"Overflow power" );
+      userIO->storeLine( 2,line );
+   }
+   else
+   {
+      snprintf( line,MAX_OLED_COLUMNS,"Flow : %3.1f l/min",sensor->m_flowRate );
+      userIO->storeLine( 2,line );
+      snprintf( line,MAX_OLED_COLUMNS,"Heat : %.0f W",sensor->m_power );
+      userIO->storeLine( 5,line );
+   }
 }
 
 HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const String &name,uint8_t id,
@@ -187,4 +218,29 @@ void  HeatMeter::takeMeasurement()
 HeatMeterSensor *HeatMeter::getHeatMeterSensor()
 {
    return &m_sensor;
+}
+
+String   HeatMeter::getMode()
+{
+   if ( m_flowMeter )
+   {
+      return( m_flowMeter->getMode() );
+   }
+
+   return String();
+}
+
+// get some information for the HM, in this
+// case we return the underlying power consumed by the UPS3
+
+String HeatMeter::getBasicData()
+{
+   String ret;
+
+   if ( m_flowMeter )
+   {
+      float_t  watts = m_flowMeter->getPowerConsumed();
+      ret = String( watts,1 );
+   }
+   return ret;
 }

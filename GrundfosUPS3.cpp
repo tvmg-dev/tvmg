@@ -130,7 +130,8 @@ GrundfosUPS3::GrundfosUPS3( uint8_t pwmGPIO,const char *mode )
             : m_pwmGPIO( pwmGPIO ),
               m_power( 0.0 ),
               m_quality( 0 ),
-              m_mode( CONSTANT_SPEED1 )
+              m_mode( CONSTANT_SPEED1 ),
+              m_modeString( mode )
 {
    const char *actualMode = "CS1";
    s_pwmGPIO = m_pwmGPIO;
@@ -243,4 +244,14 @@ float_t  GrundfosUPS3::getFlowRate()
    }
 
    return flowRate;
+}
+
+String  GrundfosUPS3::getMode()
+{
+   return m_modeString;
+}
+
+float_t  GrundfosUPS3::getPowerConsumed()
+{
+   return m_power;
 }

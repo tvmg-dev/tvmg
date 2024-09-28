@@ -39,6 +39,8 @@ public:
    void  initialise();
    void  takeMeasurement();
    HeatMeterSensor   *getHeatMeterSensor();
+   String getMode();
+   String getBasicData();
 
 private:
    GrundfosUPS3      *m_flowMeter;

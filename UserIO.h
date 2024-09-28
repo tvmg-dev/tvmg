@@ -55,7 +55,6 @@ private:
    void  showEnergy();
    void  showTemps();
    void  showHeatMeter();
-   bool  showHeatMeter( uint8_t lineNum,uint8_t id );
    void  showCommsStatus();
    void  showLGStatus();
 

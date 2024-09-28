@@ -21,12 +21,15 @@ public:
    void  initialise();
    void  sample();
    float_t  getFlowRate();
+   String getMode();
+   float_t  getPowerConsumed();
 
 private:
    uint8_t  m_pwmGPIO;
    float_t  m_power;
    uint8_t  m_quality;
    Mode     m_mode;
+   String   m_modeString;
 };
 
 #endif
