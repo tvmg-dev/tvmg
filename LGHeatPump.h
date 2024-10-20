@@ -100,6 +100,7 @@ typedef struct {
    int16_t  m_dhwTarget;
 
    int16_t  m_isActive;
+   bool     m_isCompressorOn;
    bool     m_isHeating;
    bool     m_isDHW;
    bool     m_isLegionella;

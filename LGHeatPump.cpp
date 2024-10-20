@@ -488,6 +488,8 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
       {
          case ERROR_CODE: if ( m_currentStatus.m_error != newValue ) { hasChanged = true; }
             break;
+         case COMPRESSOR_STATUS: if ( m_currentStatus.m_isCompressorOn != newValue ) { hasChanged = true; }
+            break;
          case TARGET_TEMP: if ( m_currentStatus.m_heatingTarget != newValue ) { hasChanged = true; }
             break;
          case DHW_TARGET_TEMP: if ( m_currentStatus.m_dhwTarget != newValue ) { hasChanged = true; }
@@ -533,6 +535,7 @@ void  LGHeatPump::updateStatus()
    }
    else
    {
+      updateState |= valueChanged( COMPRESSOR_STATUS );
       updateState |= valueChanged( ERROR_CODE );
       updateState |= valueChanged( TARGET_TEMP );
       updateState |= valueChanged( DHW_TARGET_TEMP );
@@ -572,6 +575,7 @@ void  LGHeatPump::updateStatus()
       localtime_r( &m_currentStatus.m_time,&timeInfo );
       strftime( timeStr,32,"%Y%m%d,%H:%M:%S",&timeInfo );
 
+      m_currentStatus.m_isCompressorOn = getRawValue( COMPRESSOR_STATUS );
       m_currentStatus.m_error = getRawValue( ERROR_CODE );
       m_currentStatus.m_inlet = getRawValue( INLET_TEMP );
       m_currentStatus.m_outlet = getRawValue( OUTLET_TEMP );
@@ -586,9 +590,10 @@ void  LGHeatPump::updateStatus()
       m_currentStatus.m_isSilent = getRawValue( SILENT_STATUS );
       m_currentStatus.m_isDefrost = getRawValue( DEFROST_STATUS );
 
-      snprintf( line,80,"%s,%d,%d,%.1f,%.1f,%d,%d,%.1f,%d,%.1f,%.1f,%d,%d,%d",
+      snprintf( line,80,"%s,%d,%d,%d,%.1f,%.1f,%d,%d,%.1f,%d,%.1f,%.1f,%d,%d,%d",
                timeStr,
                m_currentStatus.m_error,
+               m_currentStatus.m_isCompressorOn,
                m_currentStatus.m_isSilent,
                m_currentStatus.m_inlet * 0.1,
                m_currentStatus.m_outlet * 0.1,
@@ -615,7 +620,7 @@ void  LGHeatPump::updateStatus()
       {
          if ( addHeader )
          {
-            file.println( "date,time,error,silent,inlet,outlet,active,heating,heating-target,"
+            file.println( "date,time,error,compressor,silent,inlet,outlet,active,heating,heating-target,"
                           "dhw,dhw-temp,dhw-target,legionella,immersion,defrost" );
          }
 
@@ -750,28 +755,29 @@ void  LGHeatPump::updateUserIO( UserIO *userIO )
 {
    char line[ MAX_OLED_COLUMNS ];
 
+   float_t  flowRate,targetTemp;
+   (void) getValue( FLOW_RATE,&flowRate );
+   (void) getValue( TARGET_TEMP,&targetTemp );
+   snprintf( line,MAX_OLED_COLUMNS,"%.1f l/m. t: %.1f",flowRate,targetTemp );
+   userIO->storeLine( 0,line );
+
+   float_t inlet,outlet;
+   (void) getValue( INLET_TEMP,&inlet );
+   (void) getValue( OUTLET_TEMP,&outlet );
+   snprintf( line,MAX_OLED_COLUMNS,"i: %.1f o: %.1f",inlet,outlet );
+   userIO->storeLine( 1,line );
+
    if ( !getRawValue( COMPRESSOR_STATUS ) )
    {
       snprintf( line,MAX_OLED_COLUMNS,"Compress: OFF" );
-      userIO->storeLine( 0,line );
+      userIO->storeLine( 3,line );
       return;
    }
-
-   float_t cr;
-   char powerChar = '+';
-   if ( getRawValue( SILENT_STATUS ) )
-   {
-      powerChar = '-';
-   }
-
-   (void) getValue( COMPRESSION_RATIO,&cr );
-   snprintf( line,MAX_OLED_COLUMNS,"%d Hz %c %.1f",getRawValue( COMPRESSOR_HZ ),powerChar,cr );
-   userIO->storeLine( 0,line );
 
    float pwr;
    (void) getValue( HEATING_POWER,&pwr );
    snprintf( line,MAX_OLED_COLUMNS,"%.0f [%.0f]",pwr,m_currentKW );
-   userIO->storeLine( 1,line );
+   userIO->storeLine( 2,line );
 
    float_t cop,carnotCOP,copRatio;
    float_t highT,lowT;
@@ -788,24 +794,26 @@ void  LGHeatPump::updateUserIO( UserIO *userIO )
       carnotCOP = 1;
       copRatio = 1;
    }
-   PW_DEBUG( "HP COP %.1f %.1f %.0f",cop,carnotCOP,copRatio );
+   PW_DEBUG( "HP COP %.1f %.1f %.0f%",cop,carnotCOP,copRatio );
 
    snprintf( line,MAX_OLED_COLUMNS,"%.1f %.1f %.0f",cop,carnotCOP,copRatio );
-   userIO->storeLine( 2,line );
-
-   snprintf( line,MAX_OLED_COLUMNS,"Evap %.1f cond %.1f",lowT,highT );
    userIO->storeLine( 3,line );
 
-   float_t inlet,outlet;
-   (void) getValue( INLET_TEMP,&inlet );
-   (void) getValue( OUTLET_TEMP,&outlet );
-   snprintf( line,MAX_OLED_COLUMNS,"i: %.1f o: %.1f",inlet,outlet );
+   float_t cr;
+   char powerChar = '+';
+   if ( getRawValue( SILENT_STATUS ) )
+   {
+      powerChar = '-';
+   }
+
+   (void) getValue( COMPRESSION_RATIO,&cr );
+   snprintf( line,MAX_OLED_COLUMNS,"%d Hz %c %.1f",getRawValue( COMPRESSOR_HZ ),powerChar,cr );
    userIO->storeLine( 4,line );
 
-   float_t  flowRate;
-   (void) getValue( FLOW_RATE,&flowRate );
-   snprintf( line,MAX_OLED_COLUMNS,"%.1f l/min",flowRate );
+   snprintf( line,MAX_OLED_COLUMNS,"Evap %.1f cond %.1f",lowT,highT );
    userIO->storeLine( 5,line );
+
+
 }
 
 float_t  LGHeatPump::convertR32PressureToTemp( float_t pressure )
