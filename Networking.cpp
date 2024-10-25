@@ -356,7 +356,11 @@ Networking::Networking()
    // read the emocms API key from config, and the public certificate
    // for the emon webserver from /emoncms.pub
 
-   s_emoncmsApiKey = String( GET_REGISTRY_STRING( EMONCMS_APIKEY ) );
+   char *emonKey = GET_REGISTRY_STRING( EMONCMS_APIKEY );
+   if ( emonKey )
+   {
+      s_emoncmsApiKey = String( emonKey );
+   }
 
    fs::SPIFFSFS   *spiffs = Config::instance()->getSPIFFS();
 
