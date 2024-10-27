@@ -16,6 +16,7 @@ typedef struct {
    int8_t        OLEDDataGPIO;
    int8_t        TouchButton1;
    int8_t        TouchButton2;
+   int8_t        PWMGPIO;
 } HardwareConfig;
 
 extern HardwareConfig *hwConfig;

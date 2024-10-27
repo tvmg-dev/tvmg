@@ -2,6 +2,7 @@
 
 #include "config.h"
 #include "UserIO.h"
+#include "hwconfig.h"
 
 #include "HeatMeter.h"
 
@@ -46,7 +47,8 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
                   String name = cJSON_GetObjectItem( sensor,"name" )->valuestring;
                   uint8_t id = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"id" )->valueint);
                   String mode = cJSON_GetObjectItem( sensor,"mode" )->valuestring;
-                  uint8_t gpio = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"gpio" )->valueint);
+//                  uint8_t gpio = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"gpio" )->valueint);
+                  uint8_t gpio = hwConfig->PWMGPIO;
                   uint32_t emonFlowId = cJSON_GetObjectItem( sensor,"emonFlowId" )->valueint;
                   uint32_t emonPowerId = cJSON_GetObjectItem( sensor,"emonPowerId" )->valueint;
                   uint8_t flowTempId = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"flowTempId" )->valueint);

@@ -205,9 +205,19 @@ void  handleTouch2()
 
 void setup( void )
 {
-   // start serial port
+   // start serial port, if pin 15 is low then we reconfigure serial-0
+   // to use alternate IO pins
 
-   Serial.begin( 115200 );
+   pinMode( 15,INPUT );
+   int val = digitalRead( 15 );
+
+   bool setPinsOk = true;
+   if ( !val )
+   {
+      setPinsOk = Serial.setPins( 32,33 );
+   }
+
+   Serial.begin( 115200,SERIAL_8N1 );
 
    delay( 1000 );
 
@@ -277,6 +287,8 @@ void setup( void )
 
    storageModule = new Storage();
    storageModule->initialise();
+
+   PW_MSG( "pins Ok %d",setPinsOk );
 
    // show network status
 

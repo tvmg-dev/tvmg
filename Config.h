@@ -5,10 +5,11 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v10.0.7"
+#define VERSION_STR        "v10.0.8b"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
+#define MONITOR_BOARD      3
 
 #define SAMPLING_PERIOD_MS 30000
 

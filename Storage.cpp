@@ -37,9 +37,9 @@ void Storage::initialise( void )
 {
    PW_DEBUG( "Storage::initialise" );
 
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
    {
-      PW_MSG( "TBoard - not detecting SD card" );
+      PW_MSG( "Not a master - not detecting SD card" );
       m_storageOk = true;
       return;
    }
@@ -189,9 +189,9 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
       return;
    }
 
-   // If we're a tboard then exit
+   // If we're not a master then exit
 
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
    {
       return;
    }
@@ -484,9 +484,9 @@ char  *Storage::getCurrentFileName()
 
 void  Storage::getStatus( char *line )
 {
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+   if ( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
    {
-      strncpy( line,"TBoard - no SD",MAX_OLED_COLUMNS );
+      strncpy( line,"No Fitted SD",MAX_OLED_COLUMNS );
    }
    else if ( m_storageOk )
    {

@@ -25,7 +25,8 @@ HardwareConfig MasterDevice =
    32,            // OLEDClkGPIO
    33,            // OLEDDataGPIO
    T6,            // TouchButton1
-   T5             // TouchButton2
+   T5,            // TouchButton2
+   -1             // PWM GPIO
 };
 
 HardwareConfig TemperatureNode =
@@ -40,8 +41,36 @@ HardwareConfig TemperatureNode =
    -1,            // ModBus485EnGPIO
    4,             // OLEDClkGPIO
    5,             // OLEDDataGPIO
-   -1,             // TouchButton1
-   -1              // TouchButton2
+   -1,            // TouchButton1
+   -1,            // TouchButton2
+   25             // PWM GPIO
+};
+
+HardwareConfig MonitorBoard =
+{
+   12,            // OneWireGPIO
+#if 0
+   0,             // ModBusSerial
+   9600,          // ModBusBaudRate
+   SERIAL_8N1,    // ModBusSerialFormat
+   3,             // ModBusRxGPIO
+   1,             // ModBusTxGPIO
+   50,            // ModBusMsgDelay
+   13,            // ModBus485EnGPIO
+#else
+   -1,            // ModBusSerial
+   -1,            // ModBusBaudRate
+   -1,            // ModBusSerialFormat
+   -1,            // ModBusRxGPIO
+   -1,            // ModBusTxGPIO
+   -1,            // ModBusMsgDelay
+   -1,            // ModBus485EnGPIO
+#endif
+   4,            // OLEDClkGPIO
+   5,            // OLEDDataGPIO
+   T2,           // TouchButton1 (esp32 touch 2)
+   -1,           // TouchButton2
+   16            // PWM GPIO
 };
 
 HardwareConfig *hwConfig;
@@ -55,9 +84,14 @@ void  selectHardware()
       PW_MSG( "Master Device Detected" );
       hwConfig = &MasterDevice;
    }
-   else
+   else if ( boardType == TEMPERATURE_BOARD )
    {
       PW_MSG( "Temperature Module Detected" );
       hwConfig = &TemperatureNode;
+   }
+   else
+   {
+      PW_MSG( "Monitor Board Detected" );
+      hwConfig = &MonitorBoard;
    }
 }

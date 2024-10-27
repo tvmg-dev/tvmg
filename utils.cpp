@@ -79,9 +79,9 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
       if ( GET_REGISTRY_INT( LOG_TO_FILE ) == 1 )
       {
-         if( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+         if( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
          {
-            Serial.println( "Can't debug log to file on TBoards" );
+            Serial.println( "Can't debug log to file, no SD" );
          }
          else
          {
@@ -101,9 +101,9 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
       if ( GET_REGISTRY_INT( LOG_HP_MODBUS ) == 1 )
       {
-         if( GET_REGISTRY_INT( BOARD_TYPE ) == TEMPERATURE_BOARD )
+         if( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
          {
-            Serial.println( "Can't debug log HP modbus to file on TBoards" );
+            Serial.println( "Can't debug log HP modbus to file, no SD" );
          }
          else
          {
