@@ -6,6 +6,7 @@
 
 #define MAX_FILENAME    32
 
+extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
 
 #define START_DEBUG \

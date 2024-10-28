@@ -205,16 +205,19 @@ void  handleTouch2()
 
 void setup( void )
 {
-   // start serial port, if pin 15 is low then we reconfigure serial-0
-   // to use alternate IO pins
+   // start serial port, if the GPIO controlling serial on boot behaviour is low,
+   // i.e. no serial on boot then we can reconfigure uart0 (Serial) to have
+   // alternate GPIO pins for other library use of Serial and we disable
+   // our serial logging
 
-   pinMode( 15,INPUT );
-   int val = digitalRead( 15 );
+   pinMode( SERIAL_DISABLE_GPIO,INPUT_PULLUP );
+   int val = digitalRead( SERIAL_DISABLE_GPIO );
 
    bool setPinsOk = true;
    if ( !val )
    {
-      setPinsOk = Serial.setPins( 32,33 );
+      isBootSerialEnabled = false;
+      setPinsOk = Serial.setPins( ALTERNATE_UART0_RX_GPIO,ALTERNATE_UART0_TX_GPIO );
    }
 
    Serial.begin( 115200,SERIAL_8N1 );
@@ -288,7 +291,7 @@ void setup( void )
    storageModule = new Storage();
    storageModule->initialise();
 
-   PW_MSG( "pins Ok %d",setPinsOk );
+   PW_MSG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
    // show network status
 

@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#define  SERIAL_DISABLE_GPIO  15
+#define  ALTERNATE_UART0_RX_GPIO 32
+#define  ALTERNATE_UART0_TX_GPIO 33
+
 typedef struct {
    int8_t        OneWireGPIO;
    int8_t        ModBusSerial;

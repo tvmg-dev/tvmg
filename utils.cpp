@@ -12,6 +12,8 @@
 #include "Networking.h"
 #include "LGHeatPump.h"
 
+bool isBootSerialEnabled = true;
+
 static char buffer[ 4096 ];
 
 static bool  isTrueVal = true;
@@ -119,8 +121,10 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    }
 
    // Now check to see if we're logging or not
+   // We also return if the serial port has been disabled by h/w and we
+   // would otherwise have been sending debug to the serial port
 
-   if ( (serialLoggingEnabled == isFalse && logToFile == isFalse && logToUDP == isFalse )
+   if ( ( (isBootSerialEnabled == false || serialLoggingEnabled == isFalse) && logToFile == isFalse && logToUDP == isFalse )
                   || (level == LOGGING_LEVEL::DEBUG && debugLevelEnabled == isFalse)
                   || (level == LOGGING_LEVEL::TIMING && logTiming == isFalse)
                   || (level == LOGGING_LEVEL::HP_MODBUS && hpModBusEnabled == isFalse) )
@@ -190,7 +194,10 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    debugString += buffer;
    va_end( args );
 
-   if ( serialLoggingEnabled == isTrue )
+   // Only output to serial if enabled in config and serial boot behaviour
+   // is to have serial enabled
+
+   if ( serialLoggingEnabled == isTrue && isBootSerialEnabled )
    {
       Serial.println( debugString.c_str() );
    }
