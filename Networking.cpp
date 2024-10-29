@@ -441,6 +441,11 @@ bool Networking::startMDNS()
    return( mdnsOk );
 }
 
+#define  OLED_DEBUG( x ) \
+do {\
+  userIO->updateLine( 5,x ); \
+  delay( 1000 ); \
+} while( 0 )
 
 void Networking::initialise()
 {

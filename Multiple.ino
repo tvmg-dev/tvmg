@@ -345,9 +345,10 @@ void setup( void )
    powerModule = new PowerModule;
    powerModule->initialise();
 
-   // Instantiate the heat pump collecting module if active
+   // Instantiate the heat pump collecting module if active and we have
+   // a valid modbus
 
-   if ( GET_REGISTRY_INT( LG_MODBUS ) > 0 )
+   if ( GET_REGISTRY_INT( LG_MODBUS ) > 0 && powerModule->getModbus() )
    {
       lgThermaV = new LGHeatPump( powerModule->getModbus() );
       lgThermaV->initialise();
@@ -382,12 +383,16 @@ void setup( void )
 
    measurement->initialise();
 
-   // intialise touch for master boards
+   // intialise touch for boards if active
    // Touch ISR will be activated when reading is lower than the touchThreshold
 
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   if ( hwConfig->TouchButton1 != -1 )
    {
       touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,touchThreshold );
+   }
+
+   if ( hwConfig->TouchButton2 != -1 )
+   {
       touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,touchThreshold );
    }
 

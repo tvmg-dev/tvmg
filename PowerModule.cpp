@@ -104,9 +104,26 @@ ModbusMaster *PowerModule::getModbus()
 
 void PowerModule::initialise( void )
 {
-   if ( hwConfig->ModBusSerial == -1 )
+   // If we have configure a modbus UART then if that UART is 0 then
+   // also need to confirm that it is not being used for serial debug
+
+   bool  isModBusAvailable = false;
+
+   if ( hwConfig->ModBusSerial == 0 )
    {
-      PW_DEBUG( "PowerModule::initialise() - fake" );
+      if ( !isBootSerialEnabled )
+      {
+         isModBusAvailable = true;
+      }
+   }
+   else if ( hwConfig->ModBusSerial != -1 )
+   {
+      isModBusAvailable = true;
+   }
+
+   if ( !isModBusAvailable )
+   {
+      PW_DEBUG( "PowerModule::initialise() - no modbus, fake" );
    }
    else
    {
@@ -126,6 +143,8 @@ void PowerModule::initialise( void )
       m_master->postTransmission( postTransmission );
 
       m_serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
+
+      // Should we start the modbus master here as opposed to in the getPower() method
    }
 }
 
@@ -175,7 +194,7 @@ bool PowerModule::getPower( uint8_t index )
       return true;
    }
 
-   if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && hwConfig->ModBusSerial != -1 )
+   if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_master )
    {
       if ( !m_masterStarted )
       {

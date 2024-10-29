@@ -256,6 +256,12 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
    uint8_t numRegs = 1 + end - start;
    String  typeStr;
 
+   if ( !m_modbusRTU )
+   {
+      PW_WARN( "No modbus available" );
+      return false;
+   }
+
    m_modbusRequests++;
 
    delay( 50 );

@@ -9,7 +9,7 @@
 // register read request.  And we introduce a delay between modbus requests.
 // Also require an enable/disable for the MAX3485 485 converter.
 //
-// We appear to need a 4.7k (?) pullup too on the RX GPIO.  Tried the
+// We appear to need a 10k (?) pullup too on the RX GPIO.  Tried the
 // internal pull up to no avail.
 
 HardwareConfig MasterDevice =
@@ -48,24 +48,14 @@ HardwareConfig TemperatureNode =
 
 HardwareConfig MonitorBoard =
 {
-   12,            // OneWireGPIO
-#if 0
+   13,            // OneWireGPIO
    0,             // ModBusSerial
    9600,          // ModBusBaudRate
    SERIAL_8N1,    // ModBusSerialFormat
    3,             // ModBusRxGPIO
    1,             // ModBusTxGPIO
    50,            // ModBusMsgDelay
-   13,            // ModBus485EnGPIO
-#else
-   -1,            // ModBusSerial
-   -1,            // ModBusBaudRate
-   -1,            // ModBusSerialFormat
-   -1,            // ModBusRxGPIO
-   -1,            // ModBusTxGPIO
-   -1,            // ModBusMsgDelay
-   -1,            // ModBus485EnGPIO
-#endif
+   12,            // ModBus485EnGPIO
    4,            // OLEDClkGPIO
    5,            // OLEDDataGPIO
    T2,           // TouchButton1 (esp32 touch 2)
