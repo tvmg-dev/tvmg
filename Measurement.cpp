@@ -137,7 +137,7 @@ void  Measurement::takeSample( void )
 
       tempSensor = &newSample.m_actualTemps[ i ];
 
-      PW_DEBUG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
+      PW_MSG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
 
       i++;
    }
@@ -148,7 +148,7 @@ void  Measurement::takeSample( void )
    {
       newSample.m_powerSensors[ i++ ] = powerSensor;
 
-      PW_DEBUG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
+      PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
 
       if ( powerSensor->m_id == HEAT_PUMP_ID )
       {

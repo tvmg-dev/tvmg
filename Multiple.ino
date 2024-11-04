@@ -119,14 +119,17 @@ void newConfiguration( void )
 // button 1 is for debug emails, button 2 is for toggling OLED cycling
 // or refreshing current display
 
-int  touchThreshold = 35;
+int  touchThreshold = 32;
 bool wasButton1Pressed = false;
 bool wasButton2Pressed = false;
 bool userIOHoldScreen = false;   // if true then don't cycle screens
 
+int  touch1Value = 0;
+
 void IRAM_ATTR gotTouch1Event()
 {
   wasButton1Pressed = true;
+  touch1Value = touchRead( hwConfig->TouchButton1 );
 }
 
 void IRAM_ATTR gotTouch2Event()
@@ -137,6 +140,8 @@ void IRAM_ATTR gotTouch2Event()
 void  handleTouch1()
 {
    PW_MSG( "Button-1 was pressed" );
+
+   PW_DEBUG( "Touch 1 value %d",touch1Value );
 
    wasButton1Pressed = false;
 
@@ -460,8 +465,6 @@ void loop(void)
 
    if ( !userIO->isFirmwareUpdateInProgress() )
    {
-      touch_value_t  touchVal = touchRead( hwConfig->TouchButton1 );
-      PW_MSG( "Touch value %d",touchVal );
       // process button presses
 
       if ( wasButton1Pressed )
@@ -518,7 +521,7 @@ void loop(void)
 
    END_TIMING;
 
-   PW_MSG( "Loop Delay %u",deltaMillis );
+   PW_DEBUG( "Loop Delay %u",deltaMillis );
 
    delay( deltaMillis );
 }

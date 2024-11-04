@@ -233,7 +233,7 @@ bool PowerModule::getPower( uint8_t index )
          float hz = m_master->getResponseBuffer( 7 ) / 10.0;
          float pf = m_master->getResponseBuffer( 8 ) / 100.00;
 
-         PW_MSG( "%s : %.0f W : %.0f Whr",m_sensors [ index ].m_name,power,energy );
+         PW_DEBUG( "%s : %.0f W : %.0f Whr",m_sensors [ index ].m_name,power,energy );
 
          m_sensors[ index ].m_sensor.m_energy = energy;
          m_sensors[ index ].m_sensor.m_power = power;
