@@ -119,7 +119,7 @@ void newConfiguration( void )
 // button 1 is for debug emails, button 2 is for toggling OLED cycling
 // or refreshing current display
 
-int  touchThreshold = 40;
+int  touchThreshold = 35;
 bool wasButton1Pressed = false;
 bool wasButton2Pressed = false;
 bool userIOHoldScreen = false;   // if true then don't cycle screens
@@ -460,6 +460,8 @@ void loop(void)
 
    if ( !userIO->isFirmwareUpdateInProgress() )
    {
+      touch_value_t  touchVal = touchRead( hwConfig->TouchButton1 );
+      PW_MSG( "Touch value %d",touchVal );
       // process button presses
 
       if ( wasButton1Pressed )
