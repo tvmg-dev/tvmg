@@ -76,6 +76,7 @@ private:
    PrivateSensor     m_sensors[ MAX_TEMP_SENSORS ];
    uint8_t           m_numLocalSensors;
    uint8_t           m_numRemoteSensors;
+   uint16_t          m_sendPort;
 
    int32_t           m_millisLastAquisition;       // milliseconds since last acquisition
    bool              m_fakeMeasurements;

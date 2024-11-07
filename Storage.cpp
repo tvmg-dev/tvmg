@@ -355,14 +355,19 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
    }
 }
 
-#define  DAILY_EMAIL_HOUR  17
-
-void  Storage::storeSample( const Measurement::Sample &sample )
+void  Storage::updateEmon( const Measurement::Sample &sample )
 {
    char     line[ 128 ];
    String   thermometerStr, powerStr,lgStr;
 
-   // First send data to emon
+   // Can't update if no network
+
+   if ( ! m_networking )
+   {
+      return;
+   }
+
+   // send any temperatures, power, heat pump and heat meter data
 
    int i = 0;
    while ( sample.m_tempSensors[ i ] )
@@ -370,11 +375,8 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       const TempSensor  *sensor;
       sensor = &sample.m_actualTemps[ i ];
 
-      if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 && m_networking )
+      if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
       {
-         snprintf( line,128,"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
-         thermometerStr += line;
-
          m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_temp );
       }
 
@@ -385,11 +387,8 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    const PowerSensor *sensor;
    while( ( sensor = sample.m_powerSensors[ i++ ] ) )
    {
-      if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 && m_networking )
+      if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
       {
-         snprintf( line,128,"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
-         powerStr += line;
-
          m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_power );
       }
    }
@@ -400,9 +399,6 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    {
       if ( lgReg->m_emonFeedId != 0 && m_networking )
       {
-         snprintf( line,128,"%-30s : %.1f\n",lgReg->m_name,lgReg->m_value );
-         lgStr += line;
-
          m_networking->sendToEmonCMS( lgReg->m_emonFeedId,lgReg->m_value );
       }
    }
@@ -430,6 +426,18 @@ void  Storage::storeSample( const Measurement::Sample &sample )
          m_networking->sendToEmonCMS( hmSensor->m_emonPowerId,power );
       }
    }
+}
+
+#define  DAILY_EMAIL_HOUR  17
+
+void  Storage::storeSample( const Measurement::Sample &sample )
+{
+   char     line[ 128 ];
+   String   thermometerStr, powerStr,lgStr;
+
+   // First send data to emon
+
+   updateEmon( sample );
 
    // perform daily update mails if needed
 
@@ -448,6 +456,50 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    {
       PW_MSG( "Sending daily update" );
 
+      // Send LG data if we have it
+
+      if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
+      {
+         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG,true ) )
+         {
+            Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
+         }
+      }
+
+      // Return if we're not sending a daily summary
+
+      if ( GET_REGISTRY_INT( NO_DAILY_UPDATE ) == 1 )
+      {
+         PW_WARN( "No update required" );
+         return;
+      }
+
+      int i = 0;
+      while ( sample.m_tempSensors[ i ] )
+      {
+         const TempSensor  *sensor;
+         sensor = &sample.m_actualTemps[ i ];
+
+         if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
+         {
+            snprintf( line,128,"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
+            thermometerStr += line;
+         }
+
+         i++;
+      }
+
+      i = 0;
+      const PowerSensor *sensor;
+      while( ( sensor = sample.m_powerSensors[ i++ ] ) )
+      {
+         if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
+         {
+            snprintf( line,128,"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
+            powerStr += line;
+         }
+      }
+
       m_dailyUpdate = true;
       String updateStr;
 
@@ -459,21 +511,14 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       updateStr += line;
       updateStr += thermometerStr;
       updateStr += powerStr;
-      updateStr += lgStr;
       updateStr += "\n\n";
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
 
-      if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
-      {
-         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG,true ) )
-         {
-            Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
-         }
-      }
    }
 
-   // save sample to store
+   // save sample to storage if we have it
+
    saveSampleToBackingStore( sample );
 }
 

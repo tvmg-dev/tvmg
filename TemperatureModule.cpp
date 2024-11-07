@@ -49,6 +49,7 @@ TemperatureModule::TemperatureModule()
            m_sensors(),
            m_numLocalSensors( 0 ),
            m_numRemoteSensors( 0 ),
+           m_sendPort( -1 ),
            m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS ),
            m_fakeMeasurements( false )
 {
@@ -246,6 +247,9 @@ void  TemperatureModule::initialise()
          PW_MSG( "Dallas setup completed OK" );
       }
    }
+
+   // are we broadcasting data ?
+   m_sendPort = GET_REGISTRY_INT( BROADCAST_UDP_PORT );
 }
 
 TempSensor  *TemperatureModule::readNextSensor( uint8_t index )
@@ -405,7 +409,13 @@ void  TemperatureModule::localBroadcastData()
 {
    cJSON *root,*array;
 
-   if ( !m_numLocalSensors )
+   // if send port is 65535, i.e. -1 for 16 bit unsigned, then exit
+
+   if ( m_sendPort == 65535 )
+   {
+      return;
+   }
+   else if ( !m_numLocalSensors )
    {
       PW_WARN( "No local temp sensors to broadcast" );
       return;
@@ -453,20 +463,16 @@ void  TemperatureModule::localBroadcastData()
       char *str = cJSON_PrintUnformatted( root );
       if ( str )
       {
-         uint16_t  sendPort = GET_REGISTRY_INT( BROADCAST_UDP_PORT );
-         if ( sendPort != -1 )
-         {
-            // broadcast address, not 255.255.255.255 but IP x.x.x.255
-            IPAddress   subNet = WiFi.localIP();
-            subNet[ 3 ] = 255;
+         // broadcast address, not 255.255.255.255 but IP x.x.x.255
+         IPAddress   subNet = WiFi.localIP();
+         subNet[ 3 ] = 255;
 
-            // if we broadcast via m_udp->broadcastTo( (uint8_t *) str,strlen(str),sendPort );
-            // then that will be a 255.255.255.255 broadcast, so lets limit to the subnet
+         // if we broadcast via m_udp->broadcastTo( (uint8_t *) str,strlen(str),sendPort );
+         // then that will be a 255.255.255.255 broadcast, so lets limit to the subnet
 
-            (void) m_udp->writeTo( (const uint8_t *) str,strlen(str),subNet,sendPort );
+         (void) m_udp->writeTo( (const uint8_t *) str,strlen(str),subNet,m_sendPort );
 
-            PW_DEBUG( "Broadcast: %s",str );
-         }
+         PW_DEBUG( "Broadcast: %s",str );
 
          free( str );
       }

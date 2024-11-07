@@ -21,6 +21,7 @@ public:
 private:
    void  saveSampleToBackingStore( const Measurement::Sample &sample );
    void  removeOldSamples();
+   void  updateEmon( const Measurement::Sample &sample );
 
    char        m_currentFileName[ MAX_FILENAME +1 ];
    Networking  *m_networking;
