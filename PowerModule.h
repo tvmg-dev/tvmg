@@ -27,7 +27,7 @@ typedef struct {
 class PowerModule
 {
 public:
-   PowerModule();
+   PowerModule( ModbusMaster *modbus );
    ~PowerModule();
    void  initialise( void );
    ModbusMaster   *getModbus();
@@ -42,7 +42,6 @@ private:
       bool     m_isValid;
    } PrivateSensor;
 
-   HardwareSerial *m_serial;
    ModbusMaster   *m_modbus;
    PrivateSensor  m_sensors[ MAX_POWER_SENSORS ];
    uint8_t        m_numLocalSensors;

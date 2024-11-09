@@ -1,5 +1,6 @@
 #include <SD.h>
 #include <FS.h>
+#include <ModbusMaster.h>
 
 #include <time.h>
 
@@ -19,6 +20,7 @@
 
 // ---------------------------------------------------------------------
 
+ModbusMaster      *modbusMaster = nullptr;
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
 HeatPumpModule    *heatPumpModule = nullptr;
@@ -206,12 +208,78 @@ void  handleTouch2()
 }
 
 // ---------------------------------------------------------------------
+// Configure modbus
+
+void modbusPreTransmission()
+{
+  digitalWrite( hwConfig->ModBus485EnGPIO,1 );
+}
+
+void modbusPostTransmission()
+{
+  digitalWrite( hwConfig->ModBus485EnGPIO,0 );
+}
+
+void  configureModBus()
+{
+   PW_DEBUG( "Checking for WAVSHARE" );
+   if ( GET_REGISTRY_INT( WAVSHARE ) > 0 )
+   {
+      PW_DEBUG( "Get new HPM" );
+      heatPumpModule = new HeatPumpModule();
+   }
+   else
+   {
+      // May need a modbus instance
+      // If we have configure a modbus UART then if that UART is 0 then
+      // also need to confirm that it is not being used for serial debug
+
+      bool  isModBusAvailable = false;
+      if ( hwConfig->ModBusSerial == 0 )
+      {
+         if ( !isBootSerialEnabled )
+         {
+            isModBusAvailable = true;
+         }
+      }
+      else if ( hwConfig->ModBusSerial != -1 )
+      {
+         isModBusAvailable = true;
+      }
+
+      if ( !isModBusAvailable )
+      {
+         PW_DEBUG( "No modbus available" );
+      }
+      else
+      {
+         PW_MSG( "Creating new modbus master with h/w serial" );
+         modbusMaster = new ModbusMaster;
+         HardwareSerial *serial = new HardwareSerial( hwConfig->ModBusSerial );
+
+         PW_MSG( "Starting MODBUS port %u",hwConfig->ModBusSerial );
+         PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
+
+         // setup the MAX3485 device, need to set the device enable high for transmit to slaves
+         // and low for receive.  The ModbusMaster has callbacks to facilitate that.
+
+         pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
+         modbusMaster->preTransmission( modbusPreTransmission );
+         modbusMaster->postTransmission( modbusPostTransmission );
+
+         serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
+         modbusMaster->begin( 1, *serial );
+      }
+   }
+}
+
+// ---------------------------------------------------------------------
 // Create/initialise all modules prior to main loop
 
 void setup( void )
 {
    // start serial port, if the GPIO controlling serial on boot behaviour is low,
-   // i.e. no serial on boot then we can reconfigure uart0 (Serial) to have
+   // i.e. no serial on boot, then we reconfigure uart0 (Serial) to have
    // alternate GPIO pins for other library use of Serial and we disable
    // our serial logging
 
@@ -345,24 +413,21 @@ void setup( void )
    tempModule = new TemperatureModule;
    tempModule->initialise();
 
+   // get modbus if available
+
+   configureModBus();
+
    // Instantiate the power collecting module
 
-   powerModule = new PowerModule;
+   powerModule = new PowerModule( modbusMaster );
    powerModule->initialise();
-
-   PW_DEBUG( "Checking for WAVSHARE" );
-   if ( GET_REGISTRY_INT( WAVSHARE ) > 0 )
-   {
-      PW_DEBUG( "Get new HPM" );
-      heatPumpModule = new HeatPumpModule();
-   }
 
    // Instantiate the heat pump collecting module if active and we have
    // a valid modbus
 
-   if ( GET_REGISTRY_INT( LG_MODBUS ) > 0 && powerModule->getModbus() )
+   if ( GET_REGISTRY_INT( LG_MODBUS ) > 0 && modbusMaster )
    {
-      lgThermaV = new LGHeatPump( powerModule->getModbus() );
+      lgThermaV = new LGHeatPump( modbusMaster );
       lgThermaV->initialise();
    }
 

@@ -7,22 +7,10 @@
 #include "hwconfig.h"
 #include "config.h"
 
-void preTransmission()
-{
-  digitalWrite( hwConfig->ModBus485EnGPIO,1 );
-}
-
-void postTransmission()
-{
-  digitalWrite( hwConfig->ModBus485EnGPIO,0 );
-}
-
-PowerModule::PowerModule()
-           : m_serial( nullptr ),
-             m_modbus( nullptr ),
+PowerModule::PowerModule( ModbusMaster *modbus )
+           : m_modbus( modbus ),
              m_sensors(),
-             m_numLocalSensors( 0 ),
-             m_modbusStarted( false )
+             m_numLocalSensors( 0 )
 {
    PW_DEBUG( "PowerModule::PowerModule()" );
    PW_MSG( "Power Module Startup" );
@@ -92,9 +80,6 @@ PowerModule::PowerModule()
 PowerModule::~PowerModule()
 {
    PW_DEBUG( "PowerModule::~PowerModule()" );
-
-   delete m_modbus;
-   delete m_serial;
 }
 
 ModbusMaster *PowerModule::getModbus()
@@ -104,47 +89,9 @@ ModbusMaster *PowerModule::getModbus()
 
 void PowerModule::initialise( void )
 {
-   // If we have configure a modbus UART then if that UART is 0 then
-   // also need to confirm that it is not being used for serial debug
-
-   bool  isModBusAvailable = false;
-
-   if ( hwConfig->ModBusSerial == 0 )
-   {
-      if ( !isBootSerialEnabled )
-      {
-         isModBusAvailable = true;
-      }
-   }
-   else if ( hwConfig->ModBusSerial != -1 )
-   {
-      isModBusAvailable = true;
-   }
-
-   if ( !isModBusAvailable )
+   if ( !m_modbus )
    {
       PW_DEBUG( "PowerModule::initialise() - no modbus, fake" );
-   }
-   else
-   {
-      PW_DEBUG( "PowerModule::initialise() - h/w" );
-
-      m_serial = new HardwareSerial( hwConfig->ModBusSerial );
-      m_modbus = new ModbusMaster;
-
-      PW_MSG( "Starting MODBUS port %u",hwConfig->ModBusSerial );
-      PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
-
-      // setup the MAX3485 device, need to set the device enable high for transmit to slaves
-      // and low for receive.  The ModbusMaster has callbacks to facilitate that.
-
-      pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
-      m_modbus->preTransmission( preTransmission );
-      m_modbus->postTransmission( postTransmission );
-
-      m_serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
-
-      // Should we start the modbus master here as opposed to in the getPower() method
    }
 }
 
@@ -196,12 +143,6 @@ bool PowerModule::getPower( uint8_t index )
 
    if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_modbus )
    {
-      if ( !m_modbusStarted )
-      {
-         PW_MSG( "Starting MODBUS master" );
-         m_modbus->begin( m_sensors[ index ].m_address, *m_serial );
-         m_modbusStarted = true;
-      }
       // force a short delay
       delay( hwConfig->ModBusMsgDelay );
 
