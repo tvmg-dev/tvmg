@@ -8,7 +8,7 @@
 #include "hwconfig.h"
 #include "TemperatureModule.h"
 #include "PowerModule.h"
-#include "HeatPumpModule.h"
+#include "ModbusTCP.h"
 #include "HeatMeter.h"
 #include "UserIO.h"
 #include "Measurement.h"
@@ -18,12 +18,13 @@
 #include "WebServer.h"
 #include "LGHeatPump.h"
 
+
 // ---------------------------------------------------------------------
 
 ModbusMaster      *modbusMaster = nullptr;
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
-HeatPumpModule    *heatPumpModule = nullptr;
+ModbusTCP         *modbusTCP = nullptr;
 Storage           *storageModule = nullptr;
 HeatMeterModule   *heatMeterModule = nullptr;
 UserIO            *userIO = nullptr;
@@ -222,11 +223,17 @@ void modbusPostTransmission()
 
 void  configureModBus()
 {
-   PW_DEBUG( "Checking for WAVSHARE" );
-   if ( GET_REGISTRY_INT( WAVSHARE ) > 0 )
+   PW_MSG( "Checking for MODBUSTCP" );
+   if ( GET_REGISTRY_INT( MODBUSTCP ) > 0 )
    {
-      PW_DEBUG( "Get new HPM" );
-      heatPumpModule = new HeatPumpModule();
+      modbusTCP = new ModbusTCP();
+      modbusTCP->initialise();
+
+      if ( !modbusTCP->isOk() )
+      {
+         PW_WARN( "ModbusTCP is NOK !" );
+         modbusTCP = nullptr;
+      }
    }
    else
    {
@@ -558,13 +565,6 @@ void loop(void)
       START_TIMING( "takeSample" );
       measurement->takeSample();
       END_TIMING;
-
-      if ( heatPumpModule )
-      {
-         START_TIMING( "Modbus stuff" );
-         heatPumpModule->sampleHP();
-         END_TIMING;
-      }
 
       START_TIMING( "UserIO Update" );
       userIO->update();
