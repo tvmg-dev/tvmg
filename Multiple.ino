@@ -350,6 +350,13 @@ void setup( void )
    powerModule = new PowerModule;
    powerModule->initialise();
 
+   PW_DEBUG( "Checking for WAVSHARE" );
+   if ( GET_REGISTRY_INT( WAVSHARE ) > 0 )
+   {
+      PW_DEBUG( "Get new HPM" );
+      heatPumpModule = new HeatPumpModule();
+   }
+
    // Instantiate the heat pump collecting module if active and we have
    // a valid modbus
 
@@ -486,6 +493,13 @@ void loop(void)
       START_TIMING( "takeSample" );
       measurement->takeSample();
       END_TIMING;
+
+      if ( heatPumpModule )
+      {
+         START_TIMING( "Modbus stuff" );
+         heatPumpModule->sampleHP();
+         END_TIMING;
+      }
 
       START_TIMING( "UserIO Update" );
       userIO->update();
