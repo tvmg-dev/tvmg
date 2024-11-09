@@ -137,7 +137,7 @@ private:
    LGRegister     *m_registers;
    LGStatus       m_currentStatus;
    uint8_t        m_numRegisters;
-   ModbusMaster   *m_modbusRTU;
+   ModbusMaster   *m_modbus;
    uint32_t       m_modbusRequests;
    uint32_t       m_modbusFailures;
    int32_t        m_millisLastAquisition;       // milliseconds since last acquisition

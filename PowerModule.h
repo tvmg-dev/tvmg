@@ -43,10 +43,10 @@ private:
    } PrivateSensor;
 
    HardwareSerial *m_serial;
-   ModbusMaster   *m_master;
+   ModbusMaster   *m_modbus;
    PrivateSensor  m_sensors[ MAX_POWER_SENSORS ];
    uint8_t        m_numLocalSensors;
-   bool           m_masterStarted;
+   bool           m_modbusStarted;
 };
 
 #endif

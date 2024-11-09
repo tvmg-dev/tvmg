@@ -19,10 +19,10 @@ void postTransmission()
 
 PowerModule::PowerModule()
            : m_serial( nullptr ),
-             m_master( nullptr ),
+             m_modbus( nullptr ),
              m_sensors(),
              m_numLocalSensors( 0 ),
-             m_masterStarted( false )
+             m_modbusStarted( false )
 {
    PW_DEBUG( "PowerModule::PowerModule()" );
    PW_MSG( "Power Module Startup" );
@@ -93,13 +93,13 @@ PowerModule::~PowerModule()
 {
    PW_DEBUG( "PowerModule::~PowerModule()" );
 
-   delete m_master;
+   delete m_modbus;
    delete m_serial;
 }
 
 ModbusMaster *PowerModule::getModbus()
 {
-   return m_master;
+   return m_modbus;
 }
 
 void PowerModule::initialise( void )
@@ -130,7 +130,7 @@ void PowerModule::initialise( void )
       PW_DEBUG( "PowerModule::initialise() - h/w" );
 
       m_serial = new HardwareSerial( hwConfig->ModBusSerial );
-      m_master = new ModbusMaster;
+      m_modbus = new ModbusMaster;
 
       PW_MSG( "Starting MODBUS port %u",hwConfig->ModBusSerial );
       PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
@@ -139,8 +139,8 @@ void PowerModule::initialise( void )
       // and low for receive.  The ModbusMaster has callbacks to facilitate that.
 
       pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
-      m_master->preTransmission( preTransmission );
-      m_master->postTransmission( postTransmission );
+      m_modbus->preTransmission( preTransmission );
+      m_modbus->postTransmission( postTransmission );
 
       m_serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
 
@@ -194,21 +194,21 @@ bool PowerModule::getPower( uint8_t index )
       return true;
    }
 
-   if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_master )
+   if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_modbus )
    {
-      if ( !m_masterStarted )
+      if ( !m_modbusStarted )
       {
          PW_MSG( "Starting MODBUS master" );
-         m_master->begin( m_sensors[ index ].m_address, *m_serial );
-         m_masterStarted = true;
+         m_modbus->begin( m_sensors[ index ].m_address, *m_serial );
+         m_modbusStarted = true;
       }
       // force a short delay
       delay( hwConfig->ModBusMsgDelay );
 
-      m_master->setSlaveId( m_sensors[ index ].m_address );
+      m_modbus->setSlaveId( m_sensors[ index ].m_address );
 
       // Read the 9 registers of the PZEM-16
-      modbusResult = m_master->readInputRegisters( 0x0,9 );
+      modbusResult = m_modbus->readInputRegisters( 0x0,9 );
 
       if ( modbusResult != ModbusMaster::ku8MBSuccess )
       {
@@ -219,19 +219,19 @@ bool PowerModule::getPower( uint8_t index )
          uint32_t reg32;
          float_t  power, energy;
 
-         float voltage = m_master->getResponseBuffer( 0 ) / 10.0;  //get the 16bit value for the voltage, divide it by 10 and cast in the float variable
+         float voltage = m_modbus->getResponseBuffer( 0 ) / 10.0;  //get the 16bit value for the voltage, divide it by 10 and cast in the float variable
 
-         reg32 =  (m_master->getResponseBuffer( 2 ) << 16) + m_master->getResponseBuffer( 1 );  // Get the 2 16bits registers and combine them to an unsigned 32bit
+         reg32 =  (m_modbus->getResponseBuffer( 2 ) << 16) + m_modbus->getResponseBuffer( 1 );  // Get the 2 16bits registers and combine them to an unsigned 32bit
          float current = reg32 / 1000.0;   // Divide the unsigned 32bit by 1000 and put in the current float variable
 
-         reg32 =  (m_master->getResponseBuffer( 4 ) << 16) + m_master->getResponseBuffer( 3 );
+         reg32 =  (m_modbus->getResponseBuffer( 4 ) << 16) + m_modbus->getResponseBuffer( 3 );
          power = reg32 / 10.0;
 
-         reg32 =  (m_master->getResponseBuffer( 6 ) << 16) + m_master->getResponseBuffer( 5 );
+         reg32 =  (m_modbus->getResponseBuffer( 6 ) << 16) + m_modbus->getResponseBuffer( 5 );
          energy = reg32;
 
-         float hz = m_master->getResponseBuffer( 7 ) / 10.0;
-         float pf = m_master->getResponseBuffer( 8 ) / 100.00;
+         float hz = m_modbus->getResponseBuffer( 7 ) / 10.0;
+         float pf = m_modbus->getResponseBuffer( 8 ) / 100.00;
 
          PW_DEBUG( "%s : %.0f W : %.0f Whr",m_sensors [ index ].m_name,power,energy );
 

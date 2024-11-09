@@ -75,7 +75,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_registers( nullptr ),
      m_currentStatus(),
      m_numRegisters( 0 ),
-     m_modbusRTU( master ),
+     m_modbus( master ),
      m_modbusRequests( 0 ),
      m_modbusFailures( 0 ),
      m_millisLastAquisition( -LG_MIN_SAMPLING_PERIOD_MS ),
@@ -256,7 +256,7 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
    uint8_t numRegs = 1 + end - start;
    String  typeStr;
 
-   if ( !m_modbusRTU )
+   if ( !m_modbus )
    {
       PW_WARN( "No modbus available" );
       return false;
@@ -265,20 +265,20 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
    m_modbusRequests++;
 
    delay( 50 );
-   m_modbusRTU->clearResponseBuffer();
+   m_modbus->clearResponseBuffer();
 
    switch( type )
    {
-      case COIL: mbusRes = m_modbusRTU->readCoils( m_registers[ start ].m_address,numRegs );
+      case COIL: mbusRes = m_modbus->readCoils( m_registers[ start ].m_address,numRegs );
                  typeStr = "coils";
                  break;
-      case DISCRETE: mbusRes = m_modbusRTU->readDiscreteInputs( m_registers[ start ].m_address,numRegs );
+      case DISCRETE: mbusRes = m_modbus->readDiscreteInputs( m_registers[ start ].m_address,numRegs );
                  typeStr = "discretes";
                  break;
-      case HOLDING: mbusRes = m_modbusRTU->readHoldingRegisters( m_registers[ start ].m_address,numRegs );
+      case HOLDING: mbusRes = m_modbus->readHoldingRegisters( m_registers[ start ].m_address,numRegs );
                  typeStr = "holding";
                  break;
-      case INPUTR: mbusRes = m_modbusRTU->readInputRegisters( m_registers[ start ].m_address,numRegs );
+      case INPUTR: mbusRes = m_modbus->readInputRegisters( m_registers[ start ].m_address,numRegs );
                  typeStr = "inputs";
                  break;
       default: PW_WARN( "Invalid modbus request type" );
@@ -298,7 +298,7 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
       for ( int i = 0; i < numRegs; i++ )
       {
          uint8_t  reg = i / 16;
-         uint16_t word = m_modbusRTU->getResponseBuffer( reg );
+         uint16_t word = m_modbus->getResponseBuffer( reg );
          uint8_t  bit = i % 16;
          bool     state = word & (1 << bit);
 
@@ -319,7 +319,7 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
    {
       for ( int i = 0; i < numRegs; i++ )
       {
-         m_registers[ start + i ].m_rawValue = static_cast<int16_t>(m_modbusRTU->getResponseBuffer( i ));
+         m_registers[ start + i ].m_rawValue = static_cast<int16_t>(m_modbus->getResponseBuffer( i ));
          m_registers[ start + i ].m_value = m_registers[ start + i ].m_rawValue * m_registers[ start + i ].m_scalingFactor;
          dbg += " ";
          dbg += String( m_registers[ start + i ].m_value );
@@ -336,9 +336,9 @@ void  LGHeatPump::getLGData()
    PW_MSG( "GetLGData" );
 
    START_TIMING( "LG Data Aquisition" );
-   if ( m_modbusRTU )
+   if ( m_modbus )
    {
-      m_modbusRTU->setSlaveId( 32 );
+      m_modbus->setSlaveId( 32 );
 
       uint8_t  start,end;
 
