@@ -29,6 +29,10 @@ HardwareConfig MasterDevice =
    -1             // PWM GPIO
 };
 
+// T-Nodes use the integrated ESP32/OLED module
+// The don't support modbus transceiver module but may use modbus via
+// a modbusTCP adapter, set in config.dat/sensors.dat
+
 HardwareConfig TemperatureNode =
 {
    26,            // OneWireGPIO
@@ -46,6 +50,9 @@ HardwareConfig TemperatureNode =
    25             // PWM GPIO
 };
 
+// Monitor use the integrated ESP32/OLED module and also have modbus
+// transceiver module available.
+
 HardwareConfig MonitorBoard =
 {
    13,            // OneWireGPIO
@@ -56,11 +63,11 @@ HardwareConfig MonitorBoard =
    1,             // ModBusTxGPIO
    50,            // ModBusMsgDelay
    12,            // ModBus485EnGPIO
-   4,            // OLEDClkGPIO
-   5,            // OLEDDataGPIO
-   T2,           // TouchButton1 (esp32 touch 2)
-   -1,           // TouchButton2
-   16            // PWM GPIO
+   4,             // OLEDClkGPIO
+   5,             // OLEDDataGPIO
+   T2,            // TouchButton1 (esp32 touch 2)
+   -1,            // TouchButton2
+   16             // PWM GPIO
 };
 
 HardwareConfig *hwConfig;

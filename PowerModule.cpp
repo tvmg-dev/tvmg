@@ -143,8 +143,11 @@ bool PowerModule::getPower( uint8_t index )
 
    if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_modbus )
    {
-      // force a short delay
-      delay( hwConfig->ModBusMsgDelay );
+      // force a short delay if necessary
+      if ( hwConfig->ModBusMsgDelay > -1 )
+      {
+         delay( hwConfig->ModBusMsgDelay );
+      }
 
       m_modbus->setSlaveId( m_sensors[ index ].m_address );
 

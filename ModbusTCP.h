@@ -11,7 +11,6 @@
 typedef struct
 {
    uint16_t transactionId;
-   uint16_t protocol;
    uint16_t numBytes;
    uint8_t  slaveAddress;
    uint8_t  transactionType;
@@ -22,7 +21,6 @@ typedef struct
 typedef struct
 {
    uint16_t transactionId;
-   uint16_t protocol;
    uint16_t numBytes;
    uint8_t  slaveAddress;
    uint8_t  transactionType;
@@ -39,6 +37,7 @@ public:
    ~ModbusTCP();
    void  initialise();
    bool  isOk();
+   uint8_t  readInputRegisters(uint16_t, uint8_t);
 
 private:
    typedef struct {
@@ -50,7 +49,10 @@ private:
       bool        m_isValid;
    } PrivateSensor;
 
+   bool  getData( ModBusRequest *request, ModBusResponse *response );
+
    PrivateSensor  m_sensor;
+   uint8_t        m_transactionId;
 };
 
 #endif

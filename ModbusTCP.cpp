@@ -10,8 +10,16 @@
 #define  TCP_SERVER_CONNECT_TIMEOUT_MS 1000
 #define  MODBUS_TCP_TIMEOUT_MS         2000
 
+#define  READ_COILS     1
+#define  READ_DISCRETES 2
+#define  READ_HOLDING   3
+#define  READ_INPUTS    4
+
+#define  MAX_RETRIES    5
+
 ModbusTCP::ModbusTCP() : ModbusMaster(),
-           m_sensor()
+           m_sensor(),
+           m_transactionId( 0 )
 {
    PW_DEBUG( "ModbusTCP::ModbusTCP()" );
 
@@ -38,7 +46,7 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
          {
             if ( strcmp( "MODBUSTCP",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
             {
-               char           tcpServerAddress[ 17 ];
+               char  tcpServerAddress[ 64 ];
 
                m_sensor.m_isValid = true;
 
@@ -51,13 +59,11 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
                   m_sensor.m_isValid = false;
                }
 
-#if 1
                m_sensor.m_tcpServerPort = cJSON_GetObjectItem( sensor,"tcpServerPort" )->valueint;
                m_sensor.m_requestDelay = cJSON_GetObjectItem( sensor,"tcpServerDelay" )->valueint;
 
                PW_MSG( "ModbusTCP : name %s, Server : %s, port %u",m_sensor.m_name,
                                  m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort );
-#endif
 
                break;
             }
@@ -91,4 +97,42 @@ void ModbusTCP::initialise()
 bool ModbusTCP::isOk()
 {
    return( m_sensor.m_isValid );
+}
+
+bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
+{
+   return false;
+}
+
+
+uint8_t  ModbusTCP::readInputRegisters( uint16_t u16ReadAddress,uint8_t u16ReadQty )
+{
+   ModBusRequest  request;
+   ModBusResponse response;
+   uint8_t        attempts = 0;
+
+   PW_DEBUG( "readInputRegisters %d %d",u16ReadAddress,u16ReadQty );
+   request.transactionType = READ_INPUTS;
+   request.slaveAddress = _u8MBSlave;
+   request.startRegister = u16ReadAddress;
+   request.numRegisters = u16ReadQty;
+
+   request.transactionId = m_transactionId++;
+
+   while ( attempts < MAX_RETRIES && !getData( &request,&response ) )
+   {
+      delay( m_sensor.m_requestDelay );
+      attempts++;
+      request.transactionId = m_transactionId++;
+   }
+
+   if ( attempts == MAX_RETRIES )
+   {
+      PW_ERROR( "Modbus failed to read inputs for slave %d",_u8MBSlave );
+      return ku8MBResponseTimedOut;
+   }
+   else
+   {
+      return ku8MBSuccess;
+   }
 }

@@ -234,6 +234,8 @@ void  configureModBus()
          PW_WARN( "ModbusTCP is NOK !" );
          modbusTCP = nullptr;
       }
+
+      modbusMaster = modbusTCP;
    }
    else
    {
@@ -401,7 +403,7 @@ void setup( void )
 
    // did we boot with button down pressed ?
 
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   if ( hwConfig->TouchButton1 != -1 )
    {
       touch_value_t  touchVal = touchRead( hwConfig->TouchButton1 );
       if ( touchVal < touchThreshold )
