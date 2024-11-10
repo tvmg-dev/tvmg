@@ -142,8 +142,10 @@ void  UserIO::showNetwork()
       snprintf( line,MAX_OLED_COLUMNS,"IP %s",m_networking->getIPAddress().c_str() );
       storeLine( 1,line );
 
-      snprintf( line,MAX_OLED_COLUMNS,"RSSI : %d dBm",WiFi.RSSI() );
+      int   rsi = WiFi.RSSI();
+      snprintf( line,MAX_OLED_COLUMNS,"RSSI : %d dBm",rsi );
       storeLine( 2,line );
+      PW_MSG( "RSSI : %d dBm",rsi );
 
       if ( !m_networking->didAcquireNTP() )
       {

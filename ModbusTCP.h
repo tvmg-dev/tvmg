@@ -37,6 +37,9 @@ public:
    ~ModbusTCP();
    void  initialise();
    bool  isOk();
+   uint8_t  readCoils(uint16_t, uint16_t);
+   uint8_t  readDiscreteInputs(uint16_t, uint16_t);
+   uint8_t  readHoldingRegisters(uint16_t, uint16_t);
    uint8_t  readInputRegisters(uint16_t, uint8_t);
 
 private:
@@ -49,7 +52,8 @@ private:
       bool        m_isValid;
    } PrivateSensor;
 
-   bool  getData( ModBusRequest *request, ModBusResponse *response );
+   bool     getData( ModBusRequest *request, ModBusResponse *response );
+   uint8_t  getWords( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty );
 
    PrivateSensor  m_sensor;
    uint8_t        m_transactionId;

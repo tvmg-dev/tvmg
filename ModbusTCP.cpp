@@ -1,14 +1,17 @@
 #include <WiFi.h>
 
 #include <cJSON.h>
+#include <mutex>
 
 #include "hwconfig.h"
 #include "config.h"
 
 #include "ModbusTCP.h"
+#include "Networking.h"
 
 #define  TCP_SERVER_CONNECT_TIMEOUT_MS 1000
 #define  MODBUS_TCP_TIMEOUT_MS         2000
+#define  KEEP_MODBUS_TCP_ALIVE_MS      40000
 
 #define  READ_COILS     1
 #define  READ_DISCRETES 2
@@ -16,6 +19,8 @@
 #define  READ_INPUTS    4
 
 #define  MAX_RETRIES    5
+
+static   WiFiClient     *s_wifiClient = nullptr;
 
 ModbusTCP::ModbusTCP() : ModbusMaster(),
            m_sensor(),
@@ -103,6 +108,8 @@ uint8_t     buff[ 256 ];
 
 bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
 {
+   static uint32_t   lastConnectionMillis = 0;
+
    uint8_t  size = 0;
 
    // Determine how many bytes we expect to receive back, and we're only
@@ -126,16 +133,32 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
             break;
    }
 
-   WiFiClient host;
-   if ( !host.connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
+   std::lock_guard<std::mutex> lock(networkingMutex);
+
+   if ( millis() - lastConnectionMillis > KEEP_MODBUS_TCP_ALIVE_MS && s_wifiClient )
+   {
+      PW_DEBUG( "ModbusTCP: Closing connection (%u ms elapsed)",millis() - lastConnectionMillis );
+      s_wifiClient->stop();
+      delete s_wifiClient;
+      s_wifiClient = nullptr;
+      lastConnectionMillis = millis();
+   }
+
+   if ( !s_wifiClient )
+   {
+      PW_DEBUG( "ModbusTCP: Create new WifiClient" );
+      s_wifiClient = new WiFiClient();
+   }
+
+   if ( !s_wifiClient->connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
    {
       PW_ERROR( "Failed to connect to ModbusTCP server" );
       return false;
    }
 
-   // flush the host from any previous data
+   // flush the s_wifiClient->from any previous data
 
-   host.flush();
+   s_wifiClient->flush();
 
    // Create the request payload, we only support the 4 reads of
    // coils, discretes, holding and input
@@ -168,7 +191,7 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
    PW_DEBUG( dbg.c_str() );
    END_DEBUG;
 
-   uint8_t written = host.write( buff,size );
+   uint8_t written = s_wifiClient->write( buff,size );
 
    if ( written != size )
    {
@@ -182,20 +205,20 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
 
    uint32_t startMillis = millis();
 
-   while ( millis() - startMillis < MODBUS_TCP_TIMEOUT_MS && host.available() < bytesExpected )
+   while ( millis() - startMillis < MODBUS_TCP_TIMEOUT_MS && s_wifiClient->available() < bytesExpected )
    {
       delay( 25 );
    }
 
-   if ( host.available() != bytesExpected )
+   if ( s_wifiClient->available() != bytesExpected )
    {
       PW_ERROR( "Failed to acquire modbus response data" );
       return false;
    }
 
-   PW_DEBUG( "Took %u ms to acquire %u bytes from ModBusTCP", bytesExpected,millis() - startMillis );
+   PW_DEBUG( "Took %u ms to acquire %u bytes from ModBusTCP", millis() - startMillis,bytesExpected );
 
-   int numRead = host.read( buff,bytesExpected );
+   int numRead = s_wifiClient->read( buff,bytesExpected );
 
    START_DEBUG;
    String dbg = "Rx ";
@@ -241,8 +264,11 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
       for ( uint8_t i = 0; i < response->dataBytes / 2; i++ )
       {
          _u16ResponseBuffer[ i ] = word( buff[ i * 2 + 9],buff[ i * 2 + 10 ] );
+         response->registers[ i ] = _u16ResponseBuffer[ i ];
       }
    }
+
+   // some conditional debug output
 
    START_DEBUG;
    switch( response->transactionType )
@@ -275,8 +301,7 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
    return true;
 }
 
-
-uint8_t  ModbusTCP::readInputRegisters( uint16_t u16ReadAddress,uint8_t u16ReadQty )
+uint8_t  ModbusTCP::getWords( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty )
 {
    ModBusRequest  request;
    ModBusResponse response;
@@ -284,7 +309,7 @@ uint8_t  ModbusTCP::readInputRegisters( uint16_t u16ReadAddress,uint8_t u16ReadQ
 
    PW_DEBUG( "readInputRegisters %d %d",u16ReadAddress,u16ReadQty );
 
-   request.transactionType = READ_INPUTS;
+   request.transactionType = transactionType;
    request.slaveAddress = _u8MBSlave;        // from ModbusMaster
    request.startRegister = u16ReadAddress;
    request.numRegisters = u16ReadQty;
@@ -300,11 +325,31 @@ uint8_t  ModbusTCP::readInputRegisters( uint16_t u16ReadAddress,uint8_t u16ReadQ
 
    if ( attempts == MAX_RETRIES )
    {
-      PW_ERROR( "Modbus failed to read inputs for slave %d",_u8MBSlave );
+      PW_ERROR( "Modbus failed to read words for slave %d",_u8MBSlave );
       return ku8MBResponseTimedOut;
    }
    else
    {
       return ku8MBSuccess;
    }
+}
+
+uint8_t  ModbusTCP::readInputRegisters( uint16_t u16ReadAddress,uint8_t u16ReadQty )
+{
+   return( getWords( READ_INPUTS,u16ReadAddress,u16ReadQty ) );
+}
+
+uint8_t  ModbusTCP::readHoldingRegisters( uint16_t u16ReadAddress,uint16_t u16ReadQty )
+{
+   return( getWords( READ_HOLDING,u16ReadAddress,u16ReadQty ) );
+}
+
+uint8_t  ModbusTCP::readCoils( uint16_t u16ReadAddress,uint16_t u16ReadQty )
+{
+   return ku8MBResponseTimedOut;
+}
+
+uint8_t  ModbusTCP::readDiscreteInputs( uint16_t u16ReadAddress,uint16_t u16ReadQty )
+{
+   return ku8MBResponseTimedOut;
 }

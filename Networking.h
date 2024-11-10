@@ -9,6 +9,8 @@
 class WebServer;
 class Emailer;
 
+extern std::mutex  networkingMutex;
+
 class Networking
 {
 public:
