@@ -105,6 +105,27 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
 {
    uint8_t  size = 0;
 
+   // Determine how many bytes we expect to receive back, and we're only
+   // currently supporting read requests
+
+   uint8_t  bytesExpected = 9;
+   switch( request->transactionType )
+   {
+      case READ_COILS:
+      case READ_DISCRETES:
+            bytesExpected += 1 + request->numRegisters / 8;
+            PW_DEBUG( "Coils/Discretes : want %u regs, (%u data bytes)",request->numRegisters,bytesExpected - 9 );
+         break;
+      case READ_HOLDING:
+      case READ_INPUTS:
+            bytesExpected += request->numRegisters * 2;
+            break;
+      default:
+            PW_ERROR( "Unsupported transaction type %u",request->transactionType );
+            return false;
+            break;
+   }
+
    WiFiClient host;
    if ( !host.connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
    {
@@ -155,27 +176,9 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
       return false;
    }
 
-   uint8_t  bytesExpected = 9;
-
-   switch( request->transactionType )
-   {
-      case READ_COILS:
-      case READ_DISCRETES:
-            bytesExpected += 1 + request->numRegisters / 8;
-            PW_DEBUG( "Coils/Discretes : want %u regs, (%u data bytes)",request->numRegisters,bytesExpected - 9 );
-         break;
-      case READ_HOLDING:
-      case READ_INPUTS:
-            bytesExpected += request->numRegisters * 2;
-            break;
-      default:
-            PW_ERROR( "Unsupported transaction type %u",request->transactionType );
-            return false;
-            break;
-   }
-
    // Need to wait a bit for a response, have the TCP traffic then the 9600 baud
-   // modbusRTU happening - so wait 25ms at least, up to a timeout limit
+   // modbusRTU happening - so wait 25ms at least, up to a timeout limit, need to
+   // poll here for now
 
    uint32_t startMillis = millis();
 
@@ -186,12 +189,11 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
 
    if ( host.available() != bytesExpected )
    {
-      PW_ERROR( "Failed to acquire response data" );
+      PW_ERROR( "Failed to acquire modbus response data" );
       return false;
    }
 
-   PW_DEBUG( "Took %u ms to acquire from ModBusTCP", millis() - startMillis );
-   PW_DEBUG( "expecting %u bytes", bytesExpected );
+   PW_DEBUG( "Took %u ms to acquire %u bytes from ModBusTCP", bytesExpected,millis() - startMillis );
 
    int numRead = host.read( buff,bytesExpected );
 
@@ -213,7 +215,7 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
       return false;
    }
 
-   // 16 bit values are created from word( high,low )
+   // 16 bit values are created from word( high,low ) - check Transaction ID
 
    response->transactionId = word( buff[ 0 ],buff[ 1 ] );
 
@@ -223,6 +225,11 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
       return false;
    }
 
+   PW_DEBUG( "trans id %u, slave addr %u, type %u, bytes %u",response->transactionId,response->slaveAddress,response->transactionType,response->dataBytes );
+
+   // Now need to populate the ModbusMaster::_u16ResponseBuffer
+   // for ModbusMaster::getResponseBuffer() to return the data
+
    response->numBytes = word( buff[ 4 ],buff[ 5 ] );
    response->slaveAddress = buff[ 6 ];
    response->transactionType = buff[ 7 ];
@@ -231,28 +238,11 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
 
    if ( response->transactionType == READ_HOLDING || response->transactionType == READ_INPUTS )
    {
-      for ( uint8_t i = 0; i < request->numRegisters; i++ )
+      for ( uint8_t i = 0; i < response->dataBytes / 2; i++ )
       {
-         response->registers[ i ] = word( buff[ i * 2 + 9],buff[ i * 2 + 10 ] );
+         _u16ResponseBuffer[ i ] = word( buff[ i * 2 + 9],buff[ i * 2 + 10 ] );
       }
    }
-   else
-   {
-      for ( uint8_t i = 0; i < request->numRegisters; i++ )
-      {
-         uint8_t  byteNum = i / 8;
-         uint8_t mask = 1 << ( i % 8);
-
-//         PW_DEBUG( "test register %u, byte 0x%02x, mask 0x%02x", i,buff[ 9 + byteNum ], mask );
-         response->registers[ i ] = 0;
-         if ( buff[ 9 + byteNum ] & mask )
-         {
-            response->registers[ i ] = 1;
-         }
-      }
-   }
-
-   PW_DEBUG( "trans id %u, slave addr %u, type %u, bytes %u",response->transactionId,response->slaveAddress,response->transactionType,response->dataBytes );
 
    START_DEBUG;
    switch( response->transactionType )
@@ -295,7 +285,7 @@ uint8_t  ModbusTCP::readInputRegisters( uint16_t u16ReadAddress,uint8_t u16ReadQ
    PW_DEBUG( "readInputRegisters %d %d",u16ReadAddress,u16ReadQty );
 
    request.transactionType = READ_INPUTS;
-   request.slaveAddress = _u8MBSlave;
+   request.slaveAddress = _u8MBSlave;        // from ModbusMaster
    request.startRegister = u16ReadAddress;
    request.numRegisters = u16ReadQty;
 
