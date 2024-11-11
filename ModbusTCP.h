@@ -52,8 +52,8 @@ private:
       bool        m_isValid;
    } PrivateSensor;
 
-   bool     getData( ModBusRequest *request );
-   uint8_t  getWords( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty );
+   bool     getData( const ModBusRequest &request );
+   uint8_t  getData( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty );
 
    PrivateSensor  m_sensor;
    uint8_t        m_transactionId;

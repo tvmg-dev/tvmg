@@ -186,6 +186,16 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       debugString += "HPMOD: ";
    }
 
+   // we should really take the network mutex here for UDP, beware of deadly
+   // embrace, i.e. we can't in the one core lock network & logging and
+   // the other core lock logging, then network.
+   // this could introduce significant hold off's in UDP enabled runtime
+   // as some activity when networking lock is held can be several seconds
+   // So for now - we don't take the NW mutex and hope UDP broadcast on 1
+   // core doesn't affect IP activity on the other...
+
+   //std::lock_guard<std::mutex> lock(networkingMutex);
+
    std::lock_guard<std::mutex> lock(loggingMutex);
 
    va_list args;
@@ -204,8 +214,6 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
    if ( logToUDP == isTrue && UDPDebugPort && Networking::getUDP() )
    {
-      std::lock_guard<std::recursive_mutex> lock(networkingMutex);
-
       if ( subNet[ 3 ] == 0 )
       {
          subNet = WiFi.localIP();

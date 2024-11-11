@@ -105,7 +105,7 @@ bool ModbusTCP::isOk()
 }
 
 
-bool  ModbusTCP::getData( ModBusRequest *request )
+bool  ModbusTCP::getData( const ModBusRequest &request )
 {
    static uint32_t   lastConnectionMillis = 0;
    uint8_t           buff[ 128 ];
@@ -117,19 +117,19 @@ bool  ModbusTCP::getData( ModBusRequest *request )
    // currently supporting read requests
 
    uint8_t  bytesExpected = 9;
-   switch( request->transactionType )
+   switch( request.transactionType )
    {
       case READ_COILS:
       case READ_DISCRETES:
-            bytesExpected += 1 + request->numRegisters / 8;
-            PW_DEBUG( "Coils/Discretes : want %u regs, (%u data bytes)",request->numRegisters,bytesExpected - 9 );
+            bytesExpected += 1 + request.numRegisters / 8;
+            PW_DEBUG( "Coils/Discretes : want %u regs, (%u data bytes)",request.numRegisters,bytesExpected - 9 );
          break;
       case READ_HOLDING:
       case READ_INPUTS:
-            bytesExpected += request->numRegisters * 2;
+            bytesExpected += request.numRegisters * 2;
             break;
       default:
-            PW_ERROR( "Unsupported transaction type %u",request->transactionType );
+            PW_ERROR( "Unsupported transaction type %u",request.transactionType );
             return false;
             break;
    }
@@ -146,7 +146,7 @@ bool  ModbusTCP::getData( ModBusRequest *request )
    while ( attempts < MAX_RETRIES && !transactionOk )
    {
       attempts++;
-      request->transactionId = m_transactionId++;
+      m_transactionId++;
 
       std::lock_guard<std::recursive_mutex> lock(networkingMutex);
 
@@ -180,21 +180,21 @@ bool  ModbusTCP::getData( ModBusRequest *request )
       // Create the request payload, we only support the 4 reads of
       // coils, discretes, holding and input
 
-      buff[ size++ ] = highByte( request->transactionId );
-      buff[ size++ ] = lowByte( request->transactionId );
+      buff[ size++ ] = highByte( m_transactionId );
+      buff[ size++ ] = lowByte( m_transactionId );
       buff[ size++ ] = 0;     // protocol is always zero
       buff[ size++ ] = 0;
       buff[ size++ ] = 0;     // number following bytes always 6
       buff[ size++ ] = 6;
-      buff[ size++ ] = request->slaveAddress;
-      buff[ size++ ] = request->transactionType;
+      buff[ size++ ] = request.slaveAddress;
+      buff[ size++ ] = request.transactionType;
 
-      buff[ size++ ] = highByte( request->startRegister );
-      buff[ size++ ] = lowByte( request->startRegister );
-      buff[ size++ ] = highByte( request->numRegisters );
-      buff[ size++ ] = lowByte( request->numRegisters );
+      buff[ size++ ] = highByte( request.startRegister );
+      buff[ size++ ] = lowByte( request.startRegister );
+      buff[ size++ ] = highByte( request.numRegisters );
+      buff[ size++ ] = lowByte( request.numRegisters );
 
-      PW_MSG( "ModBus request %u, %u registers, type %u",request->transactionId,request->numRegisters,request->transactionType );
+      PW_MSG( "ModBus request %u, %u registers, type %u",request.transactionId,request.numRegisters,request.transactionType );
 
       START_DEBUG;
       String dbg = "Tx ";
@@ -255,22 +255,27 @@ bool  ModbusTCP::getData( ModBusRequest *request )
          continue;
       }
 
-      // 16 bit values are created from word( high,low ) - check Transaction ID
+      // 16 bit values are created from word( high,low ) - check Transaction ID etc.
 
       response.transactionId = word( buff[ 0 ],buff[ 1 ] );
+      response.numBytes = word( buff[ 4 ],buff[ 5 ] );
+      response.slaveAddress = buff[ 6 ];
+      response.transactionType = buff[ 7 ];
 
-      if ( response.transactionId != request->transactionId )
+      if ( response.transactionId != m_transactionId )
       {
          PW_ERROR( "Invalid transaction ID, rejecting" );
          continue;
       }
 
+      if ( response.transactionType != request.transactionType )
+      {
+         PW_ERROR( "Invalid transaction type, rejecting" );
+         continue;
+      }
+
       // Now need to populate the ModbusMaster::_u16ResponseBuffer
       // for ModbusMaster::getResponseBuffer() to return the data
-
-      response.numBytes = word( buff[ 4 ],buff[ 5 ] );
-      response.slaveAddress = buff[ 6 ];
-      response.transactionType = buff[ 7 ];
 
       response.dataBytes = buff[ 8 ];
 
@@ -282,6 +287,34 @@ bool  ModbusTCP::getData( ModBusRequest *request )
          {
             _u16ResponseBuffer[ i ] = word( buff[ i * 2 + 9],buff[ i * 2 + 10 ] );
             response.registers[ i ] = _u16ResponseBuffer[ i ];
+         }
+      }
+      else
+      {
+         for ( uint8_t i = 0; i < request.numRegisters; i++ )
+         {
+            uint8_t  byteNum = i / 8;
+            uint8_t mask = 1 << ( i % 8);
+
+   //         PW_DEBUG( "test register %u, byte 0x%02x, mask 0x%02x", i,buff[ 9 + byteNum ], mask );
+            response.registers[ i ] = 0;
+            if ( buff[ 9 + byteNum ] & mask )
+            {
+               response.registers[ i ] = 1;
+            }
+         }
+
+         // single bits are ordered L,H,L,H in the response
+         uint8_t i;
+         for ( i = 0; i < response.dataBytes / 2; i++ )
+         {
+            _u16ResponseBuffer[ i ] = word( buff[ i * 2 + 10],buff[ i * 2 + 9 ] );
+         }
+
+         // Handle odd number of bytes
+         if ( response.dataBytes % 2 )
+         {
+            _u16ResponseBuffer[ i ] = word( 0,buff[ i * 2 + 9 ] );
          }
       }
 
@@ -306,7 +339,7 @@ bool  ModbusTCP::getData( ModBusRequest *request )
                break;
       }
 
-      for ( int i = 0; i < request->numRegisters; i++ )
+      for ( int i = 0; i < request.numRegisters; i++ )
       {
          char byteBuff[ 20 ];
 
@@ -323,7 +356,7 @@ bool  ModbusTCP::getData( ModBusRequest *request )
    return( transactionOk );
 }
 
-uint8_t  ModbusTCP::getWords( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty )
+uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty )
 {
    ModBusRequest  request;
 
@@ -334,7 +367,7 @@ uint8_t  ModbusTCP::getWords( uint8_t transactionType,uint16_t u16ReadAddress,ui
    request.startRegister = u16ReadAddress;
    request.numRegisters = u16ReadQty;
 
-   if ( !getData( &request ) )
+   if ( !getData( request ) )
    {
       PW_ERROR( "Modbus failed to read words for slave %d",_u8MBSlave );
       return ku8MBResponseTimedOut;
@@ -347,20 +380,20 @@ uint8_t  ModbusTCP::getWords( uint8_t transactionType,uint16_t u16ReadAddress,ui
 
 uint8_t  ModbusTCP::readInputRegisters( uint16_t u16ReadAddress,uint8_t u16ReadQty )
 {
-   return( getWords( READ_INPUTS,u16ReadAddress,u16ReadQty ) );
+   return( getData( READ_INPUTS,u16ReadAddress,u16ReadQty ) );
 }
 
 uint8_t  ModbusTCP::readHoldingRegisters( uint16_t u16ReadAddress,uint16_t u16ReadQty )
 {
-   return( getWords( READ_HOLDING,u16ReadAddress,u16ReadQty ) );
+   return( getData( READ_HOLDING,u16ReadAddress,u16ReadQty ) );
 }
 
 uint8_t  ModbusTCP::readCoils( uint16_t u16ReadAddress,uint16_t u16ReadQty )
 {
-   return ku8MBResponseTimedOut;
+   return( getData( READ_COILS,u16ReadAddress,u16ReadQty ) );
 }
 
 uint8_t  ModbusTCP::readDiscreteInputs( uint16_t u16ReadAddress,uint16_t u16ReadQty )
 {
-   return ku8MBResponseTimedOut;
+   return( getData( READ_DISCRETES,u16ReadAddress,u16ReadQty ) );
 }

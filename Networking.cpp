@@ -151,7 +151,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    s_webClient->setURL( path );
    int httpCode = s_webClient->GET();
 
-   PW_DEBUG( "EMONCMS: Sent %d",httpCode );
+   PW_DEBUG( "EMONCMS: GET response %d",httpCode );
 
    // Check success from HTTP perspective, then check success from emon REST perspective
 
