@@ -59,6 +59,7 @@ private:
    void  showLGStatus();
 
    TempSensor *findTempSensor( uint8_t id );
+   bool  isTemperatureDataAvailable();
    bool  isPowerDataAvailable();
    bool  isHeatMeterDataAvailable();
 

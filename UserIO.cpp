@@ -412,6 +412,9 @@ bool  UserIO::setNextScreen()
    // Now check if possible
    switch ( m_currentScreen )
    {
+      case TEMPERATURES:
+         retVal = isTemperatureDataAvailable();
+         break;
       case ENERGY:
          retVal = isPowerDataAvailable();
          break;
@@ -447,7 +450,7 @@ void  UserIO::showNext()
 
    while ( ! setNextScreen() )
    {
-      PW_DEBUG( "Skip screen" );
+      PW_DEBUG( "Try screen %d",m_currentScreen );
    }
 
    show( m_currentScreen );
@@ -473,6 +476,19 @@ void  UserIO::setFirmwareUpdateInProgress( bool progress )
 bool  UserIO::isFirmwareUpdateInProgress()
 {
    return m_firmwareUpdateInProgress;
+}
+
+bool  UserIO::isTemperatureDataAvailable()
+{
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+   {
+      if ( m_sample.m_tempSensors[ i ] )
+      {
+         return true;
+      }
+   }
+
+   return false;
 }
 
 bool  UserIO::isPowerDataAvailable()

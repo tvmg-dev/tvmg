@@ -9,8 +9,8 @@
 #include "ModbusTCP.h"
 #include "Networking.h"
 
-#define  TCP_SERVER_CONNECT_TIMEOUT_MS 1000
-#define  MODBUS_TCP_TIMEOUT_MS         2000
+#define  TCP_SERVER_CONNECT_TIMEOUT_MS 2000
+#define  MODBUS_TCP_TIMEOUT_MS         1500
 #define  KEEP_MODBUS_TCP_ALIVE_MS      40000
 
 #define  READ_COILS     1
@@ -18,7 +18,7 @@
 #define  READ_HOLDING   3
 #define  READ_INPUTS    4
 
-#define  MAX_RETRIES    5
+#define  MAX_RETRIES    1
 
 static   WiFiClient     *s_wifiClient = nullptr;
 
@@ -104,11 +104,12 @@ bool ModbusTCP::isOk()
    return( m_sensor.m_isValid );
 }
 
-uint8_t     buff[ 256 ];
 
-bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
+bool  ModbusTCP::getData( ModBusRequest *request )
 {
    static uint32_t   lastConnectionMillis = 0;
+   uint8_t           buff[ 128 ];
+   ModBusResponse    response;
 
    uint8_t  size = 0;
 
@@ -133,179 +134,198 @@ bool  ModbusTCP::getData( ModBusRequest *request, ModBusResponse *response )
             break;
    }
 
-   std::lock_guard<std::mutex> lock(networkingMutex);
-
-   if ( millis() - lastConnectionMillis > KEEP_MODBUS_TCP_ALIVE_MS && s_wifiClient )
+   if ( bytesExpected > sizeof( buff ) )
    {
-      PW_DEBUG( "ModbusTCP: Closing connection (%u ms elapsed)",millis() - lastConnectionMillis );
-      s_wifiClient->stop();
-      delete s_wifiClient;
-      s_wifiClient = nullptr;
-      lastConnectionMillis = millis();
-   }
-
-   if ( !s_wifiClient )
-   {
-      PW_DEBUG( "ModbusTCP: Create new WifiClient" );
-      s_wifiClient = new WiFiClient();
-   }
-
-   if ( !s_wifiClient->connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
-   {
-      PW_ERROR( "Failed to connect to ModbusTCP server" );
+      PW_ERROR( "Invalid request, expected bytes %u",bytesExpected );
       return false;
    }
 
-   // flush the s_wifiClient->from any previous data
+   uint8_t        attempts = 0;
+   bool transactionOk = false;
 
-   s_wifiClient->flush();
-
-   // Create the request payload, we only support the 4 reads of
-   // coils, discretes, holding and input
-
-   buff[ size++ ] = highByte( request->transactionId );
-   buff[ size++ ] = lowByte( request->transactionId );
-   buff[ size++ ] = 0;     // protocol is always zero
-   buff[ size++ ] = 0;
-   buff[ size++ ] = 0;     // number following bytes always 6
-   buff[ size++ ] = 6;
-   buff[ size++ ] = request->slaveAddress;
-   buff[ size++ ] = request->transactionType;
-
-   buff[ size++ ] = highByte( request->startRegister );
-   buff[ size++ ] = lowByte( request->startRegister );
-   buff[ size++ ] = highByte( request->numRegisters );
-   buff[ size++ ] = lowByte( request->numRegisters );
-
-   PW_MSG( "ModBus request %u, %u registers, type %u",request->transactionId,request->numRegisters,request->transactionType );
-
-   START_DEBUG;
-   String dbg = "Tx ";
-   for ( int i = 0; i < size; i++ )
+   while ( attempts < MAX_RETRIES && !transactionOk )
    {
-      char byteBuff[ 10 ];
+      attempts++;
+      request->transactionId = m_transactionId++;
 
-      sprintf( byteBuff,"%02X ",buff[ i ] );
-      dbg += byteBuff;
-   }
-   PW_DEBUG( dbg.c_str() );
-   END_DEBUG;
+      std::lock_guard<std::recursive_mutex> lock(networkingMutex);
 
-   uint8_t written = s_wifiClient->write( buff,size );
-
-   if ( written != size )
-   {
-      PW_ERROR( "Failed to transmit Modbus request" );
-      return false;
-   }
-
-   // Need to wait a bit for a response, have the TCP traffic then the 9600 baud
-   // modbusRTU happening - so wait 25ms at least, up to a timeout limit, need to
-   // poll here for now
-
-   uint32_t startMillis = millis();
-
-   while ( millis() - startMillis < MODBUS_TCP_TIMEOUT_MS && s_wifiClient->available() < bytesExpected )
-   {
-      delay( 25 );
-   }
-
-   if ( s_wifiClient->available() != bytesExpected )
-   {
-      PW_ERROR( "Failed to acquire modbus response data" );
-      return false;
-   }
-
-   PW_DEBUG( "Took %u ms to acquire %u bytes from ModBusTCP", millis() - startMillis,bytesExpected );
-
-   int numRead = s_wifiClient->read( buff,bytesExpected );
-
-   START_DEBUG;
-   String dbg = "Rx ";
-   for ( int i = 0; i < numRead; i++ )
-   {
-      char byteBuff[ 10 ];
-
-      sprintf( byteBuff,"%02X ",buff[ i ] );
-      dbg += byteBuff;
-   }
-   PW_DEBUG( dbg.c_str() );
-   END_DEBUG;
-
-   if ( numRead != bytesExpected )
-   {
-      PW_ERROR( "Failed to read response data" );
-      return false;
-   }
-
-   // 16 bit values are created from word( high,low ) - check Transaction ID
-
-   response->transactionId = word( buff[ 0 ],buff[ 1 ] );
-
-   if ( response->transactionId != request->transactionId )
-   {
-      PW_ERROR( "Invalid transaction ID, rejecting" );
-      return false;
-   }
-
-   PW_DEBUG( "trans id %u, slave addr %u, type %u, bytes %u",response->transactionId,response->slaveAddress,response->transactionType,response->dataBytes );
-
-   // Now need to populate the ModbusMaster::_u16ResponseBuffer
-   // for ModbusMaster::getResponseBuffer() to return the data
-
-   response->numBytes = word( buff[ 4 ],buff[ 5 ] );
-   response->slaveAddress = buff[ 6 ];
-   response->transactionType = buff[ 7 ];
-
-   response->dataBytes = buff[ 8 ];
-
-   if ( response->transactionType == READ_HOLDING || response->transactionType == READ_INPUTS )
-   {
-      for ( uint8_t i = 0; i < response->dataBytes / 2; i++ )
+      if ( millis() - lastConnectionMillis > KEEP_MODBUS_TCP_ALIVE_MS && s_wifiClient )
       {
-         _u16ResponseBuffer[ i ] = word( buff[ i * 2 + 9],buff[ i * 2 + 10 ] );
-         response->registers[ i ] = _u16ResponseBuffer[ i ];
+         PW_DEBUG( "ModbusTCP: Closing connection (%u ms elapsed)",millis() - lastConnectionMillis );
+         s_wifiClient->stop();
+         delete s_wifiClient;
+         s_wifiClient = nullptr;
       }
+
+      if ( !s_wifiClient )
+      {
+         PW_DEBUG( "ModbusTCP: Create new WifiClient" );
+         s_wifiClient = new WiFiClient();
+         if ( !s_wifiClient->connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
+         {
+            PW_ERROR( "Failed to connect to ModbusTCP server" );
+            delete s_wifiClient;
+            s_wifiClient = nullptr;
+            continue;
+         }
+         lastConnectionMillis = millis();
+      }
+
+      // flush any previous data from the s_wifiClient, and a short delay
+
+      s_wifiClient->flush();
+      delay( m_sensor.m_requestDelay );
+
+      // Create the request payload, we only support the 4 reads of
+      // coils, discretes, holding and input
+
+      buff[ size++ ] = highByte( request->transactionId );
+      buff[ size++ ] = lowByte( request->transactionId );
+      buff[ size++ ] = 0;     // protocol is always zero
+      buff[ size++ ] = 0;
+      buff[ size++ ] = 0;     // number following bytes always 6
+      buff[ size++ ] = 6;
+      buff[ size++ ] = request->slaveAddress;
+      buff[ size++ ] = request->transactionType;
+
+      buff[ size++ ] = highByte( request->startRegister );
+      buff[ size++ ] = lowByte( request->startRegister );
+      buff[ size++ ] = highByte( request->numRegisters );
+      buff[ size++ ] = lowByte( request->numRegisters );
+
+      PW_MSG( "ModBus request %u, %u registers, type %u",request->transactionId,request->numRegisters,request->transactionType );
+
+      START_DEBUG;
+      String dbg = "Tx ";
+      for ( int i = 0; i < size; i++ )
+      {
+         char byteBuff[ 10 ];
+
+         sprintf( byteBuff,"%02X ",buff[ i ] );
+         dbg += byteBuff;
+      }
+      PW_DEBUG( dbg.c_str() );
+      END_DEBUG;
+
+      uint8_t written = s_wifiClient->write( buff,size );
+
+      if ( written != size )
+      {
+         PW_ERROR( "Failed to transmit Modbus request" );
+         continue;
+      }
+
+      // Need to wait a bit for a response, have the TCP traffic then the 9600 baud
+      // modbusRTU happening - so wait 25ms at least, up to a timeout limit, need to
+      // poll here for now
+
+      uint32_t startMillis = millis();
+
+      while ( millis() - startMillis < MODBUS_TCP_TIMEOUT_MS && s_wifiClient->available() < bytesExpected )
+      {
+         delay( 25 );
+      }
+
+      if ( s_wifiClient->available() != bytesExpected )
+      {
+         PW_ERROR( "Failed to acquire modbus response data" );
+         continue;
+      }
+
+      PW_DEBUG( "Took %u ms to acquire %u bytes from ModBusTCP", millis() - startMillis,bytesExpected );
+
+      int numRead = s_wifiClient->read( buff,bytesExpected );
+
+      START_DEBUG;
+      String dbg = "Rx ";
+      for ( int i = 0; i < numRead; i++ )
+      {
+         char byteBuff[ 10 ];
+
+         sprintf( byteBuff,"%02X ",buff[ i ] );
+         dbg += byteBuff;
+      }
+      PW_DEBUG( dbg.c_str() );
+      END_DEBUG;
+
+      if ( numRead != bytesExpected )
+      {
+         PW_ERROR( "Failed to read response data" );
+         continue;
+      }
+
+      // 16 bit values are created from word( high,low ) - check Transaction ID
+
+      response.transactionId = word( buff[ 0 ],buff[ 1 ] );
+
+      if ( response.transactionId != request->transactionId )
+      {
+         PW_ERROR( "Invalid transaction ID, rejecting" );
+         continue;
+      }
+
+      // Now need to populate the ModbusMaster::_u16ResponseBuffer
+      // for ModbusMaster::getResponseBuffer() to return the data
+
+      response.numBytes = word( buff[ 4 ],buff[ 5 ] );
+      response.slaveAddress = buff[ 6 ];
+      response.transactionType = buff[ 7 ];
+
+      response.dataBytes = buff[ 8 ];
+
+      PW_DEBUG( "trans id 0x%0x, slave addr %u, type %u, bytes %u",response.transactionId,response.slaveAddress,response.transactionType,response.dataBytes );
+
+      if ( response.transactionType == READ_HOLDING || response.transactionType == READ_INPUTS )
+      {
+         for ( uint8_t i = 0; i < response.dataBytes / 2; i++ )
+         {
+            _u16ResponseBuffer[ i ] = word( buff[ i * 2 + 9],buff[ i * 2 + 10 ] );
+            response.registers[ i ] = _u16ResponseBuffer[ i ];
+         }
+      }
+
+      // some conditional debug output
+
+      START_DEBUG;
+      switch( response.transactionType )
+      {
+         case READ_COILS:
+               PW_DEBUG( "COILS:" );
+               break;
+         case READ_DISCRETES:
+               PW_DEBUG( "DISCRETES" );
+               break;
+         case READ_HOLDING:
+               PW_DEBUG( "HOLDING" );
+               break;
+         case READ_INPUTS:
+               PW_DEBUG( "INPUTS" );
+               break;
+         default:
+               break;
+      }
+
+      for ( int i = 0; i < request->numRegisters; i++ )
+      {
+         char byteBuff[ 20 ];
+
+         sprintf( byteBuff,"   %u: %u ",i,response.registers[ i ] );
+         PW_DEBUG( byteBuff );
+      }
+      END_DEBUG;
+
+      // can now break out of the loop as we have the data
+      transactionOk = true;
+      break;
    }
 
-   // some conditional debug output
-
-   START_DEBUG;
-   switch( response->transactionType )
-   {
-      case READ_COILS:
-            PW_DEBUG( "COILS:" );
-            break;
-      case READ_DISCRETES:
-            PW_DEBUG( "DISCRETES" );
-            break;
-      case READ_HOLDING:
-            PW_DEBUG( "HOLDING" );
-            break;
-      case READ_INPUTS:
-            PW_DEBUG( "INPUTS" );
-            break;
-      default:
-            break;
-   }
-
-   for ( int i = 0; i < request->numRegisters; i++ )
-   {
-      char byteBuff[ 20 ];
-
-      sprintf( byteBuff,"   %u: %u ",i,response->registers[ i ] );
-      PW_DEBUG( byteBuff );
-   }
-   END_DEBUG;
-
-   return true;
+   return( transactionOk );
 }
 
 uint8_t  ModbusTCP::getWords( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty )
 {
    ModBusRequest  request;
-   ModBusResponse response;
-   uint8_t        attempts = 0;
 
    PW_DEBUG( "readInputRegisters %d %d",u16ReadAddress,u16ReadQty );
 
@@ -314,16 +334,7 @@ uint8_t  ModbusTCP::getWords( uint8_t transactionType,uint16_t u16ReadAddress,ui
    request.startRegister = u16ReadAddress;
    request.numRegisters = u16ReadQty;
 
-   request.transactionId = m_transactionId++;
-
-   while ( attempts < MAX_RETRIES && !getData( &request,&response ) )
-   {
-      delay( m_sensor.m_requestDelay );
-      attempts++;
-      request.transactionId = m_transactionId++;
-   }
-
-   if ( attempts == MAX_RETRIES )
+   if ( !getData( &request ) )
    {
       PW_ERROR( "Modbus failed to read words for slave %d",_u8MBSlave );
       return ku8MBResponseTimedOut;

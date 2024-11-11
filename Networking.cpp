@@ -20,7 +20,7 @@ extern UserIO  *userIO;
 
 const char* ntpServer = "pool.ntp.org";
 
-std::mutex  networkingMutex;
+std::recursive_mutex  networkingMutex;
 
 static WiFiClientSecure *s_emoncmsClient = nullptr;
 static HTTPClient       *s_webClient = nullptr;
@@ -100,7 +100,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    // possible fix for lack of emails, take mutex before doing anything
    // still have UDP traffic ??
 
-   std::lock_guard<std::mutex> lock(networkingMutex);
+   std::lock_guard<std::recursive_mutex> lock(networkingMutex);
 
    // If we've not processed a send request for KEEP_ALIVE_MS then force
    // the connection to drop. Maybe unecessary but don't want to try and
@@ -237,7 +237,7 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
       EMailSender::Response resp;
 
       {
-         std::lock_guard<std::mutex> lock(networkingMutex);
+         std::lock_guard<std::recursive_mutex> lock(networkingMutex);
          if ( s_webClient )
          {
             s_webClient->end();
@@ -310,7 +310,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       EMailSender::Response resp;
 
       {
-         std::lock_guard<std::mutex> lock(networkingMutex);
+         std::lock_guard<std::recursive_mutex> lock(networkingMutex);
          if ( s_webClient )
          {
             s_webClient->end();

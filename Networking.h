@@ -9,7 +9,7 @@
 class WebServer;
 class Emailer;
 
-extern std::mutex  networkingMutex;
+extern std::recursive_mutex  networkingMutex;
 
 class Networking
 {

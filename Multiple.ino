@@ -366,6 +366,8 @@ void setup( void )
       clearFailedRebootCount();
    }
 
+   PW_MSG( "Version: %s",VERSION_STR );
+
    // Instantiate the storage module, and initialise it.  If the SD card
    // is not operational the storage module will not save data but at least
    // the system will continue to operate.

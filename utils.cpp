@@ -204,11 +204,14 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
    if ( logToUDP == isTrue && UDPDebugPort && Networking::getUDP() )
    {
+      std::lock_guard<std::recursive_mutex> lock(networkingMutex);
+
       if ( subNet[ 3 ] == 0 )
       {
          subNet = WiFi.localIP();
          subNet[ 3 ] = 255;
       }
+
       uint16_t len = strlen(debugString.c_str());
       if ( len > 2048 )
       {

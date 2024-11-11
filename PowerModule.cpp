@@ -157,6 +157,8 @@ bool PowerModule::getPower( uint8_t index )
       if ( modbusResult != ModbusMaster::ku8MBSuccess )
       {
          PW_WARN( "Failed to obtain power info for %s",m_sensors[ index ].m_name );
+         m_sensors[ index ].m_sensor.m_energy = ENERGY_INVALID;
+         m_sensors[ index ].m_sensor.m_power = POWER_INVALID;
       }
       else
       {
