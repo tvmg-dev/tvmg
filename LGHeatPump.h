@@ -9,9 +9,9 @@
 #define MAX_HPREG_NAME     20
 #define MAX_HP_REGISTERS   50
 
-#define  LGREGISTERS_LOG   "/registers.log"
-#define  LGMODBUS_LOG      "/hpmodbus.log"
-#define  LGSTATUS_LOG      "/lgstatus.log"
+#define  LGREGISTERS_LOG   "/registers.txt"
+#define  LGMODBUS_LOG      "/hpmodbus.txt"
+#define  LGSTATUS_LOG      "/lgstatus.txt"
 
 // Define the registers available
 

@@ -194,7 +194,7 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
       buff[ size++ ] = highByte( request.numRegisters );
       buff[ size++ ] = lowByte( request.numRegisters );
 
-      PW_MSG( "ModBus request %u, %u registers, type %u",request.transactionId,request.numRegisters,request.transactionType );
+      PW_MSG( "ModBus request %u, %u registers, type %u",m_transactionId,request.numRegisters,request.transactionType );
 
       START_DEBUG;
       String dbg = "Tx ";
@@ -358,7 +358,12 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
 uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty )
 {
+   static uint32_t sent = 0;
+   static uint32_t ok = 0;
+
    ModBusRequest  request;
+
+   PW_MSG( "modbus so far %u sent, %u ok",sent,ok );
 
    PW_DEBUG( "readInputRegisters %d %d",u16ReadAddress,u16ReadQty );
 
@@ -367,6 +372,7 @@ uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uin
    request.startRegister = u16ReadAddress;
    request.numRegisters = u16ReadQty;
 
+   sent++;
    if ( !getData( request ) )
    {
       PW_ERROR( "Modbus failed to read words for slave %d",_u8MBSlave );
@@ -374,6 +380,7 @@ uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uin
    }
    else
    {
+      ok++;
       return ku8MBSuccess;
    }
 }
