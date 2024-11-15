@@ -121,7 +121,7 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
    {
       case READ_COILS:
       case READ_DISCRETES:
-            bytesExpected += 1 + request.numRegisters / 8;
+            bytesExpected += 1 + (request.numRegisters -1) / 8;
             PW_DEBUG( "Coils/Discretes : want %u regs, (%u data bytes)",request.numRegisters,bytesExpected - 9 );
          break;
       case READ_HOLDING:
@@ -229,7 +229,7 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
       if ( s_wifiClient->available() != bytesExpected )
       {
-         PW_ERROR( "Failed to acquire modbus response data" );
+         PW_ERROR( "Only received %d bytes,expected %d",s_wifiClient->available(),bytesExpected );
          continue;
       }
 
@@ -365,7 +365,7 @@ uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uin
 
    PW_MSG( "modbus so far %u sent, %u ok",sent,ok );
 
-   PW_DEBUG( "readInputRegisters %d %d",u16ReadAddress,u16ReadQty );
+   PW_DEBUG( "getData %d %d %d",transactionType,u16ReadAddress,u16ReadQty );
 
    request.transactionType = transactionType;
    request.slaveAddress = _u8MBSlave;        // from ModbusMaster
