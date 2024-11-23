@@ -11,6 +11,8 @@
 #include "config.h"
 #include "UserIO.h"
 
+bool  k_logRegisters = false;
+
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
 
 // R32 refrigerant - pressure to temperature lookup, interpolate
@@ -194,6 +196,12 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
    {
       m_useFlowRateWhenNotHeating = false;
    }
+
+   if ( GET_REGISTRY_INT( LG_WRITE_REG ) > 0 )
+   {
+      k_logRegisters = true;
+   }
+
 }
 
 LGHeatPump::~LGHeatPump()
@@ -409,6 +417,25 @@ void  LGHeatPump::getLGData()
          start = end + 1;
       }
 
+      // log to file temporarily
+
+      if ( k_logRegisters )
+      {
+         File file = SD.open( "/lgrecord.txt",FILE_APPEND );
+         if ( file )
+         {
+            char buff[ 80 ];
+            for ( int i = 0; i < m_numRegisters; i++ )
+            {
+               LGRegister *reg = &m_registers[ i ];
+               snprintf( buff,80,"%d,%d,%d",reg->m_type,reg->m_address,reg->m_rawValue );
+               file.println( buff );
+            }
+            file.close();
+            PW_DEBUG( "Written to /lgrecord.txt" );
+         }
+      }
+
       // lets zero the flow rate if returned 5 l/min from LG
       {
          float_t  flowRate = 0;
@@ -523,7 +550,6 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
          case TARGET_TEMP: if ( m_currentStatus.m_heatingTarget != newValue ) { hasChanged = true; }
             break;
          case WC_OFFSET_TEMP: if ( m_currentStatus.m_wcOffset != newValue ) { hasChanged = true; }
-            PW_MSG( "Offset %d new %d",m_currentStatus.m_wcOffset,newValue );
             break;
          case DHW_TARGET_TEMP: if ( m_currentStatus.m_dhwTarget != newValue ) { hasChanged = true; }
             break;
@@ -640,7 +666,7 @@ void  LGHeatPump::updateStatus()
                m_currentStatus.m_heatingMode,
                m_currentStatus.m_isHeating,
                m_currentStatus.m_heatingTarget * 0.1,
-               m_currentStatus.m_wcOffset,
+               m_currentStatus.m_wcOffset * 1.0,
                m_currentStatus.m_isDHW,
                m_currentStatus.m_dhw * 0.1,
                m_currentStatus.m_dhwTarget * 0.1,

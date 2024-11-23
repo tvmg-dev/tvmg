@@ -527,6 +527,15 @@ void setup( void )
 
       networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Event Log",LGSTATUS_LOG,true );
    }
+
+   if ( SD.exists ( "/lgrecord.txt" ) )
+   {
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","modbus regs","/lgrecord.txt" ) )
+      {
+         PW_DEBUG( "Sent lgrecord.txt" );
+      }
+   }
+
 }
 
 // ---------------------------------------------------------------------
