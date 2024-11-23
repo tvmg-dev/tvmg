@@ -38,11 +38,12 @@
 #define  OPERATING_MODE    (MB_HOLDING | 0x0001 )
 #define  CONTROL_METHOD    (MB_HOLDING | 0x0002 )
 #define  TARGET_TEMP       (MB_HOLDING | 0x0003 )
+#define  SET_ROOM_TEMP     (MB_HOLDING | 0x0004 )
 #define  WC_OFFSET_TEMP    (MB_HOLDING | 0x0005 )
 #define  DHW_TARGET_TEMP   (MB_HOLDING | 0x0009 )
 
 #define  ERROR_CODE        (MB_INPUTR | 0x0001 )
-#define  UNIT_CYCLE        (MB_INPUTR | 0x0002 )
+#define  HEATING_MODE      (MB_INPUTR | 0x0002 )
 #define  INLET_TEMP        (MB_INPUTR | 0x0003 )
 #define  OUTLET_TEMP       (MB_INPUTR | 0x0004 )
 #define  DHW_TEMP          (MB_INPUTR | 0x0006 )
@@ -87,7 +88,9 @@ typedef struct {
    bool        m_isValid;
 } LGRegister;
 
-typedef struct {
+struct LGStatus {
+   LGStatus();
+
    time_t   m_time;
    uint16_t m_updates;
 
@@ -95,11 +98,15 @@ typedef struct {
 
    int16_t  m_inlet;
    int16_t  m_outlet;
+   int16_t  m_oat;
+   int16_t  m_room;
    int16_t  m_dhw;
    int16_t  m_heatingTarget;
+   int16_t  m_wcOffset;
    int16_t  m_dhwTarget;
 
-   int16_t  m_isActive;
+   int16_t  m_heatingMode;
+   bool     m_extWaterPumpOn;
    bool     m_isCompressorOn;
    bool     m_isHeating;
    bool     m_isDHW;
@@ -107,7 +114,9 @@ typedef struct {
    bool     m_isImmersion;
    bool     m_isSilent;
    bool     m_isDefrost;
-} LGStatus;
+};
+
+typedef struct LGStatus LGStatus;
 
 class LGHeatPump
 {

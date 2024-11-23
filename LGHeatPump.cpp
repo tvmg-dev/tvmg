@@ -71,6 +71,33 @@ static std::map<float_t,float_t> r32Lookup = {
    {4985,72},
 };
 
+LGStatus::LGStatus()
+{
+   m_time = 0;
+   m_updates = 0;
+
+   m_error = 0;
+   m_inlet = 0;
+   m_outlet = 0;
+   m_oat = 0;
+   m_room = 0;
+   m_dhw = 0;
+   m_heatingTarget = 0;
+   m_wcOffset = 0;
+   m_dhwTarget = 0;
+
+   m_heatingMode = 0;
+   m_extWaterPumpOn = false;
+
+   m_isCompressorOn = false;
+   m_isHeating = false;
+   m_isDHW = false;
+   m_isLegionella = false;
+   m_isImmersion = false;
+   m_isSilent = false;
+   m_isDefrost = false;
+}
+
 LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_registers( nullptr ),
      m_currentStatus(),
@@ -83,9 +110,6 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_useFlowRateWhenNotHeating( true )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
-
-   m_currentStatus.m_time = 0;
-   m_currentStatus.m_updates = 0;
 
    // Parse the /lg.dat file for info
 
@@ -498,6 +522,9 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
             break;
          case TARGET_TEMP: if ( m_currentStatus.m_heatingTarget != newValue ) { hasChanged = true; }
             break;
+         case WC_OFFSET_TEMP: if ( m_currentStatus.m_wcOffset != newValue ) { hasChanged = true; }
+            PW_MSG( "Offset %d new %d",m_currentStatus.m_wcOffset,newValue );
+            break;
          case DHW_TARGET_TEMP: if ( m_currentStatus.m_dhwTarget != newValue ) { hasChanged = true; }
             break;
          case DHW_HEATING: if ( m_currentStatus.m_isDHW != newValue ) { hasChanged = true; }
@@ -510,7 +537,7 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
             break;
          case DEFROST_STATUS: if ( m_currentStatus.m_isDefrost != newValue ) { hasChanged = true; }
             break;
-         case UNIT_CYCLE: if ( m_currentStatus.m_isActive != newValue ) { hasChanged = true; }
+         case HEATING_MODE: if ( m_currentStatus.m_heatingMode != newValue ) { hasChanged = true; }
             break;
          case HEATING_ENABLED: if ( m_currentStatus.m_isHeating != newValue ) { hasChanged = true; }
             break;
@@ -544,8 +571,9 @@ void  LGHeatPump::updateStatus()
       updateState |= valueChanged( COMPRESSOR_STATUS );
       updateState |= valueChanged( ERROR_CODE );
       updateState |= valueChanged( TARGET_TEMP );
+      updateState |= valueChanged( WC_OFFSET_TEMP );
       updateState |= valueChanged( DHW_TARGET_TEMP );
-      updateState |= valueChanged( UNIT_CYCLE );
+      updateState |= valueChanged( HEATING_MODE );
       updateState |= valueChanged( HEATING_ENABLED );
       updateState |= valueChanged( DHW_HEATING );
       updateState |= valueChanged( LEGIONELLA_STATUS );
@@ -585,10 +613,15 @@ void  LGHeatPump::updateStatus()
       m_currentStatus.m_error = getRawValue( ERROR_CODE );
       m_currentStatus.m_inlet = getRawValue( INLET_TEMP );
       m_currentStatus.m_outlet = getRawValue( OUTLET_TEMP );
+      m_currentStatus.m_oat = getRawValue( OUTSIDE_TEMP );
+      m_currentStatus.m_room = getRawValue( ROOM_TEMP );
       m_currentStatus.m_dhw = getRawValue( DHW_TEMP );
       m_currentStatus.m_heatingTarget = getRawValue( TARGET_TEMP );
+      m_currentStatus.m_wcOffset = getRawValue( WC_OFFSET_TEMP );
+
       m_currentStatus.m_dhwTarget = getRawValue( DHW_TARGET_TEMP );
-      m_currentStatus.m_isActive = getRawValue( UNIT_CYCLE );
+      m_currentStatus.m_heatingMode = getRawValue( HEATING_MODE );
+      m_currentStatus.m_extWaterPumpOn = getRawValue( EXT_WATER_PUMP_STATUS );
       m_currentStatus.m_isHeating = getRawValue( HEATING_ENABLED );
       m_currentStatus.m_isDHW = getRawValue( DHW_HEATING );
       m_currentStatus.m_isLegionella = getRawValue( LEGIONELLA_STATUS );
@@ -596,19 +629,22 @@ void  LGHeatPump::updateStatus()
       m_currentStatus.m_isSilent = getRawValue( SILENT_STATUS );
       m_currentStatus.m_isDefrost = getRawValue( DEFROST_STATUS );
 
-      snprintf( line,80,"%s,%d,%d,%d,%.1f,%.1f,%d,%d,%.1f,%d,%.1f,%.1f,%d,%d,%d",
+      snprintf( line,80,"%s,%d,%d,%.1f,%.1f,%.1f,%.1f,%d,%d,%.1f,%.1f,%d,%.1f,%.1f,%d,%d,%d,%d",
                timeStr,
                m_currentStatus.m_error,
                m_currentStatus.m_isCompressorOn,
-               m_currentStatus.m_isSilent,
                m_currentStatus.m_inlet * 0.1,
                m_currentStatus.m_outlet * 0.1,
-               m_currentStatus.m_isActive,
+               m_currentStatus.m_room * 0.1,
+               m_currentStatus.m_oat * 0.1,
+               m_currentStatus.m_heatingMode,
                m_currentStatus.m_isHeating,
                m_currentStatus.m_heatingTarget * 0.1,
+               m_currentStatus.m_wcOffset,
                m_currentStatus.m_isDHW,
                m_currentStatus.m_dhw * 0.1,
                m_currentStatus.m_dhwTarget * 0.1,
+               m_currentStatus.m_isSilent,
                m_currentStatus.m_isLegionella,
                m_currentStatus.m_isImmersion,
                m_currentStatus.m_isDefrost );
@@ -626,8 +662,11 @@ void  LGHeatPump::updateStatus()
       {
          if ( addHeader )
          {
-            file.println( "date,time,error,compressor,silent,inlet,outlet,active,heating,heating-target,"
-                          "dhw,dhw-temp,dhw-target,legionella,immersion,defrost" );
+            file.println( "date,time,error,compressor,"
+                          "inlet,outlet,room,outside,"
+                          "heating-mode,heating-active,heating-target,wc-offset,"
+                          "dhw,dhw-temp,dhw-target,"
+                          "silent,legionella,immersion,defrost" );
          }
 
          file.println( line );
@@ -657,7 +696,7 @@ void  LGHeatPump::dumpData()
    float_t value;
 
    (void) getValue( ERROR_CODE,&value );
-   (void) getValue( UNIT_CYCLE,&value );
+   (void) getValue( HEATING_MODE,&value );
    (void) getValue( INLET_TEMP,&value );
    (void) getValue( OUTLET_TEMP,&value );
    (void) getValue( DHW_TEMP,&value );
