@@ -523,7 +523,9 @@ void setup( void )
 
    if ( config->getSPIFFS()->exists( LGSTATUS_LOG ) )
    {
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG,true );
+     snprintf( subject,128,"LG Event Log : %s",networking->getLocalMDNSName().c_str() );
+
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Event Log",LGSTATUS_LOG,true );
    }
 }
 
