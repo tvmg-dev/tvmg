@@ -460,7 +460,10 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
       {
-         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG,true ) )
+         char subject[ 128 ];
+         snprintf( subject,128,"LG Event Log : %s",m_networking->getLocalMDNSName().c_str() );
+
+         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Event Log",LGSTATUS_LOG,true ) )
          {
             Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
          }
