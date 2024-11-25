@@ -8,6 +8,10 @@
 
 extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
+
+class cJSON;
+
+extern int   getIntFromcJSON( cJSON *parent,const char *item, int defaultValue = -1 );
 extern bool  isSensorRequired( const char *sensorName );
 
 #define START_DEBUG \

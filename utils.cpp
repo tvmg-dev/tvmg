@@ -267,6 +267,18 @@ Timing::~Timing()
    PW_TIMING( "%s : %s",m_name.c_str(),timing.c_str() );
 }
 
+int   getIntFromcJSON( cJSON *parent,const char *item, int defaultValue )
+{
+   int   value = defaultValue;
+   cJSON *node = cJSON_GetObjectItem( parent,item );
+   if ( node )
+   {
+      value = node->valueint;
+   }
+
+   return value;
+}
+
 bool  isSensorRequired( const char *sensorName )
 {
    bool  isReq = false;

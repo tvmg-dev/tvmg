@@ -47,10 +47,12 @@ PowerModule::PowerModule( ModbusMaster *modbus )
                PrivateSensor *pwrSensor;
 
                pwrSensor = &m_sensors[ m_numLocalSensors ];
+
                strncpy( pwrSensor->m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_POWER_NAME );
-               pwrSensor->m_address = cJSON_GetObjectItem( sensor,"address" )->valueint;
-               pwrSensor->m_sensor.m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
-               pwrSensor->m_sensor.m_id = cJSON_GetObjectItem( sensor,"id" )->valueint;
+               pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numLocalSensors );
+               pwrSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
+               pwrSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
+
                pwrSensor->m_sensor.m_name = pwrSensor->m_name;
                pwrSensor->m_sensor.m_power = POWER_INVALID;
                pwrSensor->m_sensor.m_energy = ENERGY_INVALID;

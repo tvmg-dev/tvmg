@@ -9,6 +9,9 @@
 #include "ModbusTCP.h"
 #include "Networking.h"
 
+#define  MODBUS_TCP_DEFAULT_PORT 500
+#define  MODBUS_TC_DEFAULT_DELAY 10
+
 #define  TCP_SERVER_CONNECT_TIMEOUT_MS 2000
 #define  MODBUS_TCP_TIMEOUT_MS         1500
 #define  KEEP_MODBUS_TCP_ALIVE_MS      40000
@@ -56,7 +59,8 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
                m_sensor.m_isValid = true;
 
                strncpy( m_sensor.m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_MODBUSTCP_NAME );
-               m_sensor.m_id = cJSON_GetObjectItem( sensor,"id" )->valueint;
+
+               m_sensor.m_id = getIntFromcJSON( sensor,"id",1 );
 
                if ( ! m_sensor.m_tcpServerAddress.fromString( cJSON_GetObjectItem( sensor,"tcpServerAddress" )->valuestring ) )
                {
@@ -64,8 +68,8 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
                   m_sensor.m_isValid = false;
                }
 
-               m_sensor.m_tcpServerPort = cJSON_GetObjectItem( sensor,"tcpServerPort" )->valueint;
-               m_sensor.m_requestDelay = cJSON_GetObjectItem( sensor,"tcpServerDelay" )->valueint;
+               m_sensor.m_tcpServerPort = getIntFromcJSON( sensor,"tcpServerPort",MODBUS_TCP_DEFAULT_PORT );
+               m_sensor.m_requestDelay = getIntFromcJSON( sensor,"tcpServerDelay",MODBUS_TC_DEFAULT_DELAY );
 
                PW_MSG( "ModbusTCP : name %s, Server : %s, port %u",m_sensor.m_name,
                                  m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort );

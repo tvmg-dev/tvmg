@@ -47,10 +47,9 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
                   String name = cJSON_GetObjectItem( sensor,"name" )->valuestring;
                   uint8_t id = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"id" )->valueint);
                   String mode = cJSON_GetObjectItem( sensor,"mode" )->valuestring;
-//                  uint8_t gpio = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"gpio" )->valueint);
                   uint8_t gpio = hwConfig->PWMGPIO;
-                  uint32_t emonFlowId = cJSON_GetObjectItem( sensor,"emonFlowId" )->valueint;
-                  uint32_t emonPowerId = cJSON_GetObjectItem( sensor,"emonPowerId" )->valueint;
+                  uint32_t emonFlowId = getIntFromcJSON( sensor,"emonFlowId",0 );
+                  uint32_t emonPowerId = getIntFromcJSON( sensor,"emonPowerId",0 );
                   uint8_t flowTempId = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"flowTempId" )->valueint);
                   uint8_t returnTempId = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"returnTempId" )->valueint);
                   float_t shc = static_cast<float>(cJSON_GetObjectItem( sensor,"shc" )->valuedouble);

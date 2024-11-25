@@ -98,19 +98,6 @@ LGStatus::LGStatus()
    m_isDefrost = false;
 }
 
-int   getIntFromcJSON( cJSON *parent,const char *item, int defaultValue = -1 )
-{
-   int   value = defaultValue;
-   cJSON *node = cJSON_GetObjectItem( parent,item );
-   if ( node )
-   {
-      value = node->valueint;
-   }
-
-   return value;
-}
-
-
 LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_registers( nullptr ),
      m_currentStatus(),
@@ -219,7 +206,7 @@ PW_DEBUG( "write %d series %d flow in !heating %d",m_logRegisters,series,m_flowR
                      strncpy( lgReg->m_name,cJSON_GetObjectItem( reg,"name" )->valuestring,MAX_HPREG_NAME );
                      lgReg->m_address = cJSON_GetObjectItem( reg,"addr" )->valueint;
                      lgReg->m_type = static_cast<ModbusType> (cJSON_GetObjectItem( reg,"type" )->valueint);
-                     lgReg->m_emonFeedId = cJSON_GetObjectItem( reg,"emonFeedId" )->valueint;
+                     lgReg->m_emonFeedId = getIntFromcJSON( reg,"emonFeedId",0 );
                      if ( cJSON_HasObjectItem( reg,"scaling" ) )
                      {
                         lgReg->m_scalingFactor = static_cast<float> (cJSON_GetObjectItem( reg,"scaling" )->valuedouble);

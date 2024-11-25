@@ -83,6 +83,7 @@ TemperatureModule::TemperatureModule()
 
       if ( cJSON_IsArray( root ) )
       {
+         int   sensorNum = 1;
          cJSON_ArrayForEach( sensor,root )
          {
             if ( strcmp( "THERM",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
@@ -90,8 +91,10 @@ TemperatureModule::TemperatureModule()
                PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
 
                strncpy( tempSensor->m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_TEMP_NAME );
-               tempSensor->m_sensor.m_id = cJSON_GetObjectItem( sensor,"id" )->valueint;
-               tempSensor->m_sensor.m_emonFeedId = cJSON_GetObjectItem( sensor,"emonFeedId" )->valueint;
+
+               tempSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
+               tempSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
+
                tempSensor->m_sensor.m_name = tempSensor->m_name;
                tempSensor->m_isValid = true;
 
@@ -284,10 +287,11 @@ void TemperatureModule::addUDPListener()
             {
                cJSON *sensors = cJSON_GetObjectItem( root,"sensors" );
                cJSON *sensor;
+               int   sensorNum = 1;
 
                cJSON_ArrayForEach( sensor,sensors )
                {
-                  uint8_t  id = static_cast<uint8_t>( cJSON_GetObjectItem( sensor,"id" )->valueint );
+                  uint8_t  id = getIntFromcJSON( sensor,"id",sensorNum++ );
                   float_t  value = static_cast<float_t>( cJSON_GetObjectItem( sensor,"value" )->valuedouble );
 
                   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
