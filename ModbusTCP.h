@@ -8,6 +8,8 @@
 #define MAX_MODBUSTCP_NAME 32
 #define MAX_REGISTERS      16
 
+#define MODBUSTCP_SENSOR_NAME "MODBUSTCP"
+
 typedef struct
 {
    uint16_t transactionId;

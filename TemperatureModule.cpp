@@ -238,7 +238,7 @@ void  TemperatureModule::initialise()
 
       // Globally set the resolution to 11 bits per device
 
-      if ( m_isOk )
+      if ( m_isOk && m_numLocalSensors > 0 )
       {
          PW_DEBUG( "Setting %u bit precision for sensors",TEMPERATURE_PRECISION );
 

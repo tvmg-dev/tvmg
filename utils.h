@@ -8,6 +8,7 @@
 
 extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
+extern bool  isSensorRequired( const char *sensorName );
 
 #define START_DEBUG \
 do \

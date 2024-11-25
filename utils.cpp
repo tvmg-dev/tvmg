@@ -3,6 +3,8 @@
 #include <AsyncUDP.h>
 #include <mutex>
 
+#include <cJSON.h>
+
 #include <SD.h>
 #include <FS.h>
 
@@ -263,4 +265,43 @@ Timing::~Timing()
 {
    String timing( millis() - m_startMillis,DEC );
    PW_TIMING( "%s : %s",m_name.c_str(),timing.c_str() );
+}
+
+bool  isSensorRequired( const char *sensorName )
+{
+   bool  isReq = false;
+
+   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+   File file = spiffs->open( "/sensors.dat",FILE_READ );
+   if ( !file )
+   {
+      PW_WARN( "/sensors.dat is missing" );
+   }
+   else
+   {
+      String data = file.readStringUntil( '@' );
+
+      cJSON *root = cJSON_Parse( data.c_str() );
+      cJSON *sensor;
+
+      if ( cJSON_IsArray( root ) )
+      {
+         cJSON_ArrayForEach( sensor,root )
+         {
+            if ( strcmp( sensorName,cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            {
+               isReq = true;
+               break;
+            }
+         }
+      }
+
+      cJSON_Delete( root );
+      close( file );
+   }
+
+   PW_DEBUG( "%s required",sensorName );
+
+   return isReq;
+
 }

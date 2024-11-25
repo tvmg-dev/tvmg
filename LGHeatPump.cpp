@@ -11,8 +11,6 @@
 #include "config.h"
 #include "UserIO.h"
 
-bool  k_logRegisters = false;
-
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
 
 // R32 refrigerant - pressure to temperature lookup, interpolate
@@ -100,91 +98,76 @@ LGStatus::LGStatus()
    m_isDefrost = false;
 }
 
+int   getIntFromcJSON( cJSON *parent,const char *item, int defaultValue = -1 )
+{
+   int   value = defaultValue;
+   cJSON *node = cJSON_GetObjectItem( parent,item );
+   if ( node )
+   {
+      value = node->valueint;
+   }
+
+   return value;
+}
+
+
 LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_registers( nullptr ),
      m_currentStatus(),
      m_numRegisters( 0 ),
+     m_series( 0 ),
      m_modbus( master ),
+     m_softwareVersion(),
      m_modbusRequests( 0 ),
      m_modbusFailures( 0 ),
      m_millisLastAquisition( -LG_MIN_SAMPLING_PERIOD_MS ),
-     m_currentKW(0),
-     m_useFlowRateWhenNotHeating( true )
+     m_currentKW( 0 ),
+     m_flowRateWhenNotHeating( 0 ),
+     m_logRegisters( false )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
-   // Parse the /lg.dat file for info
+   // Parse the /sensors.dat file for thermaV
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-   File file = spiffs->open( "/lg.dat",FILE_READ );
+   File file = spiffs->open( "/sensors.dat",FILE_READ );
    if ( !file )
    {
-      PW_WARN( "/lg.dat is missing" );
+      PW_WARN( "/sensors.dat is missing" );
    }
    else
    {
-      m_registers = new LGRegister[ MAX_HP_REGISTERS ];
-
-      for ( uint8_t i = 0; i < MAX_HP_REGISTERS; i++ )
-      {
-         m_registers[ i ].m_type = INVALID;
-      }
-
       String data = file.readStringUntil( '@' );
 
       cJSON *root = cJSON_Parse( data.c_str() );
+      cJSON *sensor;
 
-      if ( !root )
+      if ( cJSON_IsArray( root ) )
       {
-         PW_ERROR( "Failed to parse lg.dat" );
-         return;
-      }
-
-      if ( strcmp( "THERMAV",cJSON_GetObjectItem( root,"type" )->valuestring ) == 0 )
-      {
-         cJSON *registers = cJSON_GetObjectItem( root,"registers" );
-         if ( registers && cJSON_IsArray( registers ) )
+         cJSON_ArrayForEach( sensor,root )
          {
-            cJSON *reg;
-            cJSON_ArrayForEach( reg,registers )
+            if ( strcmp( LGHEATPUMP_SENSOR_NAME,cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
             {
-               if ( m_numRegisters < MAX_HP_REGISTERS  )
+               uint8_t series,writeReg;
+
+               strncpy( m_softwareVersion,cJSON_GetObjectItem( sensor,"software" )->valuestring,MAX_LGSOFTWARE_LENGTH );
+
+               m_logRegisters = getIntFromcJSON( sensor,"write",0 );
+               series = getIntFromcJSON( sensor,"series",0 );
+               m_flowRateWhenNotHeating = getIntFromcJSON( sensor,"flowInNotHeating",0 );
+
+               if ( series == 4 )
                {
-                  LGRegister *lgReg = &m_registers[ m_numRegisters++ ];
-
-                  strncpy( lgReg->m_name,cJSON_GetObjectItem( reg,"name" )->valuestring,MAX_HPREG_NAME );
-                  lgReg->m_address = cJSON_GetObjectItem( reg,"addr" )->valueint;
-                  lgReg->m_type = static_cast<ModbusType> (cJSON_GetObjectItem( reg,"type" )->valueint);
-                  lgReg->m_emonFeedId = cJSON_GetObjectItem( reg,"emonFeedId" )->valueint;
-                  if ( cJSON_HasObjectItem( reg,"scaling" ) )
-                  {
-                     lgReg->m_scalingFactor = static_cast<float> (cJSON_GetObjectItem( reg,"scaling" )->valuedouble);
-                  }
-                  else
-                  {
-                     lgReg->m_scalingFactor = 1;
-                  }
-
-                  // add to the lookup map, key = (type << 16 | modbus-addr + 1)
-
-                  uint32_t parameter = cJSON_GetObjectItem( reg,"type" )->valueint << 16 | lgReg->m_address + 1;
-
-                  m_registerMap[ parameter ] = m_numRegisters - 1;
-
-                  PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
-                           lgReg->m_type,lgReg->m_address,lgReg->m_name,
-                           lgReg->m_emonFeedId,lgReg->m_scalingFactor,parameter,m_numRegisters - 1 );
-
+                  m_series = series;
                }
                else
                {
-                  PW_WARN( "Exceeded max LG registers limit" );
+                  PW_WARN( "Unsupported LG series (%d)", series );
                }
+
+PW_DEBUG( "write %d series %d flow in !heating %d",m_logRegisters,series,m_flowRateWhenNotHeating );
+               break;
             }
-         }
-         else
-         {
-            PW_ERROR( "Registers not located in lg.dat" );
          }
       }
 
@@ -192,16 +175,95 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
       close( file );
    }
 
-   if ( GET_REGISTRY_INT( LG_SET_ACTIVEFLOW_NOTHEATING ) > 0 )
+   if ( m_series )
    {
-      m_useFlowRateWhenNotHeating = false;
+      // Parse the /lg.dat file for info
+
+      fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+      File file = spiffs->open( "/lg.dat",FILE_READ );
+      if ( !file )
+      {
+         PW_WARN( "/lg.dat is missing" );
+      }
+      else
+      {
+         m_registers = new LGRegister[ MAX_HP_REGISTERS ];
+
+         for ( uint8_t i = 0; i < MAX_HP_REGISTERS; i++ )
+         {
+            m_registers[ i ].m_type = INVALID;
+         }
+
+         String data = file.readStringUntil( '@' );
+
+         cJSON *root = cJSON_Parse( data.c_str() );
+
+         if ( !root )
+         {
+            PW_ERROR( "Failed to parse lg.dat" );
+            return;
+         }
+
+         if ( strcmp( "THERMAV",cJSON_GetObjectItem( root,"type" )->valuestring ) == 0 )
+         {
+            cJSON *registers = cJSON_GetObjectItem( root,"registers" );
+            if ( registers && cJSON_IsArray( registers ) )
+            {
+               cJSON *reg;
+               cJSON_ArrayForEach( reg,registers )
+               {
+                  if ( m_numRegisters < MAX_HP_REGISTERS  )
+                  {
+                     LGRegister *lgReg = &m_registers[ m_numRegisters++ ];
+
+                     strncpy( lgReg->m_name,cJSON_GetObjectItem( reg,"name" )->valuestring,MAX_HPREG_NAME );
+                     lgReg->m_address = cJSON_GetObjectItem( reg,"addr" )->valueint;
+                     lgReg->m_type = static_cast<ModbusType> (cJSON_GetObjectItem( reg,"type" )->valueint);
+                     lgReg->m_emonFeedId = cJSON_GetObjectItem( reg,"emonFeedId" )->valueint;
+                     if ( cJSON_HasObjectItem( reg,"scaling" ) )
+                     {
+                        lgReg->m_scalingFactor = static_cast<float> (cJSON_GetObjectItem( reg,"scaling" )->valuedouble);
+                     }
+                     else
+                     {
+                        lgReg->m_scalingFactor = 1;
+                     }
+
+                     // add to the lookup map, key = (type << 16 | modbus-addr + 1)
+
+                     uint32_t parameter = cJSON_GetObjectItem( reg,"type" )->valueint << 16 | lgReg->m_address + 1;
+
+                     m_registerMap[ parameter ] = m_numRegisters - 1;
+
+                     PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
+                              lgReg->m_type,lgReg->m_address,lgReg->m_name,
+                              lgReg->m_emonFeedId,lgReg->m_scalingFactor,parameter,m_numRegisters - 1 );
+
+                  }
+                  else
+                  {
+                     PW_WARN( "Exceeded max LG registers limit" );
+                  }
+               }
+            }
+            else
+            {
+               PW_ERROR( "Registers not located in lg.dat" );
+            }
+         }
+
+         cJSON_Delete( root );
+         close( file );
+      }
    }
 
-   if ( GET_REGISTRY_INT( LG_WRITE_REG ) > 0 )
-   {
-      k_logRegisters = true;
-   }
+   // If we're writing registers we're reading from the LG then remove any
+   // existing file to restart the logging
 
+   if ( m_logRegisters && SD.exists( LGREGISTERS_LOG ) )
+   {
+      SD.remove( LGREGISTERS_LOG );
+   }
 }
 
 LGHeatPump::~LGHeatPump()
@@ -417,22 +479,28 @@ void  LGHeatPump::getLGData()
          start = end + 1;
       }
 
-      // log to file temporarily
+      // log to file temporarily if enabled
 
-      if ( k_logRegisters )
+      if ( m_logRegisters )
       {
-         File file = SD.open( "/lgrecord.txt",FILE_APPEND );
+         File file = SD.open( LGREGISTERS_LOG,FILE_APPEND );
          if ( file )
          {
             char buff[ 80 ];
             for ( int i = 0; i < m_numRegisters; i++ )
             {
                LGRegister *reg = &m_registers[ i ];
+
+               if ( reg->m_type != MB_CALCULATED )
+               {
+                  continue;
+               }
+
                snprintf( buff,80,"%d,%d,%d",reg->m_type,reg->m_address,reg->m_rawValue );
                file.println( buff );
             }
             file.close();
-            PW_DEBUG( "Written to /lgrecord.txt" );
+            PW_DEBUG( "Written to %s",LGREGISTERS_LOG );
          }
       }
 
@@ -465,10 +533,11 @@ void  LGHeatPump::getLGData()
          if ( !state )
          {
             // We ordinarily report the actual flow rate when not in a
-            // compressor cycle, if we override this then we report 2.0 as the
-            // flow rate if non-zero to make graph in openemoncms easier to read if LG's
-            // pump setting in heating is not set continuous
-            if ( !m_useFlowRateWhenNotHeating )
+            // compressor cycle, if we override this then we report the settings
+            // value as the flow rate if it's non-zero to make graph in openemoncms
+            // easier to read if LG's pump setting in heating is not set continuous
+
+            if ( m_flowRateWhenNotHeating )
             {
                float_t  tempFlowRate = 0;
 
@@ -476,7 +545,7 @@ void  LGHeatPump::getLGData()
                {
                   if ( tempFlowRate > 1 )
                   {
-                     tempFlowRate = 2;
+                     tempFlowRate = m_flowRateWhenNotHeating;
                   }
                }
                setValue( FLOW_RATE,tempFlowRate );
@@ -945,7 +1014,7 @@ void  getHPData()
             {
                PW_HP_MODBUS( "IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
                PW_HP_MODBUS( "IR: %u %u",i,s_master->getResponseBuffer( 0 ) );
-               File file = SD.open( LGREGISTERS_LOG,FILE_APPEND );
+               File file = SD.open( LGREGISTER_SCAN_LOG,FILE_APPEND );
                if ( file )
                {
                   char a[ 40 ];

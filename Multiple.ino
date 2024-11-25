@@ -110,6 +110,10 @@ void newConfiguration( void )
       userIO->updateLine( 4,line );
    }
 
+   // Clear the reboot counter, so we can try and reboot again if possible
+
+   clearFailedRebootCount();
+
    while( 1 )
    {
       delay( 60 * 1000 );
@@ -223,8 +227,9 @@ void modbusPostTransmission()
 
 void  configureModBus()
 {
-   PW_MSG( "Checking for MODBUSTCP" );
-   if ( GET_REGISTRY_INT( MODBUSTCP ) > 0 )
+   PW_DEBUG( "Checking for MODBUSTCP" );
+
+   if ( isSensorRequired( MODBUSTCP_SENSOR_NAME ) > 0 )
    {
       modbusTCP = new ModbusTCP();
       modbusTCP->initialise();
@@ -357,8 +362,8 @@ void setup( void )
          newConfiguration();
       }
 
-      userIO->updateLine( 5," Rebooting in 5s" );
-      delay( 5000 );
+      userIO->updateLine( 5," Rebooting in 10s" );
+      delay( 10000 );
       ESP.restart();
    }
    else
@@ -403,7 +408,8 @@ void setup( void )
 
    networking->getWebServer()->setUserIO( userIO );
 
-   // did we boot with button down pressed ?
+   // did we boot with button down pressed, if so hold - allows webserver
+   // to be used to re-configure the unit
 
    if ( hwConfig->TouchButton1 != -1 )
    {
@@ -436,10 +442,19 @@ void setup( void )
    // Instantiate the heat pump collecting module if active and we have
    // a valid modbus
 
-   if ( GET_REGISTRY_INT( LG_MODBUS ) > 0 && modbusMaster )
+   if ( isSensorRequired( LGHEATPUMP_SENSOR_NAME ) && modbusMaster )
    {
       lgThermaV = new LGHeatPump( modbusMaster );
-      lgThermaV->initialise();
+
+      if ( lgThermaV->isAvailable() )
+      {
+         lgThermaV->initialise();
+      }
+      else
+      {
+         delete lgThermaV;
+         lgThermaV = nullptr;
+      }
    }
 
    // User IO needs HP collection stats, could be a null ptr but UserIO will
@@ -494,11 +509,13 @@ void setup( void )
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
 
-   if ( SD.exists ( LGREGISTERS_LOG ) )
+   // Send register scan logs, modbus log and lg registers read so far, removing after sending
+
+   if ( SD.exists ( LGREGISTER_SCAN_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Registers","Modbus regs",LGREGISTERS_LOG ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Registers","Modbus regs",LGREGISTER_SCAN_LOG ) )
       {
-         SD.remove( LGREGISTERS_LOG);
+         SD.remove( LGREGISTER_SCAN_LOG);
       }
    }
 
@@ -508,6 +525,23 @@ void setup( void )
       {
          SD.remove( LGMODBUS_LOG );
       }
+   }
+
+   if ( SD.exists ( LGREGISTERS_LOG ) )
+   {
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","modbus regs",LGREGISTERS_LOG ) )
+      {
+         PW_DEBUG( "Sent %s",LGREGISTERS_LOG );
+      }
+   }
+
+   // Send the LG event log if available
+
+   if ( config->getSPIFFS()->exists( LGSTATUS_LOG ) )
+   {
+     snprintf( subject,128,"LG Event Log : %s",networking->getLocalMDNSName().c_str() );
+
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Event Log",LGSTATUS_LOG,true );
    }
 
    if ( SD.exists ( DEBUG_LOG ) )
@@ -520,22 +554,6 @@ void setup( void )
          }
       }
    }
-
-   if ( config->getSPIFFS()->exists( LGSTATUS_LOG ) )
-   {
-     snprintf( subject,128,"LG Event Log : %s",networking->getLocalMDNSName().c_str() );
-
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Event Log",LGSTATUS_LOG,true );
-   }
-
-   if ( SD.exists ( "/lgrecord.txt" ) )
-   {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","modbus regs","/lgrecord.txt" ) )
-      {
-         PW_DEBUG( "Sent lgrecord.txt" );
-      }
-   }
-
 }
 
 // ---------------------------------------------------------------------

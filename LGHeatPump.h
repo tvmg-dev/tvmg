@@ -6,12 +6,16 @@
 
 #include "utils.h"
 
-#define MAX_HPREG_NAME     20
-#define MAX_HP_REGISTERS   50
+#define MAX_HPREG_NAME        20
+#define MAX_HP_REGISTERS      50
+#define MAX_LGSOFTWARE_LENGTH 32
 
-#define  LGREGISTERS_LOG   "/registers.txt"
-#define  LGMODBUS_LOG      "/hpmodbus.txt"
-#define  LGSTATUS_LOG      "/lgstatus.txt"
+#define  LGREGISTER_SCAN_LOG  "/registers.txt"
+#define  LGMODBUS_LOG         "/lgmodbus.txt"
+#define  LGSTATUS_LOG         "/lgstatus.txt"
+#define  LGREGISTERS_LOG      "/lgregisters.txt"
+
+#define  LGHEATPUMP_SENSOR_NAME  "LGHEATPUMP"
 
 // Define the registers available
 
@@ -146,15 +150,18 @@ private:
    LGRegister     *m_registers;
    LGStatus       m_currentStatus;
    uint8_t        m_numRegisters;
+   uint8_t        m_series;
    ModbusMaster   *m_modbus;
+   char           m_softwareVersion[ MAX_LGSOFTWARE_LENGTH ];
    uint32_t       m_modbusRequests;
    uint32_t       m_modbusFailures;
    int32_t        m_millisLastAquisition;       // milliseconds since last acquisition
    float_t        m_currentKW;                  // last reported
-   bool           m_useFlowRateWhenNotHeating;  // if set then still report the actual flow rate, otherwise 2
-                                                // when active (pump setting in heating for LG)
+   uint16_t       m_flowRateWhenNotHeating;     // if non-zero then report this flow rate when heating but no compressor
+                                                // (pump setting in heating for LG)
 
    std::map<uint32_t,uint8_t> m_registerMap;    // map of register address to m_registers[] index
+   bool           m_logRegisters;               // whether writing registers to a file
 };
 
 #endif

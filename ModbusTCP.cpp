@@ -30,7 +30,7 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
 
    m_sensor.m_isValid = false;
 
-   // Parse the /sensors.dat file for heat pump
+   // Parse the /sensors.dat file for modbus-tcp
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
    File file = spiffs->open( "/sensors.dat",FILE_READ );
@@ -49,7 +49,7 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
       {
          cJSON_ArrayForEach( sensor,root )
          {
-            if ( strcmp( "MODBUSTCP",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            if ( strcmp( MODBUSTCP_SENSOR_NAME,cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
             {
                char  tcpServerAddress[ 64 ];
 

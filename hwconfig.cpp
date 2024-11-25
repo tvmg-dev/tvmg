@@ -45,7 +45,7 @@ HardwareConfig TemperatureNode =
    -1,            // ModBus485EnGPIO
    4,             // OLEDClkGPIO
    5,             // OLEDDataGPIO
-   -1,            // TouchButton1
+   T2,            // TouchButton1
    -1,            // TouchButton2
    25             // PWM GPIO
 };
