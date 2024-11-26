@@ -10,7 +10,8 @@
 PowerModule::PowerModule( ModbusMaster *modbus )
            : m_modbus( modbus ),
              m_sensors(),
-             m_numLocalSensors( 0 )
+             m_numLocalSensors( 0 ),
+             m_fakeMeasurements( false )
 {
    PW_DEBUG( "PowerModule::PowerModule()" );
    PW_MSG( "Power Module Startup" );
@@ -77,6 +78,11 @@ PowerModule::PowerModule( ModbusMaster *modbus )
          PW_ERROR( "No power sensors registered !" );
       }
    }
+
+   if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
+   {
+      m_fakeMeasurements = true;
+   }
 }
 
 PowerModule::~PowerModule()
@@ -126,7 +132,7 @@ bool PowerModule::getPower( uint8_t index )
 {
    uint8_t  modbusResult;
 
-   if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
+   if ( m_fakeMeasurements )
    {
       if ( index < m_numLocalSensors )
       {

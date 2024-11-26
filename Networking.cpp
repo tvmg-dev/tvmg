@@ -178,7 +178,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 class Emailer
 {
 public:
-   Emailer();
+   Emailer( Networking *networking );
    ~Emailer();
 
    void initialise();
@@ -187,10 +187,12 @@ public:
 
 private:
    EMailSender *m_sender;
+   Networking  *m_networking;
 };
 
-Emailer::Emailer()
-       : m_sender( nullptr )
+Emailer::Emailer( Networking *networking )
+       : m_sender( nullptr ),
+         m_networking( networking )
 {
    PW_DEBUG( "Emailer::Emailer()" );
 }
@@ -227,8 +229,9 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
    if ( m_sender )
    {
       EMailSender::EMailMessage message;
+      String newSubject = m_networking->getLocalMDNSName() + " : " + String( subject );
 
-      message.subject = subject;
+      message.subject = newSubject;
       message.message = msg.c_str();
       message.mime = "text/plain";
 
@@ -303,7 +306,9 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
 
       EMailSender::Attachments attachments = { 1, fileDescriptor };
 
-      message.subject = subject;
+      String newSubject = m_networking->getLocalMDNSName() + " : " + String( subject );
+
+      message.subject = newSubject;
       message.message = msg;
       message.mime = "text/plain";
 
@@ -489,7 +494,7 @@ void Networking::initialise()
 
    // We have connected network, so we can have the emailer
 
-   m_emailer = new Emailer;
+   m_emailer = new Emailer( this );
    m_emailer->initialise();
 
    // And now for the emoncms client...

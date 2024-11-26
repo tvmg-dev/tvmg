@@ -236,15 +236,13 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
       {
          char subject[ 128 ];
 
-         snprintf( subject,128,"HP Monitoring : %s - Daily Readings",m_networking->getLocalMDNSName().c_str() );
-
-         m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Today's Final Results",m_currentFileName,false );
+         m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Daily Data","Today's Final Results",m_currentFileName,false );
 
          if ( SD.exists( DEBUG_LOG ) )
          {
             if ( GET_REGISTRY_INT( SEND_DAILY_DEBUG ) == 1 )
             {
-               m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Debug log",DEBUG_LOG,false );
+               m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG,false );
             }
 
             if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 )
@@ -471,10 +469,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
       {
-         char subject[ 128 ];
-         snprintf( subject,128,"LG Event Log : %s",m_networking->getLocalMDNSName().c_str() );
-
-         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Event Log",LGSTATUS_LOG,true ) )
+         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG,true ) )
          {
             Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
          }

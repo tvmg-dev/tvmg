@@ -45,7 +45,7 @@ private:
    ModbusMaster   *m_modbus;
    PrivateSensor  m_sensors[ MAX_POWER_SENSORS ];
    uint8_t        m_numLocalSensors;
-   bool           m_modbusStarted;
+   bool           m_fakeMeasurements;
 };
 
 #endif

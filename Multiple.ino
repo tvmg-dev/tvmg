@@ -502,19 +502,18 @@ void setup( void )
 
    // Send emails, attachments if available
 
-   char subject[ 128 ];
    char initialMsg[ 128 ];
 
-   snprintf( subject,128,"HP Monitoring : %s - Startup",networking->getLocalMDNSName().c_str() );
    snprintf( initialMsg,128,"Initial boot up completed\nVersion : [%s]\nIP : [%s]\nStarting monitoring...\n\n",VERSION_STR,networking->getIPAddress().c_str()  );
 
-   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,initialMsg );
+   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Startup",initialMsg );
 
    // Send register scan logs, modbus log and lg registers read so far, removing after sending
 
    if ( SD.exists( LGREGISTER_SCAN_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Registers","Modbus regs",LGREGISTER_SCAN_LOG ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "HP Modbus Registers","Modbus regs",LGREGISTER_SCAN_LOG ) )
       {
          SD.remove( LGREGISTER_SCAN_LOG);
       }
@@ -522,7 +521,8 @@ void setup( void )
 
    if ( SD.exists( LGMODBUS_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Log","Modbus Logs",LGMODBUS_LOG ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "HP Modbus Log","Modbus Logs",LGMODBUS_LOG ) )
       {
          SD.remove( LGMODBUS_LOG );
       }
@@ -530,7 +530,8 @@ void setup( void )
 
    if ( SD.exists( LGREGISTERS_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","modbus regs",LGREGISTERS_LOG ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG ) )
       {
          if ( lgThermaV && lgThermaV->isLogging() )
          {
@@ -544,14 +545,14 @@ void setup( void )
 
    if ( config->getSPIFFS()->exists( LGSTATUS_LOG ) )
    {
-     snprintf( subject,128,"LG Event Log : %s",networking->getLocalMDNSName().c_str() );
-
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Event Log",LGSTATUS_LOG,true );
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "LG Event Log","Event Log",LGSTATUS_LOG,true );
    }
 
    if ( SD.exists ( DEBUG_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","Debug Logs",DEBUG_LOG ) )
+      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "Debug log","Debug Logs",DEBUG_LOG ) )
       {
          if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 )
          {
