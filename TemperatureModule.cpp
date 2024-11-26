@@ -86,11 +86,11 @@ TemperatureModule::TemperatureModule()
          int   sensorNum = 1;
          cJSON_ArrayForEach( sensor,root )
          {
-            if ( strcmp( "THERM",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            if ( strcmpcJSON( sensor,"type","THERM" ) == 0 )
             {
                PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
 
-               strncpy( tempSensor->m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_TEMP_NAME );
+               strncpy( tempSensor->m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_TEMP_NAME );
 
                tempSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
                tempSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
@@ -109,8 +109,8 @@ TemperatureModule::TemperatureModule()
                }
                else
                {
-                  strncpy( tempSensor->m_addressStr,cJSON_GetObjectItem( sensor,"address" )->valuestring,sizeof( tempSensor->m_addressStr ) - 1 );
-                  tempSensor->m_calibrationOffset = static_cast<float_t> (cJSON_GetObjectItem( sensor,"calibration" )->valuedouble );
+                  strncpy( tempSensor->m_addressStr,getStringFromcJSON( sensor,"address" ).c_str(),sizeof( tempSensor->m_addressStr ) - 1 );
+                  tempSensor->m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
                   tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
                   tempSensor->m_sensor.m_isRemote = false;
 
@@ -292,7 +292,7 @@ void TemperatureModule::addUDPListener()
                cJSON_ArrayForEach( sensor,sensors )
                {
                   uint8_t  id = getIntFromcJSON( sensor,"id",sensorNum++ );
-                  float_t  value = static_cast<float_t>( cJSON_GetObjectItem( sensor,"value" )->valuedouble );
+                  float_t  value = getFloatFromcJSON( sensor,"value",TEMPERATURE_INVALID );
 
                   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
                   {

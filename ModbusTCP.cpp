@@ -52,17 +52,17 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
       {
          cJSON_ArrayForEach( sensor,root )
          {
-            if ( strcmp( MODBUSTCP_SENSOR_NAME,cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            if ( strcmpcJSON( sensor,"type",MODBUSTCP_SENSOR_NAME ) == 0 )
             {
                char  tcpServerAddress[ 64 ];
 
                m_sensor.m_isValid = true;
 
-               strncpy( m_sensor.m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_MODBUSTCP_NAME );
+               strncpy( m_sensor.m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_MODBUSTCP_NAME );
 
                m_sensor.m_id = getIntFromcJSON( sensor,"id",1 );
 
-               if ( ! m_sensor.m_tcpServerAddress.fromString( cJSON_GetObjectItem( sensor,"tcpServerAddress" )->valuestring ) )
+               if ( ! m_sensor.m_tcpServerAddress.fromString( getStringFromcJSON( sensor,"tcpServerAddress" ) ) )
                {
                   PW_ERROR( "Failed to convert TCP server IP address" );
                   m_sensor.m_isValid = false;

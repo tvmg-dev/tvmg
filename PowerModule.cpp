@@ -42,13 +42,13 @@ PowerModule::PowerModule( ModbusMaster *modbus )
       {
          cJSON_ArrayForEach( sensor,root )
          {
-            if ( strcmp( "POWER",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            if ( strcmpcJSON( sensor,"type","POWER" ) == 0 )
             {
                PrivateSensor *pwrSensor;
 
                pwrSensor = &m_sensors[ m_numLocalSensors ];
 
-               strncpy( pwrSensor->m_name,cJSON_GetObjectItem( sensor,"name" )->valuestring,MAX_POWER_NAME );
+               strncpy( pwrSensor->m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_POWER_NAME );
                pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numLocalSensors );
                pwrSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
                pwrSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );

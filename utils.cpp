@@ -267,16 +267,56 @@ Timing::~Timing()
    PW_TIMING( "%s : %s",m_name.c_str(),timing.c_str() );
 }
 
-int   getIntFromcJSON( cJSON *parent,const char *item, int defaultValue )
+int   getIntFromcJSON( cJSON *node,const char *key, int defaultValue )
 {
    int   value = defaultValue;
-   cJSON *node = cJSON_GetObjectItem( parent,item );
-   if ( node )
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsNumber( obj ) )
    {
-      value = node->valueint;
+      value = obj->valueint;
    }
 
    return value;
+}
+
+float   getFloatFromcJSON( cJSON *node,const char *key, float defaultValue )
+{
+   float   value = defaultValue;
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsNumber( obj ) )
+   {
+      value = static_cast<float> (obj->valuedouble);
+   }
+
+   return value;
+}
+
+String   getStringFromcJSON( cJSON *node,const char *key, const String &defaultValue )
+{
+   String   value = defaultValue;
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsString( obj ) )
+   {
+      value = obj->valuestring;
+   }
+
+   return value;
+}
+
+int strcmpcJSON( cJSON *node,const char *key, const char *string )
+{
+   int ret = -1;
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsString( obj ) )
+   {
+      ret = strcmp( obj->valuestring,string );
+   }
+
+   return ret;
 }
 
 bool  isSensorRequired( const char *sensorName )
@@ -300,7 +340,7 @@ bool  isSensorRequired( const char *sensorName )
       {
          cJSON_ArrayForEach( sensor,root )
          {
-            if ( strcmp( sensorName,cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            if ( strcmpcJSON( sensor,"type",sensorName ) == 0 )
             {
                isReq = true;
                break;
@@ -312,7 +352,10 @@ bool  isSensorRequired( const char *sensorName )
       close( file );
    }
 
-   PW_DEBUG( "%s required",sensorName );
+   if ( isReq )
+   {
+      PW_DEBUG( "%s required",sensorName );
+   }
 
    return isReq;
 

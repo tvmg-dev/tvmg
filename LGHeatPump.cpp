@@ -133,11 +133,11 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
       {
          cJSON_ArrayForEach( sensor,root )
          {
-            if ( strcmp( LGHEATPUMP_SENSOR_NAME,cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            if ( strcmpcJSON( sensor,"type",LGHEATPUMP_SENSOR_NAME ) == 0 )
             {
                uint8_t series,writeReg;
 
-               strncpy( m_softwareVersion,cJSON_GetObjectItem( sensor,"software" )->valuestring,MAX_LGSOFTWARE_LENGTH );
+               strncpy( m_softwareVersion,getStringFromcJSON( sensor,"software" ).c_str(),MAX_LGSOFTWARE_LENGTH );
 
                m_logRegisters = getIntFromcJSON( sensor,"write",0 );
                series = getIntFromcJSON( sensor,"series",0 );
@@ -152,7 +152,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
                   PW_WARN( "Unsupported LG series (%d)", series );
                }
 
-PW_DEBUG( "write %d series %d flow in !heating %d",m_logRegisters,series,m_flowRateWhenNotHeating );
+               PW_DEBUG( "write %d series %d flow in !heating %d",m_logRegisters,series,m_flowRateWhenNotHeating );
                break;
             }
          }
@@ -191,7 +191,7 @@ PW_DEBUG( "write %d series %d flow in !heating %d",m_logRegisters,series,m_flowR
             return;
          }
 
-         if ( strcmp( "THERMAV",cJSON_GetObjectItem( root,"type" )->valuestring ) == 0 )
+         if ( strcmpcJSON( root,"type","THERMAV" ) == 0 )
          {
             cJSON *registers = cJSON_GetObjectItem( root,"registers" );
             if ( registers && cJSON_IsArray( registers ) )
@@ -201,24 +201,18 @@ PW_DEBUG( "write %d series %d flow in !heating %d",m_logRegisters,series,m_flowR
                {
                   if ( m_numRegisters < MAX_HP_REGISTERS  )
                   {
-                     LGRegister *lgReg = &m_registers[ m_numRegisters++ ];
+                     LGRegister *lgReg = &m_registers[ m_numRegisters ];
 
-                     strncpy( lgReg->m_name,cJSON_GetObjectItem( reg,"name" )->valuestring,MAX_HPREG_NAME );
-                     lgReg->m_address = cJSON_GetObjectItem( reg,"addr" )->valueint;
-                     lgReg->m_type = static_cast<ModbusType> (cJSON_GetObjectItem( reg,"type" )->valueint);
+                     strncpy( lgReg->m_name,getStringFromcJSON( reg,"name" ).c_str(),MAX_HPREG_NAME );
+                     lgReg->m_address = getIntFromcJSON( reg,"addr",-1 );
+                     lgReg->m_type = static_cast<ModbusType>( getIntFromcJSON( reg,"type",INPUTR ) );
                      lgReg->m_emonFeedId = getIntFromcJSON( reg,"emonFeedId",0 );
-                     if ( cJSON_HasObjectItem( reg,"scaling" ) )
-                     {
-                        lgReg->m_scalingFactor = static_cast<float> (cJSON_GetObjectItem( reg,"scaling" )->valuedouble);
-                     }
-                     else
-                     {
-                        lgReg->m_scalingFactor = 1;
-                     }
+
+                     lgReg->m_scalingFactor = getFloatFromcJSON( reg,"scaling",1 );
 
                      // add to the lookup map, key = (type << 16 | modbus-addr + 1)
 
-                     uint32_t parameter = cJSON_GetObjectItem( reg,"type" )->valueint << 16 | lgReg->m_address + 1;
+                     uint32_t parameter = lgReg->m_type << 16 | lgReg->m_address + 1;
 
                      m_registerMap[ parameter ] = m_numRegisters - 1;
 
@@ -226,6 +220,7 @@ PW_DEBUG( "write %d series %d flow in !heating %d",m_logRegisters,series,m_flowR
                               lgReg->m_type,lgReg->m_address,lgReg->m_name,
                               lgReg->m_emonFeedId,lgReg->m_scalingFactor,parameter,m_numRegisters - 1 );
 
+                     m_numRegisters++;
                   }
                   else
                   {

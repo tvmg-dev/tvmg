@@ -11,8 +11,11 @@ extern bool  isDebugEnabled();
 
 class cJSON;
 
-extern int   getIntFromcJSON( cJSON *parent,const char *item, int defaultValue = -1 );
-extern bool  isSensorRequired( const char *sensorName );
+extern bool    isSensorRequired( const char *sensorName );
+extern int     getIntFromcJSON( cJSON *node,const char *key, int defaultValue = -1 );
+extern float   getFloatFromcJSON( cJSON *node,const char *key, float defaultValue = 0 );
+extern String  getStringFromcJSON( cJSON *node,const char *key, const String &defaultValue = "" );
+extern int     strcmpcJSON( cJSON *node,const char *key, const char *item );
 
 #define START_DEBUG \
 do \

@@ -40,26 +40,26 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
       {
          cJSON_ArrayForEach( sensor,root )
          {
-            if ( strcmp( "HEATMETER",cJSON_GetObjectItem( sensor,"type" )->valuestring ) == 0 )
+            if ( strcmpcJSON( sensor,"type","HEATMETER" ) == 0 && strcmpcJSON( sensor,"class","UPS3" ) == 0)
             {
-               if ( strcmp( "UPS3",cJSON_GetObjectItem( sensor,"class" )->valuestring ) == 0 )
-               {
-                  String name = cJSON_GetObjectItem( sensor,"name" )->valuestring;
-                  uint8_t id = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"id" )->valueint);
-                  String mode = cJSON_GetObjectItem( sensor,"mode" )->valuestring;
-                  uint8_t gpio = hwConfig->PWMGPIO;
-                  uint32_t emonFlowId = getIntFromcJSON( sensor,"emonFlowId",0 );
-                  uint32_t emonPowerId = getIntFromcJSON( sensor,"emonPowerId",0 );
-                  uint8_t flowTempId = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"flowTempId" )->valueint);
-                  uint8_t returnTempId = static_cast<uint8_t>(cJSON_GetObjectItem( sensor,"returnTempId" )->valueint);
-                  float_t shc = static_cast<float>(cJSON_GetObjectItem( sensor,"shc" )->valuedouble);
+               String name = getStringFromcJSON( sensor,"name" );
+               String mode = getStringFromcJSON( sensor,"mode" );
 
-                  PW_DEBUG( "Found UPS3 : %s",name.c_str() );
+               uint8_t gpio = hwConfig->PWMGPIO;
+               uint8_t id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
+               uint32_t emonFlowId = getIntFromcJSON( sensor,"emonFlowId",0 );
+               uint32_t emonPowerId = getIntFromcJSON( sensor,"emonPowerId",0 );
 
-                  m_sensors[ m_numLocalSensors ] = new HeatMeter( new GrundfosUPS3( gpio,mode.c_str() ),m_tempModule,
-                                                            name.c_str(),id,emonFlowId,emonPowerId,flowTempId,returnTempId,shc );
-                  m_sensors[ m_numLocalSensors ]->initialise();
-               }
+               uint8_t flowTempId = getIntFromcJSON( sensor,"flowTempId",m_numLocalSensors + 1 );
+               uint8_t returnTempId = getIntFromcJSON( sensor,"returnTempId",m_numLocalSensors + 2 );
+
+               float_t shc = getFloatFromcJSON( sensor,"shc",4.2 );
+
+               PW_DEBUG( "Found UPS3 : %s",name.c_str() );
+
+               m_sensors[ m_numLocalSensors ] = new HeatMeter( new GrundfosUPS3( gpio,mode.c_str() ),m_tempModule,
+                                                         name.c_str(),id,emonFlowId,emonPowerId,flowTempId,returnTempId,shc );
+               m_sensors[ m_numLocalSensors ]->initialise();
 
                m_numLocalSensors++;
             }
