@@ -433,6 +433,7 @@ void setup( void )
    // get modbus if available
 
    configureModBus();
+   userIO->setModBus( modbusMaster );
 
    // Instantiate the power collecting module
 
@@ -511,7 +512,7 @@ void setup( void )
 
    // Send register scan logs, modbus log and lg registers read so far, removing after sending
 
-   if ( SD.exists ( LGREGISTER_SCAN_LOG ) )
+   if ( SD.exists( LGREGISTER_SCAN_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Registers","Modbus regs",LGREGISTER_SCAN_LOG ) )
       {
@@ -519,7 +520,7 @@ void setup( void )
       }
    }
 
-   if ( SD.exists ( LGMODBUS_LOG ) )
+   if ( SD.exists( LGMODBUS_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus Log","Modbus Logs",LGMODBUS_LOG ) )
       {
@@ -527,11 +528,15 @@ void setup( void )
       }
    }
 
-   if ( SD.exists ( LGREGISTERS_LOG ) )
+   if ( SD.exists( LGREGISTERS_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug log","modbus regs",LGREGISTERS_LOG ) )
       {
-         PW_DEBUG( "Sent %s",LGREGISTERS_LOG );
+         if ( lgThermaV && lgThermaV->isLogging() )
+         {
+            SD.remove( LGREGISTERS_LOG );
+            PW_DEBUG( "Removed %s as logging LG",LGREGISTERS_LOG );
+         }
       }
    }
 

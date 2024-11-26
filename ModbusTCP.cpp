@@ -300,7 +300,6 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
             uint8_t  byteNum = i / 8;
             uint8_t mask = 1 << ( i % 8);
 
-   //         PW_DEBUG( "test register %u, byte 0x%02x, mask 0x%02x", i,buff[ 9 + byteNum ], mask );
             response.registers[ i ] = 0;
             if ( buff[ 9 + byteNum ] & mask )
             {
@@ -362,12 +361,9 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
 uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uint16_t u16ReadQty )
 {
-   static uint32_t sent = 0;
-   static uint32_t ok = 0;
-
    ModBusRequest  request;
 
-   PW_MSG( "modbus so far %u sent, %u ok",sent,ok );
+   PW_DEBUG( "modbus: %u sent, %u failed",_u32TotalTransactions,_u32FailedTransactions  );
 
    PW_DEBUG( "getData %d %d %d",transactionType,u16ReadAddress,u16ReadQty );
 
@@ -376,15 +372,16 @@ uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uin
    request.startRegister = u16ReadAddress;
    request.numRegisters = u16ReadQty;
 
-   sent++;
+   _u32TotalTransactions++;
+
    if ( !getData( request ) )
    {
       PW_ERROR( "Modbus failed to read words for slave %d",_u8MBSlave );
+      _u32FailedTransactions++;
       return ku8MBResponseTimedOut;
    }
    else
    {
-      ok++;
       return ku8MBSuccess;
    }
 }

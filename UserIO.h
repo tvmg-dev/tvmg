@@ -9,6 +9,7 @@
 #include "HeatMeter.h"
 
 class U8G2_SSD1306_128X64_NONAME_F_HW_I2C;
+class ModbusMaster;
 
 #define  MAX_OLED_ROWS     6
 #define  MAX_OLED_COLUMNS  24
@@ -36,6 +37,7 @@ public:
    void  setNetworking( Networking *network );
    void  setLGHeatPump( LGHeatPump *heatpump );
    void  setHeatMeter( HeatMeterModule *heatMeter );
+   void  setModBus( ModbusMaster *modbus );
 
    void  updateLine( uint8_t lineNum,char *line,bool isForLog = true );
    void  clear();
@@ -70,6 +72,7 @@ private:
    Networking           *m_networking;
    LGHeatPump           *m_heatPump;
    HeatMeterModule      *m_heatMeter;
+   ModbusMaster         *m_modbus;
    Measurement::Sample  m_sample;
    bool                 m_firmwareUpdateInProgress;
    time_t               m_startTime;

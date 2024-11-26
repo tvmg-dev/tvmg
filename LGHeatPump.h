@@ -13,7 +13,7 @@
 #define  LGREGISTER_SCAN_LOG  "/registers.txt"
 #define  LGMODBUS_LOG         "/lgmodbus.txt"
 #define  LGSTATUS_LOG         "/lgstatus.txt"
-#define  LGREGISTERS_LOG      "/lgregisters.txt"
+#define  LGREGISTERS_LOG      "/lgreg.txt"
 
 #define  LGHEATPUMP_SENSOR_NAME  "LGHEATPUMP"
 
@@ -74,11 +74,11 @@ class UserIO;
 
 enum ModbusType {
    INVALID,
-   COIL,
+   COIL = 1,
    DISCRETE,
    HOLDING,
    INPUTR,
-   CALCULATED,
+   CALCULATED = 8
 };
 
 typedef struct {
@@ -129,6 +129,7 @@ public:
    ~LGHeatPump();
    void  initialise();
    bool  isAvailable();
+   bool  isLogging();
    LGRegister *readNextSensor( uint8_t index );
    void  getModbusStats( uint32_t *requests,uint32_t *failures );
    void  setCurrentKW( float_t kw );

@@ -113,8 +113,19 @@ void Storage::removeOldSamples()
          String fileName = entry.name();
          entry.close();
 
+         // Shouldn't have filenames > 12 (8.3), but a bug introduced one so
+         // ignore - try and delete, buf fails
+
+         if ( fileName.length() > 12 )
+         {
+            PW_DEBUG( "Excessive filename length : %d",fileName.length() );
+            SD.remove( fileName );
+            continue;
+         }
+
          // Get current time and then convert to a tm struct based on the
-         // filename which is in yyyymmdd.dat format.
+         // filename which is in yyyymmdd.dat format.  So any other files
+         // will not get auto-cleaned here !
 
          struct tm timeInfo;
          localtime_r( &currentTime,&timeInfo );
@@ -155,7 +166,7 @@ void Storage::removeOldSamples()
          }
          else if ( isDebugEnabled() )
          {
-            PW_DEBUG( fileName.c_str() );
+            PW_DEBUG( "SD : %s",fileName.c_str() );
          }
       }
    }

@@ -22,6 +22,7 @@ UserIO::UserIO()
         m_networking( nullptr ),
         m_heatPump( nullptr ),
         m_heatMeter( nullptr ),
+        m_modbus( nullptr ),
         m_sample(),
         m_firmwareUpdateInProgress( false ),
         m_startTime(0)
@@ -120,6 +121,11 @@ void  UserIO::setLGHeatPump( LGHeatPump *heatpump )
 void  UserIO::setHeatMeter( HeatMeterModule *heatMeter )
 {
    m_heatMeter = heatMeter;
+}
+
+void  UserIO::setModBus( ModbusMaster *modbus )
+{
+   m_modbus = modbus;
 }
 
 void  UserIO::showNetwork()
@@ -317,15 +323,17 @@ void  UserIO::showCommsStatus()
       storeLine( 1,line );
    }
 
-   if ( m_heatPump )
+   if ( m_modbus )
    {
-      m_heatPump->getModbusStats( &sends,&fails );
+      m_modbus->getTransactionCounts( &sends,&fails );
 
-      snprintf( line,MAX_OLED_COLUMNS,"LG: sent %u", sends );
+      snprintf( line,MAX_OLED_COLUMNS,"MB: sent %u", sends );
       storeLine( 3,line );
 
       snprintf( line,MAX_OLED_COLUMNS," fail: %u",fails );
       storeLine( 4,line );
+
+      PW_DEBUG( "modbus info %u %u",sends,fails );
    }
 
    show( m_currentLines );

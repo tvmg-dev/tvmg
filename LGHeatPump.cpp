@@ -212,9 +212,9 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 
                      // add to the lookup map, key = (type << 16 | modbus-addr + 1)
 
-                     uint32_t parameter = lgReg->m_type << 16 | lgReg->m_address + 1;
+                     uint32_t parameter = (lgReg->m_type << 16) | (lgReg->m_address + 1);
 
-                     m_registerMap[ parameter ] = m_numRegisters - 1;
+                     m_registerMap[ parameter ] = m_numRegisters;
 
                      PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
                               lgReg->m_type,lgReg->m_address,lgReg->m_name,
@@ -238,14 +238,6 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
          close( file );
       }
    }
-
-   // If we're writing registers we're reading from the LG then remove any
-   // existing file to restart the logging
-
-   if ( m_logRegisters && SD.exists( LGREGISTERS_LOG ) )
-   {
-      SD.remove( LGREGISTERS_LOG );
-   }
 }
 
 LGHeatPump::~LGHeatPump()
@@ -260,6 +252,11 @@ void LGHeatPump::initialise()
 bool  LGHeatPump::isAvailable()
 {
    return (m_numRegisters > 0);
+}
+
+bool LGHeatPump::isLogging()
+{
+   return m_logRegisters;
 }
 
 void  LGHeatPump::setCurrentKW( float_t kw )
@@ -473,7 +470,7 @@ void  LGHeatPump::getLGData()
             {
                LGRegister *reg = &m_registers[ i ];
 
-               if ( reg->m_type != MB_CALCULATED )
+               if ( reg->m_type == CALCULATED )
                {
                   continue;
                }
@@ -482,7 +479,6 @@ void  LGHeatPump::getLGData()
                file.println( buff );
             }
             file.close();
-            PW_DEBUG( "Written to %s",LGREGISTERS_LOG );
          }
       }
 
@@ -726,7 +722,7 @@ void  LGHeatPump::updateStatus()
                m_currentStatus.m_isImmersion,
                m_currentStatus.m_isDefrost );
 
-      PW_MSG( line );
+      PW_MSG( "LG state change: %s",line );
 
       // we may need to write header if the log file doesn't exist
       if ( ! Config::instance()->getSPIFFS()->exists( LGSTATUS_LOG ) )
@@ -763,7 +759,6 @@ void  LGHeatPump::dumpData()
    (void) getStatus( WATER_PUMP_STATUS,&state );
    (void) getStatus( EXT_WATER_PUMP_STATUS,&state );
    (void) getStatus( COMPRESSOR_STATUS,&state );
-   (void) getStatus( DEFROST_STATUS,&state );
    (void) getStatus( DHW_HEATING,&state );
    (void) getStatus( LEGIONELLA_STATUS,&state );
    (void) getStatus( SILENT_STATUS,&state );
@@ -842,7 +837,7 @@ int16_t  LGHeatPump::getRawValue( uint32_t parameter )
    {
       uint8_t  index = it->second;
       value = m_registers[ index ].m_rawValue;
-      PW_DEBUG( "HP-Raw: %s:%u",m_registers[ index ].m_name,value );
+      PW_DEBUG( "HP-Raw: 0x%x:%s:%u",parameter,m_registers[ index ].m_name,value );
    }
 
    return value;
