@@ -316,7 +316,7 @@ void  UserIO::showCommsStatus()
    {
       m_networking->getEMONStats( &sends,&qFails,&fails );
 
-      snprintf( line,MAX_OLED_COLUMNS,"EMON: sent %u",sends );
+      snprintf( line,MAX_OLED_COLUMNS,"EMON: tx %u",sends );
       storeLine( 0,line );
 
       snprintf( line,MAX_OLED_COLUMNS,"[QF,EF] %u,%u",qFails,fails );
@@ -327,10 +327,10 @@ void  UserIO::showCommsStatus()
    {
       m_modbus->getTransactionCounts( &sends,&fails );
 
-      snprintf( line,MAX_OLED_COLUMNS,"MB: sent %u", sends );
+      snprintf( line,MAX_OLED_COLUMNS,"MB: tx %u", sends );
       storeLine( 3,line );
 
-      snprintf( line,MAX_OLED_COLUMNS," fail: %u",fails );
+      snprintf( line,MAX_OLED_COLUMNS," rx: %u",fails );
       storeLine( 4,line );
 
       PW_DEBUG( "modbus info %u %u",sends,fails );
