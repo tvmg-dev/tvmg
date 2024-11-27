@@ -427,7 +427,7 @@ bool  UserIO::setNextScreen()
          retVal = isPowerDataAvailable();
          break;
       case COMMS_STATUS:
-         if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) != 1 )
+         if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) != 1 && !m_modbus )
          {
             retVal = false;
          }
