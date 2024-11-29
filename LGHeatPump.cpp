@@ -11,6 +11,11 @@
 #include "config.h"
 #include "UserIO.h"
 
+// Some statics for quick bodge on register sampling
+
+static ModbusMaster *s_master = nullptr;
+static uint16_t     s_modbusAddress = 32;
+
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
 
 // R32 refrigerant - pressure to temperature lookup, interpolate
@@ -104,6 +109,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_numRegisters( 0 ),
      m_series( 0 ),
      m_modbus( master ),
+     m_modbusAddress( 0 ),
      m_softwareVersion(),
      m_modbusRequests( 0 ),
      m_modbusFailures( 0 ),
@@ -141,6 +147,8 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 
                m_logRegisters = getIntFromcJSON( sensor,"write",0 );
                series = getIntFromcJSON( sensor,"series",0 );
+               m_modbusAddress = getIntFromcJSON( sensor,"address",0x11 );
+               s_modbusAddress = m_modbusAddress;
                m_flowRateWhenNotHeating = getIntFromcJSON( sensor,"flowInNotHeating",0 );
 
                if ( series == 4 )
@@ -152,7 +160,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
                   PW_WARN( "Unsupported LG series (%d)", series );
                }
 
-               PW_DEBUG( "write %d series %d flow in !heating %d",m_logRegisters,series,m_flowRateWhenNotHeating );
+               PW_DEBUG( "address %u, write %d series %d flow in !heating %d",m_modbusAddress,m_logRegisters,series,m_flowRateWhenNotHeating );
                break;
             }
          }
@@ -411,7 +419,7 @@ void  LGHeatPump::getLGData()
    START_TIMING( "LG Data Aquisition" );
    if ( m_modbus )
    {
-      m_modbus->setSlaveId( 32 );
+      m_modbus->setSlaveId( m_modbusAddress );
 
       uint8_t  start,end;
 
@@ -968,7 +976,6 @@ float_t  LGHeatPump::convertR32PressureToTemp( float_t pressure )
 
 #include <SD.h>
 #include <FS.h>
-ModbusMaster *s_master = nullptr;
 
 void  getHPData()
 {
@@ -976,7 +983,7 @@ void  getHPData()
 
    if ( s_master )
    {
-      s_master->setSlaveId( 32 );
+      s_master->setSlaveId( s_modbusAddress );
 
       if ( GET_REGISTRY_INT( LG_MODBUS_START_REG ) > 0 )
       {

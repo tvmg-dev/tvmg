@@ -153,6 +153,7 @@ private:
    uint8_t        m_numRegisters;
    uint8_t        m_series;
    ModbusMaster   *m_modbus;
+   uint16_t       m_modbusAddress;
    char           m_softwareVersion[ MAX_LGSOFTWARE_LENGTH ];
    uint32_t       m_modbusRequests;
    uint32_t       m_modbusFailures;
