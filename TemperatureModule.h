@@ -23,8 +23,8 @@ class AsyncUDP;
 
 #define  HEAT_PUMP_FLOW    1
 #define  HEAT_PUMP_RETURN  2
-#define  UFH_FLOW          5
-#define  UFH_RETURN        6
+#define  HEATING_FLOW      5
+#define  HEATING_RETURN    6
 #define  OUTSIDE           10
 #define  GND_FLOW          20
 #define  GND_RETURN        21

@@ -50,6 +50,27 @@ HardwareConfig TemperatureNode =
    25             // PWM GPIO
 };
 
+// External board is a Temperature Bord but with different
+// address for One Wire, and no PWM support
+
+HardwareConfig ExternalBoard =
+{
+   13,            // OneWireGPIO
+   -1,            // ModBusSerial
+   -1,            // ModBusBaudRate
+   -1,            // ModBusSerialFormat
+   -1,            // ModBusRxGPIO
+   -1,            // ModBusTxGPIO
+   -1,            // ModBusMsgDelay
+   -1,            // ModBus485EnGPIO
+   4,             // OLEDClkGPIO
+   5,             // OLEDDataGPIO
+   T2,            // TouchButton1
+   -1,            // TouchButton2
+   -1             // PWM GPIO
+};
+
+
 // Monitor use the integrated ESP32/OLED module and also have modbus
 // transceiver module available.
 
@@ -85,6 +106,11 @@ void  selectHardware()
    {
       PW_MSG( "Temperature Module Detected" );
       hwConfig = &TemperatureNode;
+   }
+   else if ( boardType == EXTERNAL_BOARD )
+   {
+      PW_MSG( "External Board Detected" );
+      hwConfig = &ExternalBoard;
    }
    else
    {

@@ -5,11 +5,12 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v12.0.2"
+#define VERSION_STR        "v12.0.3"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
 #define MONITOR_BOARD      3
+#define EXTERNAL_BOARD     4
 
 #define SAMPLING_PERIOD_MS 30000
 

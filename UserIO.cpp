@@ -243,8 +243,8 @@ void  UserIO::showTemps()
    TempSensor *hpFlow = findTempSensor( HEAT_PUMP_FLOW );
    TempSensor *hpReturn = findTempSensor( HEAT_PUMP_RETURN );
 
-   TempSensor *UFHFlow = findTempSensor( UFH_FLOW );
-   TempSensor *UFHReturn = findTempSensor( UFH_RETURN );
+   TempSensor *HeatingFlow = findTempSensor( HEATING_FLOW );
+   TempSensor *HeatingReturn = findTempSensor( HEATING_RETURN );
 
    TempSensor *outside = findTempSensor( OUTSIDE );
 
@@ -254,9 +254,9 @@ void  UserIO::showTemps()
       storeLine( 0,line );
    }
 
-   if ( UFHFlow && UFHReturn )
+   if ( HeatingFlow && HeatingReturn )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",UFHFlow->m_temp,UFHReturn->m_temp,UFHFlow->m_temp - UFHReturn->m_temp );
+      snprintf( line,MAX_OLED_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",HeatingFlow->m_temp,HeatingReturn->m_temp,HeatingFlow->m_temp - HeatingReturn->m_temp );
       storeLine( 1,line );
    }
 
@@ -319,7 +319,7 @@ void  UserIO::showCommsStatus()
       snprintf( line,MAX_OLED_COLUMNS,"EMON: tx %u",sends );
       storeLine( 0,line );
 
-      snprintf( line,MAX_OLED_COLUMNS,"[QF,EF] %u,%u",qFails,fails );
+      snprintf( line,MAX_OLED_COLUMNS,"[QF,SF] %u,%u",qFails,fails );
       storeLine( 1,line );
    }
 
@@ -330,7 +330,7 @@ void  UserIO::showCommsStatus()
       snprintf( line,MAX_OLED_COLUMNS,"MB: tx %u", sends );
       storeLine( 3,line );
 
-      snprintf( line,MAX_OLED_COLUMNS," rx: %u",fails );
+      snprintf( line,MAX_OLED_COLUMNS," Err: %u",fails );
       storeLine( 4,line );
 
       PW_DEBUG( "modbus info %u %u",sends,fails );
