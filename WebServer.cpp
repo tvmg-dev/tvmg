@@ -15,12 +15,13 @@
 
 #include "UserIO.h"
 
-fs::SPIFFSFS *s_spiffs;
+/* this will be executing on the second CPU core, so probably hazards with
+   SPIFFS here - should probably mutex it */
+
+fs::SPIFFSFS *s_spiffs = nullptr;
 
 const char* http_username = "admin";
 const char* http_password = "admin";
-
-const char* host = "esp32-filemanager";
 
 String allowedExtensionsForEdit = "txt, dat, def";
 
@@ -51,6 +52,74 @@ String convertFileSize(const size_t bytes)
    {
       return String(bytes / 1048576.0) + " MB";
    }
+}
+
+uint8_t  fileBuff[ 4096 ];
+
+void  replaceFile( const char *origFile,const char *newFile )
+{
+   if ( !s_spiffs )
+      return;
+
+   // First remove the original file, then we'll copy from the new file
+   // back to the original
+
+   s_spiffs->remove( origFile );
+
+   File ipFile = s_spiffs->open( newFile,"r" );
+   if ( ipFile )
+   {
+      File opFile = s_spiffs->open( origFile,"w" );
+      if ( opFile )
+      {
+         PW_MSG( "Replacing %s with %s",origFile,newFile );
+
+         int count;
+         while( ( count = ipFile.read( fileBuff,sizeof( fileBuff ) ) ) > 0 )
+         {
+            PW_DEBUG( "from %s read %d",newFile,count );
+            opFile.write( fileBuff,count );
+         }
+         opFile.close();
+      }
+
+      ipFile.close();
+   }
+}
+
+
+void resetFS()
+{
+   // Find default files and copy to their 'dat' equivalent - crude as
+   // can't map to any other extension, would need a map somewhere but
+   // good enough for now.
+
+   File root = s_spiffs->open( "/" );
+
+   while (true)
+   {
+      File entry = root.openNextFile();
+      if (!entry)
+      {
+         break;
+      }
+
+      if ( !entry.isDirectory() )
+      {
+         String fileName = String( "/" ) + entry.name();
+         if ( fileName.lastIndexOf( DEFAULT_EXTENSION ) != -1 )
+         {
+            String newName = fileName;
+            newName.replace( DEFAULT_EXTENSION,".dat" );
+
+            replaceFile( newName.c_str(),fileName.c_str() );
+         }
+
+         entry.close();
+      }
+   }
+
+   root.close();
 }
 
 String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
@@ -111,6 +180,8 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
          listenFiles += convertFileSize(file.size());
          listenFiles += "</td></tr>";
       }
+
+      file.close();
     }
     file = root.openNextFile();
   }
@@ -433,9 +504,12 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/reset", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      PW_WARN( "Need to reset here" );
+      PW_WARN( "Resetting..." );
+      resetFS();
+
       request->send(200);
-      delay( 2 * 1000 );
+      delay( 500 );
+
       ESP.restart();
    });
 

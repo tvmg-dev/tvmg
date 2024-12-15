@@ -147,7 +147,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
       <fieldset>
         <legend>File list</legend>
           <div id="spacer_20"></div>
-          <p>Full SPIFFS storage: %SPIFFS_TOTAL_BYTES%, thereof used: %SPIFFS_USED_BYTES%, still available: %SPIFFS_FREE_BYTES%</p>
+          <p>Full SPIFFS storage: %SPIFFS_TOTAL_BYTES%, used: %SPIFFS_USED_BYTES%, available: %SPIFFS_FREE_BYTES%</p>
           <div id="spacer_20"></div>
           %LISTEN_FILES%
           <div id="spacer_20"></div>
