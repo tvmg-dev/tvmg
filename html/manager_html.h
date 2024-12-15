@@ -44,7 +44,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
         width:700px;
         background-color: #f7f7f7;
       }
-      #format_notice {
+      #reset_notice {
         color: #ff0000;
       }
     </style>
@@ -85,10 +85,6 @@ const char manager_html[] PROGMEM = R"rawliteral(
         var editSelectValueExtension = editSelectValue.substring(dotIndex);
         var extIndex = allowedExtensions.indexOf(editSelectValueExtension);
 
-        if(editSelectValue == "new")
-        {
-          return true;
-        }
         if(editSelectValue == "choose")
         {
           alert("You have not chosen a file!");
@@ -109,9 +105,9 @@ const char manager_html[] PROGMEM = R"rawliteral(
           return false;
         }
       }
-      function confirmFormat()
+      function confirmReset()
       {
-        var text = "Pressing the \"OK\" button immediately deletes all data from SPIFFS and restarts ESP32!";
+        var text = "WARNING: Pressing the \"OK\" button immediately resets to defaults and restarts";
         if (confirm(text) == true)
         {
           return true;
@@ -205,13 +201,13 @@ const char manager_html[] PROGMEM = R"rawliteral(
       <div id="spacer_20"></div>
 
       <fieldset>
-        <legend>Format SPIFFS</legend>
+        <legend>Reset Board</legend>
           <div id="spacer_20"></div>
-          <form method="POST" action="/format" target="self_page">
+          <form method="POST" action="/reset" target="self_page">
             <table><tr><td id="first_td_th">
-            <p id="format_notice">Pressing the 'Format' button will immediately delete all data from SPIFFS!</p>
+            <p id="reset_notice">Pressing the 'Reset' button will reset the board !</p>
             </td><td>
-            <input type="submit" id="submit" value="Format" onclick="return confirmFormat()">
+            <input type="submit" id="submit" value="Reset" onclick="return confirmReset()">
             </td></tr></table>
           </form>
           <div id="spacer_20"></div>

@@ -22,7 +22,10 @@ const char* http_password = "admin";
 
 const char* host = "esp32-filemanager";
 
-String allowedExtensionsForEdit = "txt, dat, pub";
+String allowedExtensionsForEdit = "txt, dat, def";
+
+#define  DEFAULT_EXTENSION ".def"
+bool   showDefaultFiles = false;
 
 String filesDropdownOptions = "";
 String textareaContent = "";
@@ -93,18 +96,21 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
     }
     else
     {
-      listenFiles += "<tr><td id=\"first_td_th\">File: ";
-      listenFiles += file.name();
+      if ( showDefaultFiles || !strstr( file.name(),DEFAULT_EXTENSION ) )
+      {
+         listenFiles += "<tr><td id=\"first_td_th\">File: ";
+         listenFiles += file.name();
 
-      filesDropdownOptions += "<option value=\"";
-      filesDropdownOptions += file.name();
-      filesDropdownOptions += "\">";
-      filesDropdownOptions += file.name();
-      filesDropdownOptions += "</option>";
+         filesDropdownOptions += "<option value=\"";
+         filesDropdownOptions += file.name();
+         filesDropdownOptions += "\">";
+         filesDropdownOptions += file.name();
+         filesDropdownOptions += "</option>";
 
-      listenFiles += " </td><td>\tSize: ";
-      listenFiles += convertFileSize(file.size());
-      listenFiles += "</td></tr>";
+         listenFiles += " </td><td>\tSize: ";
+         listenFiles += convertFileSize(file.size());
+         listenFiles += "</td></tr>";
+      }
     }
     file = root.openNextFile();
   }
@@ -148,7 +154,6 @@ String processor(const String& var)
   {
     String editDropdown = "<select name=\"edit_path\" id=\"edit_path\">";
     editDropdown += "<option value=\"choose\">Select file to edit</option>";
-    editDropdown += "<option value=\"new\">New text file</option>";
     editDropdown += filesDropdownOptions;
     editDropdown += "</select>";
     return editDropdown;
@@ -170,15 +175,7 @@ String processor(const String& var)
 
   if(var == "SAVE_PATH_INPUT")
   {
-    if(savePath == "/new.txt")
-    {
-      savePathInput = "<input type=\"text\" id=\"save_path\" name=\"save_path\" value=\"" + savePath + "\" >";
-    }
-    else
-    {
-      savePathInput = "";
-    }
-    return savePathInput;
+    return "";
   }
   return String();
 }
@@ -248,6 +245,11 @@ WebServer::WebServer()
    s_spiffs = config->getSPIFFS();
 
    assert( s_spiffs != 0 );
+
+   if ( GET_REGISTRY_INT( SHOW_DEFAULT_FILES ) > 0 )
+   {
+      showDefaultFiles = true;
+   }
 }
 
 WebServer::~WebServer()
@@ -376,16 +378,8 @@ void WebServer::setupAsyncServer()
       String inputMessage = "/" + request->getParam(param_edit_path)->value();
 
       PW_DEBUG( "Editing %s",inputMessage.c_str() );
-      if(inputMessage == "/new")
-      {
-         textareaContent = "";
-         savePath = "/new.txt";
-      }
-      else
-      {
-         savePath = inputMessage;
-         textareaContent = readFile(s_spiffs, inputMessage.c_str());
-      }
+      savePath = inputMessage;
+      textareaContent = readFile(s_spiffs, inputMessage.c_str());
       request->send_P(200, "text/html", edit_html, processor);
    });
 
@@ -437,9 +431,9 @@ void WebServer::setupAsyncServer()
       request->redirect("/manager");
    });
 
-   m_webServer->on("/format", HTTP_POST, [](AsyncWebServerRequest *request)
+   m_webServer->on("/reset", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      s_spiffs->format();
+      PW_WARN( "Need to reset here" );
       request->send(200);
       delay( 2 * 1000 );
       ESP.restart();
