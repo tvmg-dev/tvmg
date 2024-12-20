@@ -81,12 +81,12 @@ const char edit_html[] PROGMEM = R"rawliteral(
     <center>
       <h2>Edit file</h2>
       <div id="spacer_20"></div>
-      
+
       <fieldset>
         <legend>Edit text file</legend>
         <div id="spacer_20"></div>
         <table><tr><td colspan="2">
-        <form name="edit_file" action="/save" onsubmit="return validateForm()">
+        <form name="edit_file" action="/save" method="post" onsubmit="return validateForm()">
           <textarea name="edit_textarea">%TEXTAREA_CONTENT%</textarea>
           <div id="spacer_20"></div>
         </td></tr><tr><td>
@@ -94,11 +94,11 @@ const char edit_html[] PROGMEM = R"rawliteral(
           <button type "submit" id="submit" >Save</button>
         </form>
         </td><td>
-        <button id="submit" onclick="window.location.href='/manager';">Cancel</button>
+        <button id="cancel" onclick="window.location.href='/manager';">Cancel</button>
         </td></tr></table>
         <div id="spacer_50"></div>
       </fieldset>
-      
+
       <iframe style="display:none" name="self_page"></iframe>
     </center>
   </body>

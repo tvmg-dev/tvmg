@@ -266,9 +266,13 @@ String readFile(fs::FS *fs, const char * path)
       return fileContent;
    }
 
-   while(file.available())
+   int count;
+   while( ( count = file.read( fileBuff,sizeof( fileBuff ) ) ) > 0 )
    {
-      fileContent += static_cast<char>( file.read() );
+      for ( int i = 0; i < count; i++ )
+      {
+         fileContent += static_cast<char>( fileBuff[ i ] );
+      }
    }
    file.close();
 
@@ -454,34 +458,31 @@ void WebServer::setupAsyncServer()
       request->send_P(200, "text/html", edit_html, processor);
    });
 
-   m_webServer->on("/save", HTTP_GET, [](AsyncWebServerRequest *request)
+   m_webServer->on("/save", HTTP_POST, [](AsyncWebServerRequest *request)
    {
       if(!request->authenticate(http_username, http_password))
       {
          return request->requestAuthentication();
       }
-      String inputMessage = "";
-      if (request->hasParam(param_edit_textarea))
-      {
-         inputMessage = request->getParam(param_edit_textarea)->value();
-      }
-      if (request->hasParam(param_save_path))
-      {
-         savePath = request->getParam(param_save_path)->value();
-      }
-      PW_DEBUG( "Saving %d bytes to %s : contents :",inputMessage.length(),savePath.c_str() );
-      writeFile(s_spiffs, savePath.c_str(), inputMessage.c_str());
 
-      // if more than 2k then limit it due to size of debug buffer
-      if ( inputMessage.length() > 2047 )
+      if ( request->params() == 1 )
       {
-         inputMessage.remove( 2046 );
+         AsyncWebParameter* param = request->getParam( 0 );
+         if ( param && ( param->name() == String( param_edit_textarea ) ) )
+         {
+            PW_DEBUG( "Saving %d bytes to %s : contents :",param->value().length(),savePath.c_str() );
+            writeFile( s_spiffs, savePath.c_str(), param->value().c_str() );
+
+            START_DEBUG;
+               // Limit to 2K for debug
+               String dbg = param->value().substring( 0,2047 );
+               PW_DEBUG( "%s",dbg.c_str() );
+            END_DEBUG
+         }
       }
 
-      PW_DEBUG( "%s",inputMessage.c_str() );
       request->redirect("/manager");
    });
-
 
    m_webServer->on("/delete", HTTP_GET, [](AsyncWebServerRequest *request)
    {

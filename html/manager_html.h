@@ -121,12 +121,12 @@ const char manager_html[] PROGMEM = R"rawliteral(
   </head>
   <body>
     <center>
-      <h2>ESP32 Firmware Update [current : %VERSION%]</h2>
+      <h2>ThermaV Monitor Firmware Update [current : %VERSION%]</h2>
 
       <div id="spacer_20"></div>
 
       <fieldset>
-        <legend>ESP32 Firmware Update</legend>
+        <legend>Firmware Update</legend>
           <div id="spacer_20"></div>
           <form method="POST" action="/update" enctype="multipart/form-data">
             <table><tr><td id="first_td_th">
