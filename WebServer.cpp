@@ -35,6 +35,7 @@ String savePathInput = "";
 
 const char* param_delete_path = "delete_path";
 const char* param_edit_path = "edit_path";
+const char* param_download_path = "download_path";
 const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
 
@@ -189,73 +190,6 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
   return listenFiles;
 }
 
-
-String processor(const String& var)
-{
-  if(var == "VERSION")
-  {
-     return String( VERSION_STR );
-  }
-
-  if(var == "ALLOWED_EXTENSIONS_EDIT")
-  {
-    return allowedExtensionsForEdit;
-  }
-  if(var == "SPIFFS_FREE_BYTES")
-  {
-    return convertFileSize((s_spiffs->totalBytes() - s_spiffs->usedBytes()));
-  }
-
-  if(var == "SPIFFS_USED_BYTES")
-  {
-    return convertFileSize(s_spiffs->usedBytes());
-  }
-
-  if(var == "SPIFFS_TOTAL_BYTES")
-  {
-    return convertFileSize(s_spiffs->totalBytes());
-  }
-
-  if(var == "LISTEN_FILES")
-  {
-    return listDir(s_spiffs, "/", 0);
-  }
-
-  if(var == "EDIT_FILES")
-  {
-    String editDropdown = "<select name=\"edit_path\" id=\"edit_path\">";
-    editDropdown += "<option value=\"choose\">Select file to edit</option>";
-    editDropdown += filesDropdownOptions;
-    editDropdown += "</select>";
-    return editDropdown;
-  }
-
-  if(var == "DELETE_FILES")
-  {
-    String deleteDropdown = "<select name=\"delete_path\" id=\"delete_path\">";
-    deleteDropdown += "<option value=\"choose\">Select file to delete</option>";
-    deleteDropdown += filesDropdownOptions;
-    deleteDropdown += "</select>";
-    return deleteDropdown;
-  }
-
-  if(var == "TEXTAREA_CONTENT")
-  {
-    return textareaContent;
-  }
-
-  if(var == "SAVE_PATH_INPUT")
-  {
-    return "";
-  }
-  return String();
-}
-
-void notFound(AsyncWebServerRequest *request)
-{
-  request->send(404, "text/plain", "Page not found");
-}
-
 String readFile(fs::FS *fs, const char * path)
 {
    String fileContent = "";
@@ -307,6 +241,81 @@ void uploadFile(AsyncWebServerRequest *request, String filename, size_t index, u
     request->_tempFile.close();
     request->redirect("/manager");
   }
+}
+
+String processor(const String& var)
+{
+  if(var == "VERSION")
+  {
+     return String( VERSION_STR );
+  }
+
+  if(var == "ALLOWED_EXTENSIONS_EDIT")
+  {
+    return allowedExtensionsForEdit;
+  }
+  if(var == "SPIFFS_FREE_BYTES")
+  {
+    return convertFileSize((s_spiffs->totalBytes() - s_spiffs->usedBytes()));
+  }
+
+  if(var == "SPIFFS_USED_BYTES")
+  {
+    return convertFileSize(s_spiffs->usedBytes());
+  }
+
+  if(var == "SPIFFS_TOTAL_BYTES")
+  {
+    return convertFileSize(s_spiffs->totalBytes());
+  }
+
+  if(var == "LISTEN_FILES")
+  {
+    return listDir(s_spiffs, "/", 0);
+  }
+
+  if(var == "EDIT_FILES")
+  {
+    String editDropdown = "<select name=\"edit_path\" id=\"edit_path\">";
+    editDropdown += "<option value=\"choose\">Select file to edit</option>";
+    editDropdown += filesDropdownOptions;
+    editDropdown += "</select>";
+    return editDropdown;
+  }
+
+  if(var == "DELETE_FILES")
+  {
+    String deleteDropdown = "<select name=\"delete_path\" id=\"delete_path\">";
+    deleteDropdown += "<option value=\"choose\">Select file to delete</option>";
+    deleteDropdown += filesDropdownOptions;
+    deleteDropdown += "</select>";
+    return deleteDropdown;
+  }
+
+  if(var == "DOWNLOAD_FILES")
+  {
+    String downloadDropdown = "<select name=\"download_path\" id=\"download_path\">";
+    downloadDropdown += "<option value=\"choose\">Select file to download</option>";
+    downloadDropdown += filesDropdownOptions;
+    downloadDropdown += "</select>";
+    return downloadDropdown;
+  }
+
+  if(var == "TEXTAREA_CONTENT")
+  {
+    return textareaContent;
+  }
+
+  if(var == "SAVE_PATH_INPUT")
+  {
+    return "";
+  }
+  return String();
+}
+
+void notFound(AsyncWebServerRequest *request)
+{
+  request->send(404, "text/plain", "Page not found");
 }
 
 WebServer::WebServer()
@@ -430,7 +439,6 @@ void WebServer::setupAsyncServer()
             }
 
             PW_MSG( "Finished update");
-            Serial.println(convertFileSize(index + len));
          }
       else
       {
@@ -450,11 +458,11 @@ void WebServer::setupAsyncServer()
       {
          return request->requestAuthentication();
       }
-      String inputMessage = "/" + request->getParam(param_edit_path)->value();
+      String fileName = "/" + request->getParam(param_edit_path)->value();
 
-      PW_DEBUG( "Editing %s",inputMessage.c_str() );
-      savePath = inputMessage;
-      textareaContent = readFile(s_spiffs, inputMessage.c_str());
+      PW_DEBUG( "Editing %s",fileName.c_str() );
+      savePath = fileName;
+      textareaContent = readFile(s_spiffs, fileName.c_str());
       request->send_P(200, "text/html", edit_html, processor);
    });
 
@@ -471,6 +479,19 @@ void WebServer::setupAsyncServer()
          if ( param && ( param->name() == String( param_edit_textarea ) ) )
          {
             PW_DEBUG( "Saving %d bytes to %s : contents :",param->value().length(),savePath.c_str() );
+
+#if 0
+            // code to replace CR+LF with just LF
+            char newLineCR[] = { '\n','\r','\0' };
+            char newLine[] = { '\r','\0' };
+
+            String nlCR( newLineCR );
+            String nl( newLine );
+
+            String str = param->value();
+            str.replace( newLineCR,newLine );
+#endif
+
             writeFile( s_spiffs, savePath.c_str(), param->value().c_str() );
 
             START_DEBUG;
@@ -486,25 +507,44 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/delete", HTTP_GET, [](AsyncWebServerRequest *request)
    {
-      PW_DEBUG( "Deleting" );
       if(!request->authenticate(http_username, http_password))
       {
          return request->requestAuthentication();
       }
-      String inputMessage = "/" + request->getParam(param_delete_path)->value();
-      if(inputMessage !="choose")
+
+      String fileName = "/" + request->getParam(param_delete_path)->value();
+      PW_DEBUG( "Deleting %s",fileName.c_str() );
+
+      if ( ! s_spiffs->remove(fileName.c_str()) )
       {
-         if ( ! s_spiffs->remove(inputMessage.c_str()) )
-         {
-            PW_WARN( "Failed to delete %s",inputMessage.c_str() );
-         }
+         PW_WARN( "Failed to delete %s",fileName.c_str() );
       }
+
+      request->redirect("/manager");
+   });
+
+   m_webServer->on("/download", HTTP_GET, [](AsyncWebServerRequest *request)
+   {
+      if(!request->authenticate(http_username, http_password))
+      {
+         return request->requestAuthentication();
+      }
+
+      String fileName = "/" + request->getParam(param_download_path)->value();
+      PW_DEBUG( "Downloading %s",fileName.c_str() );
+
+      request->send( *s_spiffs,fileName,String(),true );
 
       request->redirect("/manager");
    });
 
    m_webServer->on("/reset", HTTP_POST, [](AsyncWebServerRequest *request)
    {
+      if(!request->authenticate(http_username, http_password))
+      {
+         return request->requestAuthentication();
+      }
+
       PW_WARN( "Resetting..." );
       resetFS();
 

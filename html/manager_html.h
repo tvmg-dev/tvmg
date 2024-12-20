@@ -18,6 +18,9 @@ const char manager_html[] PROGMEM = R"rawliteral(
       #delete_path {
         width:250px;
       }
+      #download_path {
+        width:250px;
+      }
       #spacer_50 {
         height: 50px;
       }
@@ -77,7 +80,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
           return false;
         }
       }
-      function validateFormEdit()
+      function validateFileEdit()
       {
         var allowedExtensions = "%ALLOWED_EXTENSIONS_EDIT%";
         var editSelectValue = document.getElementById('edit_path').value;
@@ -96,10 +99,19 @@ const char manager_html[] PROGMEM = R"rawliteral(
           return false;
         }
       }
-      function validateFormDelete()
+      function validateFileDelete()
       {
-        var deleteSelectValue = document.getElementById('delete_path').value;
-        if(deleteSelectValue == "choose" )
+        var fileName = document.getElementById('delete_path').value;
+        if(fileName == "choose" )
+        {
+          alert("You have not chosen a file!");
+          return false;
+        }
+      }
+      function validateFileDownload()
+      {
+        var fileName = document.getElementById('download_path').value;
+        if(fileName == "choose" )
         {
           alert("You have not chosen a file!");
           return false;
@@ -177,7 +189,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
             <table><tr><td id="first_td_th">
             %EDIT_FILES%
             </td><td>
-            <input type="submit" id="submit" value="Edit" onclick="return validateFormEdit()">
+            <input type="submit" id="submit" value="Edit" onclick="return validateFileEdit()">
             </td></tr></table>
           </form>
           <div id="spacer_20"></div>
@@ -192,7 +204,22 @@ const char manager_html[] PROGMEM = R"rawliteral(
             <table><tr><td id="first_td_th">
             %DELETE_FILES%
             </td><td>
-            <input type="submit" id="submit" value="Delete" onclick="return validateFormDelete()">
+            <input type="submit" id="submit" value="Delete" onclick="return validateFileDelete()">
+            </td></tr></table>
+          </form>
+          <div id="spacer_20"></div>
+      </fieldset>
+
+      <div id="spacer_20"></div>
+
+      <fieldset>
+        <legend>Download file</legend>
+          <div id="spacer_20"></div>
+          <form method="GET" action="/download">
+            <table><tr><td id="first_td_th">
+            %DOWNLOAD_FILES%
+            </td><td>
+            <input type="submit" id="download" value="Download" onclick="return validateFileDownload()">
             </td></tr></table>
           </form>
           <div id="spacer_20"></div>
