@@ -1,3 +1,12 @@
+//
+// Initially from https://www.hackster.io/myhomethings/esp32-web-updater-and-spiffs-file-manager-cf8dc5
+// 20th Dec. 2023
+// No license attribution provided in the source code
+//
+// Subsequently reworked to fix edit (now using POST, not GET with long
+// url's) and added download capablity.
+//
+
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <FS.h>
@@ -15,8 +24,8 @@
 
 #include "UserIO.h"
 
-/* this will be executing on the second CPU core, so probably hazards with
-   SPIFFS here - should probably mutex it */
+// this will be executing on the second CPU core, so probably hazards with
+// SPIFFS here - should probably mutex it
 
 fs::SPIFFSFS *s_spiffs = nullptr;
 
