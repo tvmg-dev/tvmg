@@ -18,6 +18,7 @@ private:
 
    AsyncWebServer *m_webServer;
    UserIO         *m_userIO;
+   File           m_downloadFile;
 };
 
 #endif

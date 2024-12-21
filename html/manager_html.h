@@ -102,7 +102,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
       function validateFileDelete()
       {
         var fileName = document.getElementById('delete_path').value;
-        if(fileName == "choose" )
+        if(fileName == "choose")
         {
           alert("You have not chosen a file!");
           return false;
@@ -111,7 +111,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
       function validateFileDownload()
       {
         var fileName = document.getElementById('download_path').value;
-        if(fileName == "choose" )
+        if(fileName == "choose")
         {
           alert("You have not chosen a file!");
           return false;

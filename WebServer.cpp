@@ -88,7 +88,6 @@ void  replaceFile( const char *origFile,const char *newFile )
    }
 }
 
-
 void resetFS()
 {
    // Find default files and copy to their 'dat' equivalent - crude as
@@ -320,7 +319,8 @@ void notFound(AsyncWebServerRequest *request)
 
 WebServer::WebServer()
         : m_webServer( nullptr ),
-          m_userIO( nullptr )
+          m_userIO( nullptr ),
+          m_downloadFile()
 
 {
    PW_DEBUG( "WebServer()" );
@@ -523,7 +523,7 @@ void WebServer::setupAsyncServer()
       request->redirect("/manager");
    });
 
-   m_webServer->on("/download", HTTP_GET, [](AsyncWebServerRequest *request)
+   m_webServer->on("/download", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
       if(!request->authenticate(http_username, http_password))
       {
@@ -533,9 +533,37 @@ void WebServer::setupAsyncServer()
       String fileName = "/" + request->getParam(param_download_path)->value();
       PW_DEBUG( "Downloading %s",fileName.c_str() );
 
-      request->send( *s_spiffs,fileName,String(),true );
+      m_downloadFile = s_spiffs->open( fileName,"r" );
 
-      request->redirect("/manager");
+      AsyncWebServerResponse *response = request->beginChunkedResponse("text/plain", [ & ](uint8_t *buffer, size_t maxLen, size_t index) mutable -> size_t {
+
+         // Needed to limit to 4 KiB otherwise larger files (> ~4 KiB) failed to
+         // download, a fault it the webserver library perhaps.  The first maxlen passed
+         // in is typically ~ 5600 bytes
+         if ( maxLen > 4096 )
+         {
+            maxLen = 4096;
+         }
+
+         int len = m_downloadFile.read( buffer,maxLen );
+         if ( !len )
+         {
+            m_downloadFile.close();
+         }
+         return len;
+      });
+
+      // Need to add the content-disposition header with filename attachment, and header
+      // for chunked transfer.
+
+      String headerValue( "attachment; filename=\"" );
+      headerValue += request->getParam(param_download_path)->value();
+      headerValue += "\"";
+
+      response->addHeader("Content-Disposition",headerValue.c_str() );
+      response->addHeader("Transfer-Encoding","chunked");
+
+      request->send(response);
    });
 
    m_webServer->on("/reset", HTTP_POST, [](AsyncWebServerRequest *request)
