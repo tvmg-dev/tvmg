@@ -69,6 +69,14 @@ const char manager_html[] PROGMEM = R"rawliteral(
       alert("You have not chosen a file!");
       return false;
     }
+    var text = "WARNING: Pressing the \"OK\" button will delete ";
+    var pete = text.concat( fileName );
+    if (confirm(pete) == true){
+      return true;
+    }
+    else{
+      return false;
+    }
    }
    function validateFileDownload(){
     var fileName = document.getElementById('download_path').value;
