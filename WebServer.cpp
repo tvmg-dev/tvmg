@@ -129,6 +129,7 @@ void resetFS()
    }
 
    root.close();
+   Config::instance()->setFactoryReset();
 }
 
 String listDir(fs::FS *fs, const char * dirname, uint8_t levels)

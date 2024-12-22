@@ -262,11 +262,37 @@ bool  Config::readRegistryFromFile( void )
    return( numLines > 0 );
 }
 
-bool  Config::getInt( char *key,int32_t *intValue )
-{
+#define  FACTORY_RESET_MARKER "/factory.res"
 
+bool  Config::isFactoryReset()
+{
+   bool  isReset = false;
+
+   if ( m_spiffs && m_spiffs->exists( FACTORY_RESET_MARKER ) )
+   {
+      isReset = true;
+   }
+
+   return isReset;
 }
 
-bool  Config::getString( char *key,char *strValue )
+void  Config::clearFactoryReset()
 {
+   if ( m_spiffs )
+   {
+      m_spiffs->remove( FACTORY_RESET_MARKER );
+   }
+}
+
+void  Config::setFactoryReset()
+{
+   if ( m_spiffs )
+   {
+      File resetFile = m_spiffs->open( FACTORY_RESET_MARKER,"w" );
+      if ( resetFile )
+      {
+         resetFile.println( "reset" );
+         resetFile.close();
+      }
+   }
 }

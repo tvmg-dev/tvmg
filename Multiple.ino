@@ -324,6 +324,14 @@ void setup( void )
       newConfiguration();
    }
 
+   // If this is a result of factory reset, then new configuration too
+
+   if ( config->isFactoryReset() )
+   {
+      config->clearFactoryReset();
+      newConfiguration();
+   }
+
    selectHardware();
 
    // Must have a valid configuration at this stage

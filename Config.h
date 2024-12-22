@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v12.0.5"
+#define VERSION_STR        "v12.0.6b"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
@@ -43,11 +43,12 @@ public:
    ~Config();
 
    bool  isRegistryAvailable();
-   bool  getInt( char *key,int32_t *intValue );
-   bool  getString( char *key,char *strValue );
    fs::SPIFFSFS   *getSPIFFS();
+   bool    isFactoryReset();
+   void    clearFactoryReset();
+   void    setFactoryReset();
 
-   static Config     *instance();
+   static Config  *instance();
    static uint8_t    numRegistryEntries;
    static KeyValue   m_entries[ MAX_REGISTRY_ENTRIES ];
 

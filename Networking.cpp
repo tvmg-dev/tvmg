@@ -26,7 +26,9 @@ static WiFiClientSecure *s_emoncmsClient = nullptr;
 static HTTPClient       *s_webClient = nullptr;
 static String           s_emoncmsApiKey;
 
-#define  KEEP_ALIVE_MS     6000
+#define  KEEP_ALIVE_MS                 6000
+#define  DEFAULT_WIFI_CONNECT_TIMEOUT  60000
+#define  DEFAULT_NTP_UPDATE_TIMEOUT    60000
 
 static uint32_t emonSendRequests = 0,emonQFailures = 0, emonSendFailures = 0;
 
@@ -401,7 +403,7 @@ Networking::~Networking()
 
 bool Networking::startAccessPoint()
 {
-   String SSID( "HeatPump-Monitor" );
+   String SSID( "ThermaV-Monitor" );
 
    WiFi.disconnect();
 
@@ -420,7 +422,7 @@ bool Networking::startAccessPoint()
    m_webServer = new WebServer();
    m_webServer->initialise();
 
-   m_status.mdnsName = String( "heatpump-monitor" );
+   m_status.mdnsName = String( "tvm-init" );
 
    if ( !startMDNS() )
    {
@@ -468,8 +470,14 @@ void Networking::initialise()
 
    // Connect to the WiFi network
 
+   int wifiTimeout = GET_REGISTRY_INT( WIFI_CONNECT_TIMEOUT );
+   if ( wifiTimeout == -1 )
+   {
+      wifiTimeout = DEFAULT_WIFI_CONNECT_TIMEOUT;
+   }
+
    WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
-   while (WiFi.status() != WL_CONNECTED && (millis() - start < GET_REGISTRY_INT( WIFI_CONNECT_TIMEOUT )) )
+   while (WiFi.status() != WL_CONNECTED && (millis() - start < wifiTimeout) )
    {
       delay(200);
    }
@@ -515,7 +523,7 @@ void Networking::initialise()
 
    // start MDNS
 
-   m_status.mdnsName = String( GET_REGISTRY_STRING( ACCESS_POINT_NAME ) );
+   m_status.mdnsName = String( GET_REGISTRY_STRING( MDNS_NAME ) );
    startMDNS();
 
    // Create new UDP
@@ -551,7 +559,14 @@ bool  Networking::acquireNTP()
 
    configTzTime( "GMT0BST,M3.5.0/1,M10.5.0",ntpServer );
    start = millis();
-   while ( !getLocalTime( &timeInfo ) && (millis() - start < GET_REGISTRY_INT( NTP_UPDATE_TIMEOUT) ) )
+
+   int ntpTimeout = GET_REGISTRY_INT( NTP_UPDATE_TIMEOUT );
+   if ( ntpTimeout == -1 )
+   {
+      ntpTimeout = DEFAULT_NTP_UPDATE_TIMEOUT;
+   }
+
+   while ( !getLocalTime( &timeInfo ) && (millis() - start < ntpTimeout ) )
    {
       delay( 2000 );
    }

@@ -445,7 +445,7 @@ void  TemperatureModule::localBroadcastData()
 
    START_TIMING( "UDP broadcast temperatures" );
 
-   cJSON_AddStringToObject( root,"name",GET_REGISTRY_STRING( ACCESS_POINT_NAME ) );
+   cJSON_AddStringToObject( root,"name",GET_REGISTRY_STRING( MDNS_NAME ) );
    array = cJSON_AddArrayToObject( root,"sensors" );
    if ( array )
    {

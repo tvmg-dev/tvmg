@@ -66,7 +66,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       logToUDP = isFalse;
       logMemStats = isFalse;
 
-      if ( GET_REGISTRY_INT( DISABLED_SERIAL_LOGGING ) != 1 )
+      if ( GET_REGISTRY_INT( ENABLE_SERIAL_LOGGING ) == 1 )
       {
          serialLoggingEnabled = isTrue;
       }
@@ -358,5 +358,5 @@ bool  isSensorRequired( const char *sensorName )
    }
 
    return isReq;
-
 }
+
