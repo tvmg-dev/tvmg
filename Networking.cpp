@@ -345,7 +345,8 @@ Networking::Networking()
           : m_emailer( nullptr ),
             m_webServer( nullptr ),
             m_status(),
-            m_emonCert()
+            m_emonCert(),
+            m_willSendEmails( false )
 {
    PW_DEBUG( "Networking::Networking()" );
    PW_MSG( "Networking Startup" );
@@ -357,6 +358,11 @@ Networking::Networking()
    m_status.isConnected = false;
    m_status.timeToAcquireNTP = -1;
    m_status.timeToConnect = 0;
+
+   if ( GET_REGISTRY_INT( SEND_EMAILS ) == 1 )
+   {
+      m_willSendEmails = true;
+   }
 
    // read the emocms API key from config, and the public certificate
    // for the emon webserver from /emoncms.pub
@@ -602,9 +608,9 @@ bool Networking::didAcquireNTP()
 
 bool Networking::sendEmail( const char *recipient,const char *subject,const String &msg )
 {
-   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
+   if ( !m_willSendEmails )
    {
-      PW_DEBUG( "Would send email %s",subject );
+      PW_DEBUG( "Not sending email %s",subject );
       return true;
    }
 
@@ -617,9 +623,9 @@ bool Networking::sendEmail( const char *recipient,const char *subject,const Stri
 
 bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
 {
-   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
+   if ( !m_willSendEmails )
    {
-      PW_DEBUG( "Would send email %s",subject );
+      PW_DEBUG( "Not sending email %s",subject );
       return true;
    }
 

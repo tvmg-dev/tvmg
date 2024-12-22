@@ -134,7 +134,7 @@ void resetFS()
 String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
 {
   filesDropdownOptions = "";
-  String listenFiles = "<table><tr><th id=\"first_td_th\">List the library: </th><th>";
+  String listenFiles = "<table><tr><th id=\"first_td_th\">Folder: </th><th>";
   listenFiles += dirname;
   listenFiles += "</th></tr>";
 
@@ -142,12 +142,12 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
   String fail = "";
   if(!root)
   {
-    fail = " the library cannot be opened";
+    fail = " the folder cannot be opened";
     return fail;
   }
   if(!root.isDirectory())
   {
-    fail = " this is not a library";
+    fail = " this is not a folder";
     return fail;
   }
 
@@ -176,7 +176,7 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
     {
       if ( showDefaultFiles || !strstr( file.name(),DEFAULT_EXTENSION ) )
       {
-         listenFiles += "<tr><td id=\"first_td_th\">File: ";
+         listenFiles += "<tr><td id=\"first_td_th\">";
          listenFiles += file.name();
 
          filesDropdownOptions += "<option value=\"";

@@ -52,6 +52,7 @@ private:
    static  AsyncUDP  *s_udp;
    Status            m_status;
    String            m_emonCert;
+   bool              m_willSendEmails;
 };
 
 #endif

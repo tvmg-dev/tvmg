@@ -170,6 +170,8 @@ void  TemperatureModule::initialise()
       m_oneWireController = new OneWire( hwConfig->OneWireGPIO );
       m_dallasController = new DallasTemperature( m_oneWireController );
 
+      DeviceAddress  locatedAddresses[ MAX_TEMP_SENSORS ];
+
       // start the DallasTemperature object
 
       m_dallasController->begin();
@@ -195,7 +197,15 @@ void  TemperatureModule::initialise()
       if ( m_isOk && m_dallasController->isParasitePowerMode() )
       {
          m_isOk = false;
-         PW_ERROR( "DS m_dallasController->operating with no power ?" );
+         PW_ERROR( "Dallas Controller operating with no power ?" );
+      }
+
+      char addrString[ 1 + sizeof( DeviceAddress ) * 2 ];
+      for ( int i = 0; i < devices; i++ )
+      {
+         m_dallasController->getAddress( locatedAddresses[ i ],i );
+         getAddressString( locatedAddresses[ i ],addrString );
+         PW_MSG( "DS18B20 : %s",addrString );
       }
 
       // Now check for the sensors being located, this is to find the index
@@ -203,17 +213,7 @@ void  TemperatureModule::initialise()
 
       if( m_isOk )
       {
-         DeviceAddress  locatedAddresses[ devices ];
-         char           addrString[ 1 + sizeof( DeviceAddress ) * 3 ];
-
          /* Find the device address at bus index values */
-
-         for ( int i = 0; i < devices; i++ )
-         {
-            m_dallasController->getAddress( locatedAddresses[ i ],i );
-            getAddressString( locatedAddresses[ i ],addrString );
-            PW_DEBUG( "On bus : %s",addrString );
-         }
 
          for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
          {
@@ -404,9 +404,9 @@ void  TemperatureModule::getAddressString( DeviceAddress addr,char *addrString )
 {
    for (int i = 0; i < sizeof( DeviceAddress ); i++ )
    {
-      sprintf( &addrString[ i * 3 ],"%02X-",addr[ i ] );
+      sprintf( &addrString[ i * 2 ],"%02X",addr[ i ] );
    }
-   addrString[ -1 + sizeof( DeviceAddress ) * 3 ] = 0;
+   addrString[ sizeof( DeviceAddress ) * 2 ] = 0;
 }
 
 void  TemperatureModule::localBroadcastData()

@@ -11,6 +11,8 @@
 
 #define WRITE_TEST_FILE "/test.dat"
 
+#define INVALID_UPDATE_HOUR  25
+
 // Delete files that are 40 days old as determined by their filenames
 
 #define  DELETE_OLDER_THAN_SECONDS     (40 * 24 * 60 * 60)
@@ -19,11 +21,19 @@ Storage::Storage()
        : m_currentFileName(),
          m_networking( nullptr ),
          m_lastSentHour( 23 ),
-         m_dailyUpdate( false ),
+         m_dailyUpdated( false ),
+         m_dailyUpdateHour( INVALID_UPDATE_HOUR ),
          m_storageOk( false )
 {
    PW_DEBUG( "Storage::Storage()" );
    PW_MSG( "Storage Module Startup" );
+
+   int updateHour = GET_REGISTRY_INT( DAILY_EMAIL_HOUR );
+   if ( updateHour >=0 && updateHour <= 23 )
+   {
+      m_dailyUpdateHour = updateHour;
+      PW_DEBUG( "Setting update hour to %u",m_dailyUpdateHour );
+   }
 
    m_currentFileName[ 0 ] = 0;
 }
@@ -437,8 +447,6 @@ void  Storage::updateEmon( const Measurement::Sample &sample )
    }
 }
 
-#define  DAILY_EMAIL_HOUR  17
-
 void  Storage::storeSample( const Measurement::Sample &sample )
 {
    char     line[ 128 ];
@@ -448,20 +456,29 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
    updateEmon( sample );
 
+   // save sample to storage if we have it
+
+   saveSampleToBackingStore( sample );
+
    // perform daily update mails if needed
+
+   if ( m_dailyUpdateHour == INVALID_UPDATE_HOUR )
+   {
+      return;
+   }
 
    struct tm timeInfo;
    localtime_r( &sample.m_sampleTime,&timeInfo );
 
    // if the dailyUpdate has been sent and the time is no longer in the
-   // 5pm hour, then reset the update flag for next time
+   // hour, then reset the update flag for next time
 
-   if ( m_dailyUpdate && timeInfo.tm_hour != DAILY_EMAIL_HOUR )
+   if ( m_dailyUpdated && timeInfo.tm_hour != m_dailyUpdateHour )
    {
       PW_DEBUG( "Resetting daily update flag" );
-      m_dailyUpdate = false;
+      m_dailyUpdated = false;
    }
-   else if ( timeInfo.tm_hour == DAILY_EMAIL_HOUR && !m_dailyUpdate && m_networking )
+   else if ( timeInfo.tm_hour == m_dailyUpdateHour && !m_dailyUpdated && m_networking )
    {
       PW_MSG( "Sending daily update" );
 
@@ -473,14 +490,6 @@ void  Storage::storeSample( const Measurement::Sample &sample )
          {
             Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
          }
-      }
-
-      // Return if we're not sending a daily summary
-
-      if ( GET_REGISTRY_INT( NO_DAILY_UPDATE ) == 1 )
-      {
-         PW_WARN( "No update required" );
-         return;
       }
 
       int i = 0;
@@ -509,7 +518,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
          }
       }
 
-      m_dailyUpdate = true;
+      m_dailyUpdated = true;
       String updateStr;
 
       char subject[ 128 ], line[ 128 ];
@@ -523,12 +532,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       updateStr += "\n\n";
 
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
-
    }
-
-   // save sample to storage if we have it
-
-   saveSampleToBackingStore( sample );
 }
 
 char  *Storage::getCurrentFileName()
