@@ -2,8 +2,6 @@
 #include <ESPmDNS.h>
 #include <EMailSender.h>
 
-#include <mutex>
-
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
@@ -102,7 +100,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    // possible fix for lack of emails, take mutex before doing anything
    // still have UDP traffic ??
 
-   std::lock_guard<std::recursive_mutex> lock(networkingMutex);
+   SCOPE_LOCK_NW_MUTEX;
 
    // If we've not processed a send request for KEEP_ALIVE_MS then force
    // the connection to drop. Maybe unecessary but don't want to try and
@@ -113,9 +111,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    if ( millis() - lastSentMillis > KEEP_ALIVE_MS && s_webClient )
    {
       PW_DEBUG( "EMONCMS: Closing connection (%u ms elapsed)",millis() - lastSentMillis );
-      s_webClient->end();
-      delete s_webClient;
-      s_webClient = nullptr;
+      Networking::releaseWebClient();
 
       // take this opportunity to show some stats
       PW_MSG( "EMONCMS: Sent %u, failed [Q,E] [%u,%u]",emonSendRequests,emonQFailures,emonSendFailures );
@@ -134,8 +130,7 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
       if ( ! s_webClient->begin( *s_emoncmsClient,"https://emoncms.org" ) )
       {
          PW_ERROR( "EMONCMS: Can't start HTTPClient" );
-         delete s_webClient;
-         s_webClient = nullptr;
+         Networking::releaseWebClient();
          emonSendFailures++;
          return;
       }
@@ -242,13 +237,10 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
       EMailSender::Response resp;
 
       {
-         std::lock_guard<std::recursive_mutex> lock(networkingMutex);
-         if ( s_webClient )
-         {
-            s_webClient->end();
-            delete s_webClient;
-            s_webClient = nullptr;
-         }
+         // remove the web client before we send, cautionary to avoid
+         // networking conflicts
+
+         SCOPE_RELEASE_WEB_CLIENT;
          resp = m_sender->send( recipient,message );
       }
 
@@ -317,14 +309,10 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       EMailSender::Response resp;
 
       {
-         std::lock_guard<std::recursive_mutex> lock(networkingMutex);
-         if ( s_webClient )
-         {
-            s_webClient->end();
-            delete s_webClient;
-            s_webClient = nullptr;
-         }
+         // remove the web client before we send, cautionary to avoid
+         // networking conflicts
 
+         SCOPE_RELEASE_WEB_CLIENT;
          resp = m_sender->send( recipient,message,attachments );
       }
 
@@ -346,9 +334,12 @@ AsyncUDP *Networking::s_udp = nullptr;
 Networking::Networking()
           : m_emailer( nullptr ),
             m_webServer( nullptr ),
+            m_userIO( nullptr ),
             m_status(),
             m_emonCert(),
-            m_willSendEmails( false )
+            m_willSendEmails( false ),
+            m_isUpdating( false ),
+            m_isEditing( false )
 {
    PW_DEBUG( "Networking::Networking()" );
    PW_MSG( "Networking Startup" );
@@ -419,7 +410,7 @@ bool Networking::startAccessPoint()
 
    // Start the configuration/download server
 
-   m_webServer = new WebServer();
+   m_webServer = new WebServer( this );
    m_webServer->initialise();
 
    m_status.mdnsName = String( "tvm-init" );
@@ -518,7 +509,7 @@ void Networking::initialise()
 
    // Start our configuration/download server
 
-   m_webServer = new WebServer();
+   m_webServer = new WebServer( this );
    m_webServer->initialise();
 
    // start MDNS
@@ -529,10 +520,10 @@ void Networking::initialise()
    // Create new UDP
    s_udp = new AsyncUDP;
 
-   // Now create out background task helper, up to 20 emon messages
+   // Now create out background task helper, up to 50 emon messages
    // may be queued.
 
-   dataQueue = xQueueCreate( 40,sizeof( struct EmonData *) );
+   dataQueue = xQueueCreate( 50,sizeof( struct EmonData *) );
    if ( ! dataQueue )
    {
       PW_ERROR( "Failed to create XQueue" );
@@ -698,3 +689,101 @@ AsyncUDP    *Networking::getUDP()
 {
    return( s_udp );
 }
+
+void  Networking::releaseWebClient()
+{
+   if ( s_webClient )
+   {
+      PW_DEBUG( "Release WebClient" );
+      s_webClient->end();
+      delete s_webClient;
+      s_webClient = nullptr;
+   }
+}
+
+std::recursive_mutex   &Networking::getNetworkingMutex()
+{
+   return networkingMutex;
+}
+
+bool  Networking::isBusy()
+{
+   return ( m_isUpdating | m_isEditing );
+}
+
+void  Networking::setUpdateProgress( int index,const String &filename,bool finished )
+{
+   if ( finished )
+   {
+      m_isUpdating = false;
+      if ( m_userIO )
+      {
+         m_userIO->updateLine( 5,"Completed" );
+      }
+      return;
+   }
+
+   m_isUpdating = true;
+
+   // Update UserIO if available
+
+   if ( ! m_userIO )
+   {
+      return;
+   }
+
+   if ( !index )
+   {
+      m_userIO->clear();
+      m_userIO->updateLine( 1,"Updating :" );
+
+      char line[ 128 ];
+      snprintf( line,MAX_OLED_COLUMNS," %s",filename.c_str() );
+      m_userIO->updateLine( 2,line );
+   }
+   else if ( index == -1 )
+   {
+      m_userIO->updateLine( 5,"FAILED !!" );
+      delay( 2000 );
+   }
+   else
+   {
+      static int i = 0;
+      char  progress[] = ".oOo";
+      char  line[ 2 ];
+
+      line[ 0 ] = progress[ i++ % 4 ];
+      line[ 1 ] = 0;
+
+      m_userIO->updateLine( 5,line,false );
+   }
+}
+
+void  Networking::setUserIO( UserIO *userIO )
+{
+   m_userIO = userIO;
+}
+
+void  Networking::serverHome()
+{
+   m_isEditing = false;
+}
+
+void  Networking::startFileEdit( const String &filename )
+{
+   char line[ MAX_OLED_COLUMNS + 1 ];
+
+   m_isEditing = true;
+
+   m_userIO->clear();
+   m_userIO->updateLine( 1,"Editing :" );
+
+   snprintf( line,MAX_OLED_COLUMNS,"%s",filename.c_str() );
+   m_userIO->updateLine( 2,line );
+
+   // To release memory we release the http client which returns ~ 50KB
+   // to the heap.
+
+   SCOPE_RELEASE_WEB_CLIENT;
+}
+

@@ -5,6 +5,8 @@
 
 #include "utils.h"
 
+class WiFiClient;
+
 #define MAX_MODBUSTCP_NAME 32
 #define MAX_REGISTERS      16
 
@@ -59,6 +61,7 @@ private:
 
    PrivateSensor  m_sensor;
    uint8_t        m_transactionId;
+   WiFiClient     *m_wifiClient;
 };
 
 #endif

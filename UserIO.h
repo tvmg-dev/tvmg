@@ -45,8 +45,6 @@ public:
    void  show( ScreenType type );
    void  refresh();
    void  update();
-   void  setFirmwareUpdateInProgress( bool inProgress );
-   bool  isFirmwareUpdateInProgress();
    void  storeLine( uint8_t lineNum,char *line );
 
 private:
@@ -74,7 +72,6 @@ private:
    HeatMeterModule      *m_heatMeter;
    ModbusMaster         *m_modbus;
    Measurement::Sample  m_sample;
-   bool                 m_firmwareUpdateInProgress;
    time_t               m_startTime;
 };
 

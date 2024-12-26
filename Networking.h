@@ -3,13 +3,24 @@
 
 #include <String.h>
 #include <AsyncUDP.h>
+#include <mutex>
 
 #include "utils.h"
+#include "UserIO.h"
+
+#define  SCOPE_LOCK_NW_MUTEX \
+do { \
+   std::lock_guard<std::recursive_mutex> lock( Networking::getNetworkingMutex() ); \
+} while( 0 );
+
+#define  SCOPE_RELEASE_WEB_CLIENT \
+do { \
+   std::lock_guard<std::recursive_mutex> lock( Networking::getNetworkingMutex() ); \
+   Networking::releaseWebClient(); \
+} while( 0 );
 
 class WebServer;
 class Emailer;
-
-extern std::recursive_mutex  networkingMutex;
 
 class Networking
 {
@@ -42,17 +53,30 @@ public:
    bool  startAccessPoint();
    bool  startMDNS();
    bool  acquireNTP();
+   void  setUpdateProgress( int index, const String &filename,bool finished );
+   void  setUserIO( UserIO *userIO );
+   void  serverHome();
+   void  startFileEdit( const String &filename );
+
+
+   static void  releaseWebClient();
+   static std::recursive_mutex   &getNetworkingMutex();
    WebServer   *getWebServer();
+   bool  isBusy();
+
 
    static   AsyncUDP    *getUDP();
 
 private:
    Emailer           *m_emailer;
    WebServer         *m_webServer;
+   UserIO            *m_userIO;
    static  AsyncUDP  *s_udp;
    Status            m_status;
    String            m_emonCert;
    bool              m_willSendEmails;
+   bool              m_isUpdating;
+   bool              m_isEditing;
 };
 
 #endif

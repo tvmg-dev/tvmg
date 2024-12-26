@@ -33,6 +33,15 @@ Config            *config = nullptr;
 Networking        *networking = nullptr;
 LGHeatPump        *lgThermaV = nullptr;
 
+// Amount of time we can have the webserver busy before we reboot.  This
+// is to ensure that if editing we will reboot if not completed in this period.
+
+#define  NETWORK_ALLOWED_BUSY_MS (120 * 1000)
+
+// We'll malloc into this buffer for heap size debugging
+
+char  *testMallocBuffer = nullptr;
+
 // ---------------------------------------------------------------------
 // Reboot handling code, if we have 3 reboots then we consider WiFi has
 // failed and drop to AP mode which will remain active until reboot.
@@ -412,10 +421,6 @@ void setup( void )
       ESP.restart();
    }
 
-   // Give webserver access to userIO
-
-   networking->getWebServer()->setUserIO( userIO );
-
    // did we boot with button down pressed, if so hold - allows webserver
    // to be used to re-configure the unit
 
@@ -568,19 +573,34 @@ void setup( void )
          }
       }
    }
+
+   if ( !testMallocBuffer )
+   {
+      int size = GET_REGISTRY_INT( HEAP_TEST_SIZE );
+      if ( size != -1 )
+      {
+         size *= 1024;
+         PW_DEBUG( "allocating %d",size );
+         testMallocBuffer = static_cast<char *>(malloc( size ));
+         if ( !testMallocBuffer )
+         {
+            PW_DEBUG( "failed to malloc" );
+         }
+      }
+   }
 }
 
 // ---------------------------------------------------------------------
 // Loop
 
-#define LOOP_PERIOD_MS  5000
+#define LOOP_PERIOD_MS     5000
+#define FASTLOOP_PERIOD_MS 500
 
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
-   static uint32_t loops = 0;
-
-   loops++;
+   static uint32_t networkStartBusyMillis = 0;
+   static uint32_t loopMillis = LOOP_PERIOD_MS;
 
    START_TIMING( "Main Loop" );
 
@@ -589,8 +609,24 @@ void loop(void)
       targetMillis = millis();
    }
 
-   if ( !userIO->isFirmwareUpdateInProgress() )
+   if ( networking->isBusy() )
    {
+      if ( !networkStartBusyMillis )
+      {
+         networkStartBusyMillis = millis();
+         loopMillis = FASTLOOP_PERIOD_MS;
+      }
+      else if ( millis() - networkStartBusyMillis  > NETWORK_ALLOWED_BUSY_MS )
+      {
+         PW_ERROR( "Timeout on webserver busy, rebooting..." );
+         ESP.restart();
+      }
+   }
+   else
+   {
+      networkStartBusyMillis = 0;
+      loopMillis = LOOP_PERIOD_MS;
+
       // process button presses
 
       if ( wasButton1Pressed )
@@ -633,14 +669,14 @@ void loop(void)
    // our target MS is our original millis at entry of this loop, plus
    // our sampling delay
 
-   targetMillis += LOOP_PERIOD_MS;
+   targetMillis += loopMillis;
    currentMillis = millis();
 
    // We may need to skip a sample(s) if we've executed too long in this loop
 
    while ( currentMillis >= targetMillis )
    {
-      targetMillis += LOOP_PERIOD_MS;
+      targetMillis += loopMillis;
    }
 
    deltaMillis = targetMillis - currentMillis;

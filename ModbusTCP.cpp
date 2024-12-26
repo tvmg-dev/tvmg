@@ -1,7 +1,6 @@
 #include <WiFi.h>
 
 #include <cJSON.h>
-#include <mutex>
 
 #include "hwconfig.h"
 #include "config.h"
@@ -23,11 +22,10 @@
 
 #define  MAX_RETRIES    1
 
-static   WiFiClient     *s_wifiClient = nullptr;
-
 ModbusTCP::ModbusTCP() : ModbusMaster(),
            m_sensor(),
-           m_transactionId( 0 )
+           m_transactionId( 0 ),
+           m_wifiClient( nullptr )
 {
    PW_DEBUG( "ModbusTCP::ModbusTCP()" );
 
@@ -152,33 +150,36 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
       attempts++;
       m_transactionId++;
 
-      std::lock_guard<std::recursive_mutex> lock(networkingMutex);
+      // lock network mutex, we're going to create/delete WiFiClient's here
+      // and networking class will also be using WiFiClientSecure
 
-      if ( millis() - lastConnectionMillis > KEEP_MODBUS_TCP_ALIVE_MS && s_wifiClient )
+      SCOPE_LOCK_NW_MUTEX;
+
+      if ( millis() - lastConnectionMillis > KEEP_MODBUS_TCP_ALIVE_MS && m_wifiClient )
       {
          PW_DEBUG( "ModbusTCP: Closing connection (%u ms elapsed)",millis() - lastConnectionMillis );
-         s_wifiClient->stop();
-         delete s_wifiClient;
-         s_wifiClient = nullptr;
+         m_wifiClient->stop();
+         delete m_wifiClient;
+         m_wifiClient = nullptr;
       }
 
-      if ( !s_wifiClient )
+      if ( !m_wifiClient )
       {
          PW_DEBUG( "ModbusTCP: Create new WifiClient" );
-         s_wifiClient = new WiFiClient();
-         if ( !s_wifiClient->connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
+         m_wifiClient = new WiFiClient();
+         if ( !m_wifiClient->connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
          {
             PW_ERROR( "Failed to connect to ModbusTCP server" );
-            delete s_wifiClient;
-            s_wifiClient = nullptr;
+            delete m_wifiClient;
+            m_wifiClient = nullptr;
             continue;
          }
          lastConnectionMillis = millis();
       }
 
-      // flush any previous data from the s_wifiClient, and a short delay
+      // flush any previous data from the m_wifiClient, and a short delay
 
-      s_wifiClient->flush();
+      m_wifiClient->flush();
       delay( m_sensor.m_requestDelay );
 
       // Create the request payload, we only support the 4 reads of
@@ -212,7 +213,7 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
       PW_DEBUG( dbg.c_str() );
       END_DEBUG;
 
-      uint8_t written = s_wifiClient->write( buff,size );
+      uint8_t written = m_wifiClient->write( buff,size );
 
       if ( written != size )
       {
@@ -226,20 +227,20 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
       uint32_t startMillis = millis();
 
-      while ( millis() - startMillis < MODBUS_TCP_TIMEOUT_MS && s_wifiClient->available() < bytesExpected )
+      while ( millis() - startMillis < MODBUS_TCP_TIMEOUT_MS && m_wifiClient->available() < bytesExpected )
       {
          delay( 25 );
       }
 
-      if ( s_wifiClient->available() != bytesExpected )
+      if ( m_wifiClient->available() != bytesExpected )
       {
-         PW_ERROR( "Only received %d bytes,expected %d",s_wifiClient->available(),bytesExpected );
+         PW_ERROR( "Only received %d bytes,expected %d",m_wifiClient->available(),bytesExpected );
          continue;
       }
 
       PW_DEBUG( "Took %u ms to acquire %u bytes from ModBusTCP", millis() - startMillis,bytesExpected );
 
-      int numRead = s_wifiClient->read( buff,bytesExpected );
+      int numRead = m_wifiClient->read( buff,bytesExpected );
 
       START_DEBUG;
       String dbg = "Rx ";

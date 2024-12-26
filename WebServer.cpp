@@ -23,6 +23,7 @@
 #include "utils.h"
 
 #include "UserIO.h"
+#include "Networking.h"
 
 // this will be executing on the second CPU core, so probably hazards with
 // SPIFFS here - should probably mutex it
@@ -327,9 +328,9 @@ void notFound(AsyncWebServerRequest *request)
   request->send(404, "text/plain", "Page not found");
 }
 
-WebServer::WebServer()
+WebServer::WebServer( Networking *networking )
         : m_webServer( nullptr ),
-          m_userIO( nullptr ),
+          m_networking( networking ),
           m_downloadFile()
 
 {
@@ -362,8 +363,10 @@ void WebServer::setupAsyncServer()
 {
    m_webServer = new AsyncWebServer( 80 );
 
-   m_webServer->on("/manager", HTTP_GET, [](AsyncWebServerRequest *request)
+   m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
+      m_networking->serverHome();
+
       if(!request->authenticate(http_username, http_password))
       {
          return request->requestAuthentication();
@@ -385,35 +388,28 @@ void WebServer::setupAsyncServer()
          PW_DEBUG( "PW 2s to restart" );
          delay( 2 * 1000 );
          ESP.restart();
+
+         // call so that loop() queries to progress could be handled, although
+         // should have reset by now...
+
+         m_networking->setUpdateProgress( 1,"completed",true );
       }
    },
    [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
    {
       if(!index)
       {
-         if ( m_userIO )
-         {
-            m_userIO->setFirmwareUpdateInProgress( true );
-            m_userIO->clear();
-            m_userIO->updateLine( 5,"Updating..." );
-
-            char line[ 128 ];
-            snprintf( line,MAX_OLED_COLUMNS," %s",filename.c_str() );
-            m_userIO->updateLine( 1,line );
-         }
-
          PW_MSG( "Updating with %s",filename.c_str() );
 
-         if ( !Update.begin(UPDATE_SIZE_UNKNOWN,U_FLASH) )
+         if ( Update.begin(UPDATE_SIZE_UNKNOWN,U_FLASH) )
+         {
+            m_networking->setUpdateProgress( index,filename,final );
+         }
+         else
          {
             PW_ERROR( "Failed to start update" );
 
-            if ( m_userIO )
-            {
-               m_userIO->updateLine( 5,"FAILED !!" );
-               delay( 2000 );
-               m_userIO->setFirmwareUpdateInProgress( false );
-            }
+            m_networking->setUpdateProgress( -1,filename,true );
 
             return request->send(400, "text/plain", "OTA could not begin");
          }
@@ -421,17 +417,7 @@ void WebServer::setupAsyncServer()
 
       if(!Update.hasError())
       {
-         if ( m_userIO )
-         {
-            static int i = 0;
-            char  progress[] = ".oOo";
-            char  line[ 2 ];
-
-            line[ 0 ] = progress[ i++ % 4 ];
-            line[ 1 ] = 0;
-
-            m_userIO->updateLine( 5,line,false );
-         }
+         m_networking->setUpdateProgress( index,filename,false );
 
          if(Update.write(data, len) != len)
          {
@@ -439,22 +425,10 @@ void WebServer::setupAsyncServer()
          }
       }
 
-      if(final)
-      {
-         if(Update.end(true))
-         {
-            if ( m_userIO )
-            {
-               m_userIO->updateLine( 5,"Completed Ok" );
-            }
-
-            PW_MSG( "Finished update");
-         }
-      else
+      if(final && ! Update.end(true))
       {
          Update.printError(Serial);
       }
-   }
    });
 
    m_webServer->on("/upload", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -462,7 +436,7 @@ void WebServer::setupAsyncServer()
       request->send(200);
    }, uploadFile);
 
-   m_webServer->on("/edit", HTTP_GET, [](AsyncWebServerRequest *request)
+   m_webServer->on("/edit", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
       if(!request->authenticate(http_username, http_password))
       {
@@ -474,6 +448,8 @@ void WebServer::setupAsyncServer()
       savePath = fileName;
       textareaContent = readFile(s_spiffs, fileName.c_str());
       request->send_P(200, "text/html", edit_html, processor);
+
+      m_networking->startFileEdit( fileName );
    });
 
    m_webServer->on("/save", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -602,11 +578,6 @@ void WebServer::setupAsyncServer()
    m_webServer->onNotFound(notFound);
 
    m_webServer->begin();
-}
-
-void WebServer::setUserIO( UserIO *userIO )
-{
-   m_userIO = userIO;
 }
 
 

@@ -24,7 +24,6 @@ UserIO::UserIO()
         m_heatMeter( nullptr ),
         m_modbus( nullptr ),
         m_sample(),
-        m_firmwareUpdateInProgress( false ),
         m_startTime(0)
 {
    PW_DEBUG( "UserIO::UserIO()" );
@@ -111,6 +110,10 @@ void  UserIO::show( OLEDDisplayLine lines[] )
 void  UserIO::setNetworking( Networking *network )
 {
    m_networking = network;
+   if ( m_networking )
+   {
+      m_networking->setUserIO( this );
+   }
 }
 
 void  UserIO::setLGHeatPump( LGHeatPump *heatpump )
@@ -450,12 +453,6 @@ bool  UserIO::setNextScreen()
 
 void  UserIO::showNext()
 {
-   if ( m_firmwareUpdateInProgress )
-   {
-      PW_DEBUG( "Update in progres.." );
-      return;
-   }
-
    while ( ! setNextScreen() )
    {
       PW_DEBUG( "Try screen %d",m_currentScreen );
@@ -474,16 +471,6 @@ void  UserIO::update()
    {
       m_sample = m_measurement->getLastSample();
    }
-}
-
-void  UserIO::setFirmwareUpdateInProgress( bool progress )
-{
-   m_firmwareUpdateInProgress = progress;
-}
-
-bool  UserIO::isFirmwareUpdateInProgress()
-{
-   return m_firmwareUpdateInProgress;
 }
 
 bool  UserIO::isTemperatureDataAvailable()

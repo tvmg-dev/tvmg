@@ -3,21 +3,20 @@
 
 #include <ESPAsyncWebServer.h>
 
-class UserIO;
+class Networking;
 
 class WebServer
 {
 public:
-   WebServer();
+   WebServer( Networking *networking );
    ~WebServer();
    void initialise();
-   void setUserIO( UserIO *userIO );
 
 private:
    void setupAsyncServer();
 
    AsyncWebServer *m_webServer;
-   UserIO         *m_userIO;
+   Networking     *m_networking;
    File           m_downloadFile;
 };
 
