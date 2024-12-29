@@ -461,7 +461,7 @@ void WebServer::setupAsyncServer()
 
       if ( request->params() == 1 )
       {
-         AsyncWebParameter* param = request->getParam( 0 );
+         const AsyncWebParameter* param = request->getParam( static_cast<size_t> (0) );
          if ( param && ( param->name() == String( param_edit_textarea ) ) )
          {
             PW_DEBUG( "Saving %d bytes to %s : contents :",param->value().length(),savePath.c_str() );

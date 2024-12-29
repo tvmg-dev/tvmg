@@ -2,10 +2,10 @@
 #define MODBUS_TCP_MODULE_H
 
 #include <ModbusMaster.h>
+#include <WiFiClient.h>
 
 #include "utils.h"
 
-class WiFiClient;
 
 #define MAX_MODBUSTCP_NAME 32
 #define MAX_REGISTERS      16

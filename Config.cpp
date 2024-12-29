@@ -171,37 +171,6 @@ fs::SPIFFSFS *Config::getSPIFFS()
    return( m_spiffs );
 }
 
-void  Config::writeRegistryToFile()
-{
-   if ( !m_spiffs )
-   {
-      PW_WARN( "writeRegistryToFile() : No SPIFFS !" );
-      return;
-   }
-
-   File file = m_spiffs->open( m_configFileName,FILE_WRITE );
-   if ( !file )
-   {
-      PW_WARN( "Cannot write to %s",m_configFileName );
-      return;
-   }
-
-   PW_MSG( "Writing registry to %s",m_configFileName );
-
-   for ( int i = 0; i < Config::numRegistryEntries; i++ )
-   {
-      char msg[ 128 ];
-      sprintf( msg,"%s \"%s\"",Config::m_entries[ i ].key,Config::m_entries[ i ].value );
-
-      if ( ! file.println( msg ) )
-      {
-         PW_WARN( "Failed to write to config : %s",msg );
-      }
-   }
-
-   file.close();
-}
-
 bool  Config::readRegistryFromFile( void )
 {
    if ( !m_spiffs )

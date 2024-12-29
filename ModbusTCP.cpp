@@ -177,9 +177,11 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
          lastConnectionMillis = millis();
       }
 
-      // flush any previous data from the m_wifiClient, and a short delay
+      // flush (now clear in ESP 3.10) any previous data from the m_wifiClient, and a short delay
 
       m_wifiClient->flush();
+      m_wifiClient->clear();
+
       delay( m_sensor.m_requestDelay );
 
       // Create the request payload, we only support the 4 reads of

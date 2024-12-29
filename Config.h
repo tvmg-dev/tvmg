@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v12.0.7"
+#define VERSION_STR        "v12.0.8h"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
@@ -54,7 +54,6 @@ public:
 
 private:
    void initialise();
-   void writeRegistryToFile();
    bool readRegistryFromFile();
 
    fs::SPIFFSFS  *m_spiffs;
