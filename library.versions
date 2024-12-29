@@ -1,27 +1,27 @@
-11.0.9 library versions
+Current library versions
 
 Arduino IDE:
 
-Version: 2.2.1
-Date: 2023-08-31T14:35:44.802Z
-CLI Version: 0.34.0
+Version: 2.3.4
+Date: 2024-12-03T10:03:03.490Z
+CLI Version: 1.1.1
 
-
-SD at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\SD
-FS at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\FS
-SPI at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\SPI
-ModbusMaster at version 2.0.1-a in folder: \Documents\Arduino\libraries\ModbusMaster
-OneWire at version 2.3.7 in folder: \Documents\Arduino\libraries\OneWire
-DallasTemperature at version 3.9.0 in folder: \Documents\Arduino\libraries\DallasTemperature
-ESP32 Async UDP at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\AsyncUDP
-SPIFFS at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\SPIFFS
-ESP Async WebServer at version 1.2.3 in folder: \Documents\Arduino\libraries\ESP_Async_WebServer
-WiFi at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\WiFi
-AsyncTCP at version 1.1.4 in folder: \Documents\Arduino\libraries\AsyncTCP
-ESPmDNS at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\ESPmDNS
-EMailSender at version 3.0.13-pw1 in folder: \Documents\Arduino\libraries\EMailSender
-WiFiClientSecure at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\WiFiClientSecure
-HTTPClient at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\HTTPClient
-U8g2 at version 2.34.22 in folder: \Documents\Arduino\libraries\U8g2
-Wire at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\Wire
-Update at version 2.0.0 in folder: \AppData\Local\Arduino15\packages\esp32\hardware\esp32\2.0.14\libraries\Update
+SD at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SD
+FS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\FS
+SPI at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SPI
+ModbusMaster at version 2.0.1-b in folder: C:\Users\trial\Documents\Arduino\libraries\ModbusMaster
+OneWire at version 2.3.8 in folder: C:\Users\trial\Documents\Arduino\libraries\OneWire
+DallasTemperature at version 3.9.0 in folder: C:\Users\trial\Documents\Arduino\libraries\DallasTemperature
+WiFi at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\WiFi
+Networking at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\Network
+ESP32 Async UDP at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\AsyncUDP
+SPIFFS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SPIFFS
+ESP Async WebServer at version 3.4.5 in folder: C:\Users\trial\Documents\Arduino\libraries\ESP_Async_WebServer
+Async TCP at version 3.3.1 in folder: C:\Users\trial\Documents\Arduino\libraries\Async_TCP
+ESPmDNS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\ESPmDNS
+EMailSender at version 3.0.13-pw1 in folder: C:\Users\trial\Documents\Arduino\libraries\EMailSender
+NetworkClientSecure at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\NetworkClientSecure
+HTTPClient at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\HTTPClient
+U8g2 at version 2.35.30 in folder: C:\Users\trial\Documents\Arduino\libraries\U8g2
+Wire at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\Wire
+Update at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\Update
