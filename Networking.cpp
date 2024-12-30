@@ -183,12 +183,14 @@ public:
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS );
 
 private:
+   String      m_ipDesc;
    EMailSender *m_sender;
    Networking  *m_networking;
 };
 
 Emailer::Emailer( Networking *networking )
-       : m_sender( nullptr ),
+       : m_ipDesc(),
+         m_sender( nullptr ),
          m_networking( networking )
 {
    PW_DEBUG( "Emailer::Emailer()" );
@@ -218,7 +220,19 @@ void  Emailer::initialise()
 
    m_sender = new EMailSender( account,password,account,"HeatPump",host,port );
 
-   m_sender->setPublicIpDescriptor( "dyllysplace.com" );
+   // Setup IP descriptor
+
+   m_ipDesc = String( account );
+
+   int   lastAmper = m_ipDesc.lastIndexOf( '@' ) + 1;
+
+   if ( lastAmper < m_ipDesc.length() )
+   {
+      m_ipDesc = m_ipDesc.substring( lastAmper );
+      PW_DEBUG( "Email public IP Desc. %s",m_ipDesc.c_str() );
+
+      m_sender->setPublicIpDescriptor( m_ipDesc.c_str() );
+   }
 }
 
 bool Emailer::sendEmail( const char *recipient,const char *subject,const String &msg )
