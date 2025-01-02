@@ -1,0 +1,91 @@
+From https://www.waveshare.com/wiki/ESP32-S3-Touch-LCD-4.3B the offline
+package https://drive.google.com/drive/folders/1Pcs_A4FKWvdSHnz9lEBYqOpr-noTMbIv?usp=sharing
+provides downloads which appear to be revisions of the arduino-esp32 git repo,
+not checked against official versions and the 3.0.7 release
+
+(my current installed arduino-esp - boards manager ? is 3.1.0)
+
+
+
+From IDE installed
+   ESP32_IO_Expander v 1.0.0 (0.0.4 refer'd in waveshare zip)
+   lvgl v 9.2.2 (8.4.0 refer in zip)
+   ESP32_Display_Panel v 0.2.1 (0.1.8 in zip)
+
+
+ESP32_IO_Expander - downgraded to 0.10 version, then panel test sprung into life
+
+Need to set (in library for now) for using supported ws-43b board in
+ESP_Panel_Board_Supported.h
+
+   #define ESP_PANEL_USE_SUPPORTED_BOARD       (1)
+   BOARD_WAVESHARE_ESP32_S3_Touch_LCD_4_3_B
+
+may need PSRAM enabled
+
+the paneltest example in the panel library works ok, showing colour bar & touch response.
+
+Also the 08_DrawColorBar test from WShare examples works and shows refresh rate :)
+
+Panel doesn't have backlight enabled (may not be present, or how controlled ?)
+   - see ESP32_S3_Touch_LCD_4_3_B.h
+   why is ESP_PANEL_TOUCH_I2C_ADDRESS set to zero - it gets set via macros & code to 0x5D or 0x14
+      ESP_PANEL_TOUCH_I2C_IO_SDA 8
+      ESP_PANEL_TOUCH_I2C_IO_CLK 9
+   GT911 is I2c touch
+
+
+Panel test reports a problem when debug enabled
+   So the interrupt mode is disabled (possibly by defsign) but then there's
+   the warning about unable to initialize i2C.  A branch exists that does some
+   stuff for the 4.3 panel in that area but not 4.3B ?
+
+   D (2457) ESP_PanelBus_I2C: Panel IO @0x3fc9eba4 created
+   D (2462) ESP_PanelTouch: Disable interruption
+   D (2466) GT911_CPP: Use default GT911 driver data(address: 0x5d)
+   I (2472) GT911: LCD touch panel create success, version: 1.1.1
+   W (2477) GT911: Unable to initialize the I2C address
+
+   The disable interruption is ok as not set, set ESP_PanelTouch::init()
+
+   The unable to initialize i2C message is due to not having
+      esp_lcd_touch_gt911->config.rst_gpio_num &
+      esp_lcd_touch_gt911->config.int_gpio_num not set when
+      esp_lcd_touch_new_i2c_gt911() called
+
+        ESP_PANEL_TOUCH_IO_RST & ESP_PANEL_TOUCH_IO_INT purposefully not set
+
+   Doesn't seem to cause problems as such - so not a problem.
+
+What is annoying is that the panel-conf & board-supported headers may
+need to be propagated beyond the library - madness somewhere.  It could do
+with just having the one set of headers used for library & apps/demos.
+
+The 09 lvgl demo not working ok, so bodging around using panel stuff
+
+With the bodge its working but slower (although running debug) and
+possibly no double buffer...
+
+
+E (1366) GT911: PW-1 -1 -1
+E (1366) GT911: PW-2 -1 -1
+E (1366) ESP_Panel: PETE getTouch 0x3fcaf8a8 0x3fcab26c
+Backlight is not available
+Initialize LVGL
+E (1368) ESP_Panel: PETE getTouch 0x3fcaf8a8 0x3fcab26c
+[  1384][D][lvgl_port_v8.cpp:599] lvgl_port_init(): [lvgl_port] Avoid tearing is enabled, mode: 3
+[  1392][D][lvgl_port_v8.cpp:610] lvgl_port_init(): [lvgl_port] Initialize LVGL display driver
+[  1400][D][lvgl_port_v8.cpp:447] display_init(): [lvgl_port] Malloc memory for LVGL buffer
+E (1397) lcd_panel.rgb: esp_lcd_rgb_panel_get_frame_buffer(450): invalid frame buffer number
+E (1406) ESP_PanelLcd: [ESP_ERR_INVALID_ARG] getFrameBufferByIndex(594): Get RGB buffer failed
+[  1425][D][lvgl_port_v8.cpp:485] display_init(): [lvgl_port] Register display driver to LVGL
+[  1435][D][lvgl_port_v8.cpp:623] lvgl_port_init(): [lvgl_port] Initialize LVGL input driver
+[  1441][D][lvgl_port_v8.cpp:537] indev_init(): [lvgl_port] Register input driver to LVGL
+[  1449][D][lvgl_port_v8.cpp:639] lvgl_port_init(): [lvgl_port] Create mutex for LVGL
+[  1457][D][lvgl_port_v8.cpp:643] lvgl_port_init(): [lvgl_port] Create LVGL task
+[  1464][D][lvgl_port_v8.cpp:568] lvgl_port_task(): [lvgl_port] Starting LVGL task
+Create UI
+LVGL porting example end
+
+
+
