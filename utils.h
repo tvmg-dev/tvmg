@@ -6,6 +6,8 @@
 
 #define MAX_FILENAME    32
 
+extern void  GetRunTimeTaskStats();
+
 extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
 
@@ -16,6 +18,8 @@ extern int     getIntFromcJSON( cJSON *node,const char *key, int defaultValue = 
 extern float   getFloatFromcJSON( cJSON *node,const char *key, float defaultValue = 0 );
 extern String  getStringFromcJSON( cJSON *node,const char *key, const String &defaultValue = "" );
 extern int     strcmpcJSON( cJSON *node,const char *key, const char *item );
+
+extern uint32_t largestFreeInternalBlock();
 
 #define START_DEBUG \
 do \

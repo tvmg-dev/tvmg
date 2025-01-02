@@ -85,7 +85,6 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
              m_heatPump( heatPump ),
              m_heatMeterModule( hmModule ),
              m_storageModule( storage ),
-             m_networking( nullptr ),
              m_lastSample(),
              m_millisLastAquisition( 0 )
 {
@@ -108,6 +107,7 @@ void  Measurement::takeSample( void )
    PW_DEBUG( "Measurement::takeSample" );
    uint     start;
    float_t  hpKW = 1;
+
 
    Sample   newSample;
 

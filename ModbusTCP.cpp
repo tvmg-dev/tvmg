@@ -150,11 +150,6 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
       attempts++;
       m_transactionId++;
 
-      // lock network mutex, we're going to create/delete WiFiClient's here
-      // and networking class will also be using WiFiClientSecure
-
-      SCOPE_LOCK_NW_MUTEX;
-
       if ( millis() - lastConnectionMillis > KEEP_MODBUS_TCP_ALIVE_MS && m_wifiClient )
       {
          PW_DEBUG( "ModbusTCP: Closing connection (%u ms elapsed)",millis() - lastConnectionMillis );

@@ -6,7 +6,6 @@
 
 #include "utils.h"
 
-
 #define MAX_MODBUSTCP_NAME 32
 #define MAX_REGISTERS      16
 

@@ -18,7 +18,6 @@
 #include "WebServer.h"
 #include "LGHeatPump.h"
 
-
 // ---------------------------------------------------------------------
 
 ModbusMaster      *modbusMaster = nullptr;
@@ -299,6 +298,8 @@ void  configureModBus()
 // ---------------------------------------------------------------------
 // Create/initialise all modules prior to main loop
 
+extern void printAfterSetupInfo(void);
+
 void setup( void )
 {
    // start serial port, if the GPIO controlling serial on boot behaviour is low,
@@ -316,6 +317,8 @@ void setup( void )
       setPinsOk = Serial.setPins( ALTERNATE_UART0_RX_GPIO,ALTERNATE_UART0_TX_GPIO );
    }
 
+//   Serial.setDebugOutput(true); from chip-debug-report.cpp
+
    Serial.begin( 115200,SERIAL_8N1 );
 
    delay( 1000 );
@@ -324,6 +327,8 @@ void setup( void )
 
    config = Config::instance();
 
+Serial.println( "p1" );
+printAfterSetupInfo();
    // Is registry available, if not then we need to enter configuration
    // mode, i.e. networking with AP only with SSID HeatPump-Monitor. The
    // user must download a suitable config.dat to the device.
@@ -354,8 +359,14 @@ void setup( void )
    userIO->updateLine( 1,"SSID :-" );
    userIO->updateLine( 2,GET_REGISTRY_STRING( WIFI_SSID ) );
 
+Serial.println( "p2" );
+printAfterSetupInfo();
+
    networking = new Networking;
    networking->initialise();
+
+Serial.println( "p3" );
+printAfterSetupInfo();
 
    userIO->setNetworking( networking );
 
@@ -388,6 +399,8 @@ void setup( void )
       clearFailedRebootCount();
    }
 
+Serial.println( "p4" );
+printAfterSetupInfo();
    PW_MSG( "Version: %s",VERSION_STR );
 
    // Instantiate the storage module, and initialise it.  If the SD card
@@ -599,8 +612,10 @@ void setup( void )
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
-   static uint32_t networkStartBusyMillis = 0;
    static uint32_t loopMillis = LOOP_PERIOD_MS;
+   bool  restartRequired = false;
+   static int c = 0;
+   c++;
 
    START_TIMING( "Main Loop" );
 
@@ -609,61 +624,76 @@ void loop(void)
       targetMillis = millis();
    }
 
-   if ( networking->isBusy() )
+   // Take the networking mutex, it's a recursive mutex so if we take
+   // again in this task, e.g. to send an email then no problem.
+
+   if ( Networking::takeNewMutex( NETWORK_ALLOWED_BUSY_MS ) != 1 )
    {
-      if ( !networkStartBusyMillis )
+      PW_ERROR( "Timeout on network mutex, rebooting..." );
+      restartRequired = true;
+   }
+
+   // has an OTA update occurred
+
+   if ( networking->hasUpdated() )
+   {
+      restartRequired = true;
+      delay( 2500 );
+   }
+
+   if ( restartRequired )
+   {
+      PW_MSG( "Rebooting..." );
+
+      ESP.restart();
+      while( 1 )
       {
-         networkStartBusyMillis = millis();
-         loopMillis = FASTLOOP_PERIOD_MS;
+         delay( 500 );
       }
-      else if ( millis() - networkStartBusyMillis  > NETWORK_ALLOWED_BUSY_MS )
-      {
-         PW_ERROR( "Timeout on webserver busy, rebooting..." );
-         ESP.restart();
-      }
+   }
+
+   loopMillis = LOOP_PERIOD_MS;
+
+   // process button presses
+
+   if ( wasButton1Pressed )
+   {
+      START_TIMING( "Handle Touch1" );
+      handleTouch1();
+      wasButton2Pressed = false;
+      END_TIMING;
+   }
+
+   if ( wasButton2Pressed )
+   {
+      START_TIMING( "Handle Touch2" );
+      handleTouch2();
+      wasButton1Pressed = false;
+      END_TIMING;
+   }
+
+   START_TIMING( "takeSample" );
+   measurement->takeSample();
+   END_TIMING;
+
+   START_TIMING( "UserIO Update" );
+   userIO->update();
+   END_TIMING;
+
+   START_TIMING( "UserIO Show Screen" );
+   if ( userIOHoldScreen )
+   {
+      userIO->refresh();
    }
    else
    {
-      networkStartBusyMillis = 0;
-      loopMillis = LOOP_PERIOD_MS;
+      userIO->showNext();
+   }
+   END_TIMING;
 
-      // process button presses
-
-      if ( wasButton1Pressed )
-      {
-         START_TIMING( "Handle Touch1" );
-         handleTouch1();
-         wasButton2Pressed = false;
-         END_TIMING;
-      }
-
-      if ( wasButton2Pressed )
-      {
-         START_TIMING( "Handle Touch2" );
-         handleTouch2();
-         wasButton1Pressed = false;
-         END_TIMING;
-      }
-
-      START_TIMING( "takeSample" );
-      measurement->takeSample();
-      END_TIMING;
-
-      START_TIMING( "UserIO Update" );
-      userIO->update();
-      END_TIMING;
-
-      START_TIMING( "UserIO Show Screen" );
-      if ( userIOHoldScreen )
-      {
-         userIO->refresh();
-      }
-      else
-      {
-         userIO->showNext();
-      }
-
-      END_TIMING;
+   if ( c % 6 == 0 )
+   {
+      networking->sendEmailWithAttachment( "heatpump@dyllysplace.com","a test","a message","/test.txt", true );
    }
 
    // our target MS is our original millis at entry of this loop, plus
@@ -682,6 +712,10 @@ void loop(void)
    deltaMillis = targetMillis - currentMillis;
 
    END_TIMING;
+
+   // Now we release the mutex and delay for next cycle
+
+   Networking::releaseNewMutex();
 
    PW_DEBUG( "Loop Delay %u",deltaMillis );
 

@@ -195,6 +195,8 @@ const char manager_html[] PROGMEM = R"rawliteral(
       <div id="spacer_5"></div>
      </fieldset>
 
+     %DEBUG_SECTION%
+
      <div id="spacer_5"></div>
      <fieldset>
       <legend>Reboot</legend>
