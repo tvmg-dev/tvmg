@@ -14,13 +14,9 @@
 #include "WebServer.h"
 #include "UserIO.h"
 
-extern void printAfterSetupInfo();
-
 extern UserIO  *userIO;
 
 const char* ntpServer = "pool.ntp.org";
-
-SemaphoreHandle_t Networking::s_newMutex = NULL;
 
 static WiFiClientSecure *s_emoncmsClient = nullptr;
 static HTTPClient       *s_webClient = nullptr;
@@ -30,8 +26,11 @@ static String           s_emoncmsApiKey;
 #define  DEFAULT_WIFI_CONNECT_TIMEOUT  60000
 #define  DEFAULT_NTP_UPDATE_TIMEOUT    60000
 
+
 #define  EMON_ACQUIRE_MUTEX_MS         20000    // time allowed for emon task to get the nw mutex
 #define  EMAIL_ACQUIRE_MUTEX_MS        10000    // time allowed for email to get the nw mutex
+
+//----------------------------------------------------------------------
 
 static uint32_t emonSendRequests = 0,emonQFailures = 0, emonSendFailures = 0;
 
@@ -46,8 +45,6 @@ struct   EmonData {
 static TaskHandle_t  backgroundHandle = NULL;
 static QueueHandle_t dataQueue = NULL;
 static char          threadBuff[ 128 ];     // to reduce stack use
-
-Networking *nw = nullptr;
 
 void  sendToEmonCMS( uint32_t emonFeedId,float_t value );
 
@@ -181,6 +178,9 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    lastSentMillis = millis();
 }
 
+//----------------------------------------------------------------------
+// Emailer class
+
 class Emailer
 {
 public:
@@ -281,7 +281,7 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
 bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
 {
    char buff[ 128 ];
-   snprintf( buff,128,"Sending to %s [%s]",recipient,subject );
+   snprintf( buff,sizeof(buff),"Sending to %s [%s]",recipient,subject );
 
    START_TIMING( buff );
 
@@ -354,7 +354,11 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
    return false;
 }
 
+//----------------------------------------------------------------------
+
 AsyncUDP *Networking::s_udp = nullptr;
+uint32_t Networking::s_mutexAcquiredMillis;
+SemaphoreHandle_t Networking::s_newMutex = NULL;
 
 Networking::Networking()
           : m_emailer( nullptr ),
@@ -363,8 +367,7 @@ Networking::Networking()
             m_status(),
             m_emonCert(),
             m_willSendEmails( false ),
-            m_hasUpdated( false ),
-            m_isEditing( false )
+            m_hasUpdated( false )
 {
    PW_DEBUG( "Networking::Networking()" );
    PW_MSG( "Networking Startup" );
@@ -372,7 +375,6 @@ Networking::Networking()
    if ( !s_newMutex )
    {
       s_newMutex = xSemaphoreCreateRecursiveMutex();
-      PW_MSG( "Create new mutex %x",s_newMutex );
    }
 
    // set status to defaults, not connected etc.
@@ -398,9 +400,6 @@ Networking::Networking()
    }
 
    fs::SPIFFSFS   *spiffs = Config::instance()->getSPIFFS();
-
-Serial.println( "n2" );
-printAfterSetupInfo();
 
    File file = spiffs->open( "/emoncms.pub",FILE_READ );
    if ( !file )
@@ -479,12 +478,6 @@ bool Networking::startMDNS()
    return( mdnsOk );
 }
 
-#define  OLED_DEBUG( x ) \
-do {\
-  userIO->updateLine( 5,x ); \
-  delay( 1000 ); \
-} while( 0 )
-
 void Networking::initialise()
 {
    PW_DEBUG( "Networking::initialise" );
@@ -501,8 +494,6 @@ void Networking::initialise()
       wifiTimeout = DEFAULT_WIFI_CONNECT_TIMEOUT;
    }
 
-Serial.println( "n3" );
-printAfterSetupInfo();
    WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
    while (WiFi.status() != WL_CONNECTED && (millis() - start < wifiTimeout) )
    {
@@ -516,8 +507,6 @@ printAfterSetupInfo();
       return;
    }
 
-Serial.println( "n3" );
-printAfterSetupInfo();
    m_status.isConnected = true;
 
    m_status.timeToConnect = ( millis() - start ) / 1000;
@@ -540,16 +529,11 @@ printAfterSetupInfo();
    m_emailer = new Emailer( this );
    m_emailer->initialise();
 
-Serial.println( "n4" );
-printAfterSetupInfo();
-
    // And now for the emoncms client...
 
    s_emoncmsClient = new WiFiClientSecure;
    s_emoncmsClient->setCACert( m_emonCert.c_str() );
 
-Serial.println( "n5" );
-printAfterSetupInfo();
    // Start our configuration/download server
 
    m_webServer = new WebServer( this );
@@ -580,12 +564,8 @@ printAfterSetupInfo();
          NULL,                // no input params
          0,                   // Priority
          &backgroundHandle,   // handle
-         0 );                 // Assign to core 0, core 1 used for main loop
+         1 );                 // Assign to core 0, core 1 used for main loop
    }
-
-Serial.println( "n6" );
-printAfterSetupInfo();
-   nw = this;
 }
 
 bool  Networking::acquireNTP()
@@ -804,7 +784,7 @@ void  Networking::setUpdateProgress( int size,const String &filename,bool finish
 
       if ( i % 5 == 0 )
       {
-         PW_DEBUG( "OTA size %d",size );
+         PW_MSG( "OTA size %d",size );
       }
 
       line[ 0 ] = progress[ i++ % 4 ];
@@ -824,25 +804,6 @@ void  Networking::setUserIO( UserIO *userIO )
    m_userIO = userIO;
 }
 
-void  Networking::serverHome()
-{
-   PW_WARN( "Server home" );
-   m_isEditing = false;
-}
-
-void  Networking::startFileEdit( const String &filename )
-{
-   char line[ MAX_OLED_COLUMNS + 1 ];
-
-   m_isEditing = true;
-
-   m_userIO->clear();
-   m_userIO->updateLine( 1,"Editing :" );
-
-   snprintf( line,MAX_OLED_COLUMNS,"%s",filename.c_str() );
-   m_userIO->updateLine( 2,line );
-}
-
 int Networking::takeNewMutex( int ms )
 {
    if ( ! s_newMutex )
@@ -853,11 +814,9 @@ int Networking::takeNewMutex( int ms )
 
    uint32_t startMillis;
 
-   TickType_t  ticks = ms * portTICK_PERIOD_MS;
-
-PW_DEBUG( "take mutex" );
+   PW_DEBUG( "Take n/w mutex" );
    startMillis = millis();
-   int ok = xSemaphoreTakeRecursive( s_newMutex,ticks);
+   int ok = xSemaphoreTakeRecursive( s_newMutex,ms * portTICK_PERIOD_MS);
 
    if ( ok != pdTRUE )
    {
@@ -865,7 +824,8 @@ PW_DEBUG( "take mutex" );
    }
    else
    {
-      PW_DEBUG( "nw mutex took %d",millis() - startMillis );
+      s_mutexAcquiredMillis = millis();
+      PW_DEBUG( "n/w mutex took %d ms",s_mutexAcquiredMillis - startMillis );
    }
 
    return( ok == pdTRUE );
@@ -873,9 +833,9 @@ PW_DEBUG( "take mutex" );
 
 void  Networking::releaseNewMutex()
 {
-PW_DEBUG( "release mutex" );
    if ( s_newMutex )
    {
+      PW_DEBUG( "n/w mutex held for %d",millis() - s_mutexAcquiredMillis );
       xSemaphoreGiveRecursive( s_newMutex );
    }
 }

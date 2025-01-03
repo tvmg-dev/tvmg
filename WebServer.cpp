@@ -49,17 +49,27 @@ const char* param_download_path = "download_path";
 const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
 
+//----------------------------------------------------------------------
+// This buffer is also used by email sender !
+
+uint8_t  tmpBuffer[ 4096 ];
+int      tmpBufferSize = sizeof( tmpBuffer );
+
+//----------------------------------------------------------------------
+// Additional section for debug purposes, usually not defined
+
 #define  MANAGER_DEBUG_SECTION
 
 #ifdef MANAGER_DEBUG_SECTION
 const char debugSection[] = R"raw(
 <div id="spacer_5"></div>
-<fieldset>
- <legend>Debug Section</legend>
+<fieldset><legend>Debug Section</legend>
  <div id="spacer_5"></div>
  <form method="POST" action="/debug" target="self_page">
-   <table><tr><td id="debugT">
+   <table><tr><td id="first_td_th">
    <p>Debug</p>
+   <p>Debug2</p>
+   <p>Debug3</p>
    </td><td>
    <input type="submit" id="submit" value="Debug">
    </td></tr></table>
@@ -70,6 +80,8 @@ const char debugSection[] = R"raw(
 #else
 const char debugSection[] = "";
 #endif
+
+//----------------------------------------------------------------------
 
 String convertFileSize(const size_t bytes)
 {
@@ -86,8 +98,6 @@ String convertFileSize(const size_t bytes)
       return String(bytes / 1048576.0) + " MB";
    }
 }
-
-uint8_t  tmpBuffer[ 4096 ];
 
 void  replaceFile( const char *origFile,const char *newFile )
 {
@@ -343,9 +353,14 @@ String processor(const String& var)
     return "";
   }
 
-  if(var == "DEBUG_SECTION" )
+  if(var == "DEBUG_SECTION")
   {
      return String( debugSection );
+  }
+
+  if(var == "RUNTIME_INFO")
+  {
+     return String( "Active for a while<br>and a little longer" );
   }
 
   return String();
@@ -387,7 +402,7 @@ void WebServer::initialise()
    setupAsyncServer();
 }
 
-//#define  DEBUG_UPDATE_BUFFER
+//#define  DEBUG_OTA_BUFFER
 
 int      updatePos;
 int      buffs;
@@ -398,8 +413,6 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      m_networking->serverHome();
-
       if(!request->authenticate(http_username, http_password))
       {
          return request->requestAuthentication();
@@ -409,23 +422,14 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/update", HTTP_POST, [&](AsyncWebServerRequest *request)
    {
-      bool rebooting = !Update.hasError();
+      bool ok = !Update.hasError();
 
-      AsyncWebServerResponse *response = request->beginResponse(200, "text/html", rebooting ? ok_html : failed_html);
+      AsyncWebServerResponse *response = request->beginResponse(200, "text/html", ok ? ok_html : failed_html);
 
       response->addHeader("Connection", "close");
       request->send(response);
 
       Networking::releaseNewMutex();
-
-#if 0
-      if ( rebooting )
-      {
-         PW_DEBUG( "PW 1s to restart" );
-         delay( 1 * 1000 );
-         ESP.restart();
-      }
-#endif
    },
    [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
    {
@@ -469,7 +473,7 @@ void WebServer::setupAsyncServer()
             copyLen = sizeof( tmpBuffer ) - updatePos;
          }
 
-#ifdef DEBUG_UPDATE_BUFFER
+#ifdef DEBUG_OTA_BUFFER
          PW_DEBUG( "curr %d, add %d",updatePos,copyLen );
 #endif
 
@@ -488,7 +492,7 @@ void WebServer::setupAsyncServer()
 
             buffs++;
 
-#ifdef DEBUG_UPDATE_BUFFER
+#ifdef DEBUG_OTA_BUFFER
             PW_DEBUG( "Writing buffer... %d",buffs );
 #endif
 
@@ -497,7 +501,7 @@ void WebServer::setupAsyncServer()
             // Now need to set a new update position based on the bytes we didn't copy over
             // and of course copy these bytes into the start of the buffer
 
-#ifdef DEBUG_UPDATE_BUFFER
+#ifdef DEBUG_OTA_BUFFER
             PW_DEBUG( "new tmpBuff from %d - %d bytes",copyLen,len-copyLen );
 #endif
             memcpy( tmpBuffer,&data[ copyLen ],len - copyLen );
@@ -546,8 +550,6 @@ void WebServer::setupAsyncServer()
       savePath = fileName;
       textareaContent = readFile(s_spiffs, fileName.c_str());
       request->send_P(200, "text/html", edit_html, processor);
-
-      m_networking->startFileEdit( fileName );
    });
 
    m_webServer->on("/save", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -562,7 +564,7 @@ void WebServer::setupAsyncServer()
          const AsyncWebParameter* param = request->getParam( static_cast<size_t> (0) );
          if ( param && ( param->name() == String( param_edit_textarea ) ) )
          {
-            PW_DEBUG( "Saving %d bytes to %s : contents :",param->value().length(),savePath.c_str() );
+            PW_DEBUG( "Saving %d bytes to %s",param->value().length(),savePath.c_str() );
 
 #if 0
             // code to replace CR+LF with just LF
@@ -664,7 +666,7 @@ void WebServer::setupAsyncServer()
    {
       if ( Networking::takeNewMutex( 100 ) == 1 )
       {
-         GetRunTimeTaskStats();
+         GetRunTimeInfo();
          Networking::releaseNewMutex();
       }
 

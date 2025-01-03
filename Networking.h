@@ -44,8 +44,6 @@ public:
    bool  acquireNTP();
    void  setUpdateProgress( int size, const String &filename,bool finished );
    void  setUserIO( UserIO *userIO );
-   void  serverHome();
-   void  startFileEdit( const String &filename );
    bool  hasUpdated();
 
    static void  releaseWebClient();
@@ -60,14 +58,14 @@ private:
    Emailer           *m_emailer;
    WebServer         *m_webServer;
    UserIO            *m_userIO;
-   static  AsyncUDP  *s_udp;
    Status            m_status;
    String            m_emonCert;
    bool              m_willSendEmails;
    bool              m_hasUpdated;
-   bool              m_isEditing;
 
-   static SemaphoreHandle_t s_newMutex;
+   static AsyncUDP            *s_udp;
+   static SemaphoreHandle_t   s_newMutex;
+   static uint32_t            s_mutexAcquiredMillis;
 };
 
 #endif

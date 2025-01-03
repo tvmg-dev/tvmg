@@ -108,7 +108,6 @@ void  Measurement::takeSample( void )
    uint     start;
    float_t  hpKW = 1;
 
-
    Sample   newSample;
 
    start = millis();

@@ -500,7 +500,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
          if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
          {
-            snprintf( line,128,"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
+            snprintf( line,sizeof(line),"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
             thermometerStr += line;
          }
 
@@ -513,7 +513,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       {
          if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
          {
-            snprintf( line,128,"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
+            snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
             powerStr += line;
          }
       }
@@ -521,10 +521,10 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       m_dailyUpdated = true;
       String updateStr;
 
-      char subject[ 128 ], line[ 128 ];
+      char subject[ 64 ];
 
-      snprintf( subject,128,"Daily Update : %s [%s]",m_networking->getLocalMDNSName().c_str(),m_networking->getIPAddress().c_str() );
-      snprintf( line,128,"Version : %s\n\n",VERSION_STR );
+      snprintf( subject,sizeof(subject),"Daily Update : %s [%s]",m_networking->getLocalMDNSName().c_str(),m_networking->getIPAddress().c_str() );
+      snprintf( line,sizeof(line),"Version : %s\n\n",VERSION_STR );
 
       updateStr += line;
       updateStr += thermometerStr;
