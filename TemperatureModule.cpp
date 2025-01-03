@@ -259,7 +259,6 @@ void  TemperatureModule::initialise()
    m_sendPort = GET_REGISTRY_INT( BROADCAST_UDP_PORT );
 
    // are we listening ?
-
    if ( m_numRemoteSensors && m_udp )
    {
       addUDPListener();
@@ -289,7 +288,6 @@ void TemperatureModule::addUDPListener()
    PW_MSG( "Adding UDP listener %d",listenPort );
    if( listenPort != -1 && m_udp && m_udp->listen( listenPort ) ) {
       m_udp->onPacket([ & ](AsyncUDPPacket packet) {
-         PW_DEBUG( "UDP rx" );
          if ( packet.length() < sizeof( s_udpPacket ) - 1 )
          {
             strncpy( s_udpPacket,reinterpret_cast<const char *>(packet.data()),packet.length() );

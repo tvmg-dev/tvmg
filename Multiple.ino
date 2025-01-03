@@ -298,8 +298,6 @@ void  configureModBus()
 // ---------------------------------------------------------------------
 // Create/initialise all modules prior to main loop
 
-extern void printAfterSetupInfo(void);
-
 void setup( void )
 {
    // start serial port, if the GPIO controlling serial on boot behaviour is low,
