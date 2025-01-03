@@ -9,7 +9,7 @@ CLI Version: 1.1.1
 SD at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SD
 FS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\FS
 SPI at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SPI
-ModbusMaster at version 2.0.1-b in folder: C:\Users\trial\Documents\Arduino\libraries\ModbusMaster
+ModbusMaster at version 2.0.1-pw1 in folder: C:\Users\trial\Documents\Arduino\libraries\ModbusMaster
 OneWire at version 2.3.8 in folder: C:\Users\trial\Documents\Arduino\libraries\OneWire
 DallasTemperature at version 3.9.0 in folder: C:\Users\trial\Documents\Arduino\libraries\DallasTemperature
 WiFi at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\WiFi
@@ -17,9 +17,9 @@ Networking at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\pa
 ESP32 Async UDP at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\AsyncUDP
 SPIFFS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SPIFFS
 ESP Async WebServer at version 3.4.5 in folder: C:\Users\trial\Documents\Arduino\libraries\ESP_Async_WebServer
-Async TCP at version 3.3.1 in folder: C:\Users\trial\Documents\Arduino\libraries\Async_TCP
+Async TCP at version 3.3.1-pw1 in folder: C:\Users\trial\Documents\Arduino\libraries\Async_TCP
 ESPmDNS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\ESPmDNS
-EMailSender at version 3.0.13-pw1 in folder: C:\Users\trial\Documents\Arduino\libraries\EMailSender
+EMailSender at version 3.0.13-pw3 in folder: C:\Users\trial\Documents\Arduino\libraries\EMailSender
 NetworkClientSecure at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\NetworkClientSecure
 HTTPClient at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\HTTPClient
 U8g2 at version 2.35.30 in folder: C:\Users\trial\Documents\Arduino\libraries\U8g2
