@@ -251,18 +251,19 @@ void  TemperatureModule::initialise()
       }
    }
 
+   // Get UDP for broadcast rx/tx
+
+   m_udp = Networking::getUDP();
+
    // are we broadcasting data ?
    m_sendPort = GET_REGISTRY_INT( BROADCAST_UDP_PORT );
 
    // are we listening ?
 
-   if ( !m_numRemoteSensors && ! m_udp )
+   if ( !m_numRemoteSensors && m_udp )
    {
-      m_udp = Networking::getUDP();
       addUDPListener();
    }
-
-
 }
 
 TempSensor  *TemperatureModule::readNextSensor( uint8_t index )
@@ -436,7 +437,7 @@ void  TemperatureModule::localBroadcastData()
       PW_WARN( "No local temp sensors to broadcast" );
       return;
    }
-   else if ( ! Networking::getUDP() )
+   else if ( ! m_udp )
    {
       PW_WARN( "No UDP broadcast" );
       return;

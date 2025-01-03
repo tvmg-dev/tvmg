@@ -137,7 +137,6 @@ void  Measurement::takeSample( void )
       tempSensor = &newSample.m_actualTemps[ i ];
 
       PW_MSG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
-
       i++;
    }
 
