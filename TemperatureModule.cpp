@@ -260,7 +260,7 @@ void  TemperatureModule::initialise()
 
    // are we listening ?
 
-   if ( !m_numRemoteSensors && m_udp )
+   if ( m_numRemoteSensors && m_udp )
    {
       addUDPListener();
    }
