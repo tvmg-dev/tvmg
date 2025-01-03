@@ -6,6 +6,9 @@
 
 #define MAX_FILENAME    32
 
+extern void  GetRunTimeInfo();
+extern uint32_t largestFreeInternalBlock();
+
 extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
 

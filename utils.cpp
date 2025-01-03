@@ -16,7 +16,7 @@
 
 bool isBootSerialEnabled = true;
 
-static char buffer[ 4096 ];
+static char buffer[ 2 * 1024 ];
 
 static bool  isTrueVal = true;
 static bool  isFalseVal = false;
@@ -39,6 +39,97 @@ static IPAddress   subNet;
 static uint16_t    UDPDebugPort = 0;
 
 std::mutex  loggingMutex;
+
+//----------------------------------------------------------------------
+// Memory info
+
+// Heap info taken from esp32/hardware/esp32/3.1.0/cores/esp32/chip-debug-report.cpp
+// caps can be MALLOC_CAP_INTERNAL or MALLOC_CAP_SPIRAM
+
+uint32_t largestFreeInternalBlock()
+{
+   multi_heap_info_t info;
+
+   heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+
+   return( info.largest_free_block );
+}
+
+#define b2kb(b)                ((float)b / 1024.0)
+#define b2mb(b)                ((float)b / (1024.0 * 1024.0))
+
+static void printMemCapsInfo(uint32_t caps, const char *caps_str)
+{
+   multi_heap_info_t info;
+   size_t total = heap_caps_get_total_size(caps);
+   heap_caps_get_info(&info, caps);
+   PW_DEBUG("%s Memory Info:", caps_str);
+   PW_DEBUG("------------------------------------------");
+   PW_DEBUG("  Total Size        : %8d B (%6.1f KB)", total, b2kb(total));
+   PW_DEBUG("  Free Bytes        : %8d B (%6.1f KB)", info.total_free_bytes, b2kb(info.total_free_bytes));
+   PW_DEBUG("  Allocated Bytes   : %8d B (%6.1f KB)", info.total_allocated_bytes, b2kb(info.total_allocated_bytes));
+   PW_DEBUG("  Minimum Free Bytes: %8d B (%6.1f KB)", info.minimum_free_bytes, b2kb(info.minimum_free_bytes));
+   PW_DEBUG("  Largest Free Block: %8d B (%6.1f KB)", info.largest_free_block, b2kb(info.largest_free_block));
+   PW_DEBUG("------------------------------------------");
+}
+
+// Debug for finding stack depth, dervied from
+// https://www.freertos.org/Documentation/02-Kernel/04-API-references/03-Task-utilities/01-uxTaskGetSystemState
+
+#define  MAX_TASKS   25
+TaskStatus_t taskStatusArray[ MAX_TASKS ];
+
+void GetRunTimeInfo()
+{
+    volatile UBaseType_t numTasks;
+    unsigned long ulTotalRunTime, ulStatsAsPercentage;
+
+   // How many current tasks, could change as we execute
+
+   numTasks = uxTaskGetNumberOfTasks();
+
+   PW_DEBUG( "Total tasks %d",numTasks );
+
+   START_TIMING( "TASK STATS" );
+
+   numTasks = uxTaskGetSystemState( taskStatusArray,
+                              numTasks,
+                              &ulTotalRunTime );
+   END_TIMING;
+
+   if ( numTasks > MAX_TASKS )
+   {
+      PW_WARN( "Exceeded number of tasks to process" );
+   }
+
+   ulTotalRunTime /= 100UL;
+
+   if( ulTotalRunTime > 0 )
+   {
+      for( int t = 0; t < numTasks; t++ )
+      {
+         // Output stats, runtime % rounded down to nearest integer
+
+         if ( t < MAX_TASKS )
+         {
+            TaskStatus_t *task = &taskStatusArray[ t ];
+
+            ulStatsAsPercentage = task->ulRunTimeCounter / ulTotalRunTime;
+            PW_DEBUG( "%s tt %d tt %d - stk %d",
+                              task->pcTaskName,
+                              task->ulRunTimeCounter,
+                              ulStatsAsPercentage,
+                              task->usStackHighWaterMark
+                              );
+         }
+      }
+   }
+
+   printMemCapsInfo( MALLOC_CAP_INTERNAL,"INTERNAL" );
+   PW_DEBUG( "Largest Free %d",largestFreeInternalBlock() );
+}
+//----------------------------------------------------------------------
+
 
 bool  isDebugEnabled()
 {
@@ -159,10 +250,14 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    if ( logMemStats == isTrue )
    {
       char line[ 64 ];
+      TaskStatus_t   taskStatus;
 
-      // get stack watermark for current task, current core and free heap
+      vTaskGetInfo( NULL,&taskStatus,pdTRUE,eInvalid );
 
-      sprintf( line,"[%u,%u,%u] - ",xPortGetCoreID(),uxTaskGetStackHighWaterMark( NULL ),ESP.getFreeHeap() / 1024 );
+      // get stack watermark for current task, current core and largest block
+      // available from the heap (which will be less than the free heap size)
+
+      sprintf( line,"[%u,%s,%u,%u] - ",xPortGetCoreID(),taskStatus.pcTaskName,taskStatus.usStackHighWaterMark,largestFreeInternalBlock() / 1024 );
 
       debugString += line;
    }
@@ -202,7 +297,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
    va_list args;
    va_start( args,format );
-   vsprintf( buffer,format,args );
+   vsnprintf( buffer,sizeof(buffer),format,args );
    debugString += buffer;
    va_end( args );
 
@@ -222,7 +317,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
          subNet[ 3 ] = 255;
       }
 
-      uint16_t len = strlen(debugString.c_str());
+      uint16_t len = debugString.length();
       if ( len > 2048 )
       {
          len = 2048;

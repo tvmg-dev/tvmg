@@ -49,6 +49,40 @@ const char* param_download_path = "download_path";
 const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
 
+//----------------------------------------------------------------------
+// This buffer is also used by email sender !
+
+uint8_t  tmpBuffer[ 4096 ];
+int      tmpBufferSize = sizeof( tmpBuffer );
+
+//----------------------------------------------------------------------
+// Additional section for debug purposes, usually not defined
+
+#define  MANAGER_DEBUG_SECTION
+
+#ifdef MANAGER_DEBUG_SECTION
+const char debugSection[] = R"raw(
+<div id="spacer_5"></div>
+<fieldset><legend>Debug Section</legend>
+ <div id="spacer_5"></div>
+ <form method="POST" action="/debug" target="self_page">
+   <table><tr><td id="first_td_th">
+   <p>Debug</p>
+   <p>Debug2</p>
+   <p>Debug3</p>
+   </td><td>
+   <input type="submit" id="submit" value="Debug">
+   </td></tr></table>
+ </form>
+ <div id="spacer_5"></div>
+</fieldset>
+)raw";
+#else
+const char debugSection[] = "";
+#endif
+
+//----------------------------------------------------------------------
+
 String convertFileSize(const size_t bytes)
 {
    if(bytes < 1024)
@@ -64,8 +98,6 @@ String convertFileSize(const size_t bytes)
       return String(bytes / 1048576.0) + " MB";
    }
 }
-
-uint8_t  fileBuff[ 4096 ];
 
 void  replaceFile( const char *origFile,const char *newFile )
 {
@@ -86,10 +118,10 @@ void  replaceFile( const char *origFile,const char *newFile )
          PW_MSG( "Replacing %s with %s",origFile,newFile );
 
          int count;
-         while( ( count = ipFile.read( fileBuff,sizeof( fileBuff ) ) ) > 0 )
+         while( ( count = ipFile.read( tmpBuffer,sizeof( tmpBuffer ) ) ) > 0 )
          {
             PW_DEBUG( "from %s read %d",newFile,count );
-            opFile.write( fileBuff,count );
+            opFile.write( tmpBuffer,count );
          }
          opFile.close();
       }
@@ -211,11 +243,11 @@ String readFile(fs::FS *fs, const char * path)
    }
 
    int count;
-   while( ( count = file.read( fileBuff,sizeof( fileBuff ) ) ) > 0 )
+   while( ( count = file.read( tmpBuffer,sizeof( tmpBuffer ) ) ) > 0 )
    {
       for ( int i = 0; i < count; i++ )
       {
-         fileContent += static_cast<char>( fileBuff[ i ] );
+         fileContent += static_cast<char>( tmpBuffer[ i ] );
       }
    }
    file.close();
@@ -320,6 +352,17 @@ String processor(const String& var)
   {
     return "";
   }
+
+  if(var == "DEBUG_SECTION")
+  {
+     return String( debugSection );
+  }
+
+  if(var == "RUNTIME_INFO")
+  {
+     return String( "Active for a while<br>and a little longer" );
+  }
+
   return String();
 }
 
@@ -359,14 +402,17 @@ void WebServer::initialise()
    setupAsyncServer();
 }
 
+//#define  DEBUG_OTA_BUFFER
+
+int      updatePos;
+int      buffs;
+
 void WebServer::setupAsyncServer()
 {
    m_webServer = new AsyncWebServer( 80 );
 
    m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      m_networking->serverHome();
-
       if(!request->authenticate(http_username, http_password))
       {
          return request->requestAuthentication();
@@ -376,40 +422,37 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/update", HTTP_POST, [&](AsyncWebServerRequest *request)
    {
-      bool rebooting = !Update.hasError();
+      bool ok = !Update.hasError();
 
-      AsyncWebServerResponse *response = request->beginResponse(200, "text/html", rebooting ? ok_html : failed_html);
+      AsyncWebServerResponse *response = request->beginResponse(200, "text/html", ok ? ok_html : failed_html);
 
       response->addHeader("Connection", "close");
       request->send(response);
 
-      if ( rebooting )
-      {
-         PW_DEBUG( "PW 2s to restart" );
-         delay( 2 * 1000 );
-         ESP.restart();
-
-         // call so that loop() queries to progress could be handled, although
-         // should have reset by now...
-
-         m_networking->setUpdateProgress( 1,"completed",true );
-      }
+      Networking::releaseNewMutex();
    },
    [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
    {
       if(!index)
       {
-         PW_MSG( "Updating with %s",filename.c_str() );
+         bool  startedOk = false;
+         updatePos = 0;
+         buffs = 0;
 
-         if ( Update.begin(UPDATE_SIZE_UNKNOWN,U_FLASH) )
+         if ( Networking::takeNewMutex( 10000 ) == 1 )
          {
-            m_networking->setUpdateProgress( index,filename,final );
+            PW_DEBUG( "server - update with %s",filename.c_str() );
+
+            m_networking->setUpdateProgress( 0,filename,false );
+
+            startedOk = Update.begin(UPDATE_SIZE_UNKNOWN,U_FLASH);
          }
-         else
-         {
-            PW_ERROR( "Failed to start update" );
 
-            m_networking->setUpdateProgress( -1,filename,true );
+         if ( !startedOk )
+         {
+            m_networking->setUpdateProgress( -1,filename,false );
+
+            Networking::releaseNewMutex();
 
             return request->send(400, "text/plain", "OTA could not begin");
          }
@@ -417,17 +460,72 @@ void WebServer::setupAsyncServer()
 
       if(!Update.hasError())
       {
-         m_networking->setUpdateProgress( index,filename,false );
+         int   copyLen;
 
-         if(Update.write(data, len) != len)
+         // We copy as many bytes into our tmpBuffer as we can
+
+         if ( updatePos + len <= sizeof( tmpBuffer ) )
          {
-            Update.printError(Serial);
+            copyLen = len;
+         }
+         else
+         {
+            copyLen = sizeof( tmpBuffer ) - updatePos;
+         }
+
+#ifdef DEBUG_OTA_BUFFER
+         PW_DEBUG( "curr %d, add %d",updatePos,copyLen );
+#endif
+
+         memcpy( &tmpBuffer[ updatePos ],data,copyLen );
+
+         // Now set out next update position in our buffer (therefore modulo buff size)
+
+         updatePos += copyLen;
+         updatePos %= sizeof( tmpBuffer );
+
+         // If our update position is zero then we need to write the buffer to file
+
+         if ( ! updatePos )
+         {
+            m_networking->setUpdateProgress( index,filename,false );
+
+            buffs++;
+
+#ifdef DEBUG_OTA_BUFFER
+            PW_DEBUG( "Writing buffer... %d",buffs );
+#endif
+
+            Update.write( tmpBuffer,sizeof( tmpBuffer ) );
+
+            // Now need to set a new update position based on the bytes we didn't copy over
+            // and of course copy these bytes into the start of the buffer
+
+#ifdef DEBUG_OTA_BUFFER
+            PW_DEBUG( "new tmpBuff from %d - %d bytes",copyLen,len-copyLen );
+#endif
+            memcpy( tmpBuffer,&data[ copyLen ],len - copyLen );
+            updatePos = len - copyLen;
+         }
+
+         if ( final )
+         {
+            PW_MSG( "Final size %d, final buffer %d",index + len,buffs * sizeof( tmpBuffer ) + updatePos );
+            Update.write( tmpBuffer,updatePos );
          }
       }
 
-      if(final && ! Update.end(true))
+      if( final )
       {
-         Update.printError(Serial);
+         if ( !Update.end( true ) )
+         {
+            Update.printError(Serial);
+            m_networking->setUpdateProgress( -1,filename,true );
+         }
+         else
+         {
+            m_networking->setUpdateProgress( index,filename,true );
+         }
       }
    });
 
@@ -442,14 +540,16 @@ void WebServer::setupAsyncServer()
       {
          return request->requestAuthentication();
       }
+      uint32_t largestFreeBlock = largestFreeInternalBlock();
+
+      PW_DEBUG( "Largest free heap %d",largestFreeBlock );
+
       String fileName = "/" + request->getParam(param_edit_path)->value();
 
       PW_DEBUG( "Editing %s",fileName.c_str() );
       savePath = fileName;
       textareaContent = readFile(s_spiffs, fileName.c_str());
       request->send_P(200, "text/html", edit_html, processor);
-
-      m_networking->startFileEdit( fileName );
    });
 
    m_webServer->on("/save", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -464,7 +564,7 @@ void WebServer::setupAsyncServer()
          const AsyncWebParameter* param = request->getParam( static_cast<size_t> (0) );
          if ( param && ( param->name() == String( param_edit_textarea ) ) )
          {
-            PW_DEBUG( "Saving %d bytes to %s : contents :",param->value().length(),savePath.c_str() );
+            PW_DEBUG( "Saving %d bytes to %s",param->value().length(),savePath.c_str() );
 
 #if 0
             // code to replace CR+LF with just LF
@@ -479,12 +579,6 @@ void WebServer::setupAsyncServer()
 #endif
 
             writeFile( s_spiffs, savePath.c_str(), param->value().c_str() );
-
-            START_DEBUG;
-               // Limit to 2K for debug
-               String dbg = param->value().substring( 0,2047 );
-               PW_DEBUG( "%s",dbg.c_str() );
-            END_DEBUG
          }
       }
 
@@ -566,6 +660,17 @@ void WebServer::setupAsyncServer()
       delay( 500 );
 
       ESP.restart();
+   });
+
+   m_webServer->on("/debug", HTTP_POST, [](AsyncWebServerRequest *request)
+   {
+      if ( Networking::takeNewMutex( 100 ) == 1 )
+      {
+         GetRunTimeInfo();
+         Networking::releaseNewMutex();
+      }
+
+      request->redirect("/manager");
    });
 
    m_webServer->on("/reboot", HTTP_POST, [](AsyncWebServerRequest *request)

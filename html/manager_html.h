@@ -13,12 +13,14 @@ const char manager_html[] PROGMEM = R"rawliteral(
    #download_path { width:250px; }
    #spacer_10 { height: 10px; }
    #spacer_5 { height: 5px; }
+   #first_td_th { width:400px; }
+   #reset_notice { color: #ff0000; }
    table { background-color: #dddddd; border-collapse: collapse; width:650px; }
    td, th { border: 1px solid #dddddd; text-align: left; padding: 8px; }
-   #first_td_th { width:400px; }
    tr:nth-child(even) { background-color: #ffffff; }
    fieldset { width:700px; background-color: #f7f7f7; }
-   #reset_notice { color: #ff0000; }
+   p {margin-bottom: 0em;  margin-top: 0em; }
+   .left { display:inline-block; float: left; text-align:left; margin-left: 30px; }
   </style>
   <script>
    function validateFormUpdate() {
@@ -70,8 +72,8 @@ const char manager_html[] PROGMEM = R"rawliteral(
       return false;
     }
     var text = "WARNING: Pressing the \"OK\" button will delete ";
-    var pete = text.concat( fileName );
-    if (confirm(pete) == true){
+    var prompt = text.concat( fileName );
+    if (confirm(prompt) == true){
       return true;
     }
     else{
@@ -98,10 +100,14 @@ const char manager_html[] PROGMEM = R"rawliteral(
  </head>
  <body>
    <center>
-     <h2>ThermaV Monitor Firmware Update [current : %VERSION%]</h2>
+     <h2>ThermaV Monitor</h2>
      <div id="spacer_5"></div>
-     <fieldset>
-      <legend>Firmware Update</legend>
+     <fieldset><legend>Firmware Update</legend>
+      <table><tbody><tr><td>
+       <p>Current Version : %VERSION%</p>
+       <hr style="color: white;">
+       <p>stuff</p>
+      </td></tr></tbody></table>
       <div id="spacer_5"></div>
       <form method="POST" action="/update" enctype="multipart/form-data">
        <table><tr><td id="first_td_th">
@@ -117,8 +123,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <h2>ESP32 SPIFFS Manager</h2>
 
      <div id="spacer_5"></div>
-     <fieldset>
-      <legend>File list</legend>
+     <fieldset><legend>File list</legend>
       <p>Full SPIFFS storage: %SPIFFS_TOTAL_BYTES%, used: %SPIFFS_USED_BYTES%, available: %SPIFFS_FREE_BYTES%</p>
       <div id="spacer_5"></div>
       %LISTEN_FILES%
@@ -126,8 +131,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      </fieldset>
 
      <div id="spacer_5"></div>
-     <fieldset>
-      <legend>File upload</legend>
+     <fieldset><legend>File upload</legend>
       <div id="spacer_5"></div>
       <form method="POST" action="/upload" enctype="multipart/form-data">
        <table><tr><td id="first_td_th">
@@ -140,8 +144,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      </fieldset>
 
      <div id="spacer_5"></div>
-     <fieldset>
-      <legend>Edit file</legend>
+     <fieldset><legend>Edit file</legend>
       <div id="spacer_5"></div>
       <form method="GET" action="/edit">
        <table><tr><td id="first_td_th">
@@ -154,8 +157,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      </fieldset>
 
      <div id="spacer_5"></div>
-     <fieldset>
-       <legend>Delete file</legend>
+     <fieldset><legend>Delete file</legend>
        <div id="spacer_5"></div>
        <form method="GET" action="/delete">
         <table><tr><td id="first_td_th">
@@ -168,8 +170,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      </fieldset>
 
      <div id="spacer_5"></div>
-     <fieldset>
-      <legend>Download file</legend>
+     <fieldset><legend>Download file</legend>
       <div id="spacer_5"></div>
       <form method="GET" action="/download">
         <table><tr><td id="first_td_th">
@@ -182,8 +183,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      </fieldset>
 
      <div id="spacer_5"></div>
-     <fieldset>
-      <legend>Reset Board</legend>
+     <fieldset><legend>Reset Board</legend>
       <div id="spacer_5"></div>
       <form method="POST" action="/reset" target="self_page">
         <table><tr><td id="first_td_th">
@@ -195,9 +195,10 @@ const char manager_html[] PROGMEM = R"rawliteral(
       <div id="spacer_5"></div>
      </fieldset>
 
+     %DEBUG_SECTION%
+
      <div id="spacer_5"></div>
-     <fieldset>
-      <legend>Reboot</legend>
+     <fieldset><legend>Reboot</legend>
       <div id="spacer_5"></div>
       <form method="POST" action="/reboot" target="self_page">
         <table><tr><td id="first_td_th">

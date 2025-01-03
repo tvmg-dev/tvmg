@@ -10,7 +10,6 @@
 #include "HeatMeter.h"
 
 class Storage;
-class Networking;
 
 class Measurement
 {
@@ -43,7 +42,6 @@ private:
    LGHeatPump        *m_heatPump;
    HeatMeterModule   *m_heatMeterModule;
    Storage           *m_storageModule;
-   Networking        *m_networking;
    Sample            m_lastSample;
    uint32_t          m_millisLastAquisition;
 };

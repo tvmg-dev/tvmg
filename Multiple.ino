@@ -18,7 +18,6 @@
 #include "WebServer.h"
 #include "LGHeatPump.h"
 
-
 // ---------------------------------------------------------------------
 
 ModbusMaster      *modbusMaster = nullptr;
@@ -33,10 +32,10 @@ Config            *config = nullptr;
 Networking        *networking = nullptr;
 LGHeatPump        *lgThermaV = nullptr;
 
-// Amount of time we can have the webserver busy before we reboot.  This
-// is to ensure that if editing we will reboot if not completed in this period.
+// Amount of time we can have the network mutex held before the loop()
+// can proceed.  If this is exceeded then will reboot.
 
-#define  NETWORK_ALLOWED_BUSY_MS (120 * 1000)
+#define  NETWORK_ALLOWED_BUSY_MS (60 * 1000)
 
 // We'll malloc into this buffer for heap size debugging
 
@@ -299,6 +298,8 @@ void  configureModBus()
 // ---------------------------------------------------------------------
 // Create/initialise all modules prior to main loop
 
+extern void printAfterSetupInfo(void);
+
 void setup( void )
 {
    // start serial port, if the GPIO controlling serial on boot behaviour is low,
@@ -315,6 +316,8 @@ void setup( void )
       isBootSerialEnabled = false;
       setPinsOk = Serial.setPins( ALTERNATE_UART0_RX_GPIO,ALTERNATE_UART0_TX_GPIO );
    }
+
+//   Serial.setDebugOutput(true); from chip-debug-report.cpp
 
    Serial.begin( 115200,SERIAL_8N1 );
 
@@ -389,6 +392,9 @@ void setup( void )
    }
 
    PW_MSG( "Version: %s",VERSION_STR );
+   PW_MSG( "Arduino Board: %s", ARDUINO_BOARD );
+   PW_MSG( "Arduino Variant: %s", ARDUINO_VARIANT );
+   PW_MSG( "Arduino Version: %s", ESP_ARDUINO_VERSION_STR);
 
    // Instantiate the storage module, and initialise it.  If the SD card
    // is not operational the storage module will not save data but at least
@@ -579,8 +585,8 @@ void setup( void )
       int size = GET_REGISTRY_INT( HEAP_TEST_SIZE );
       if ( size != -1 )
       {
+         PW_MSG( "Test alloc %d KiB",size );
          size *= 1024;
-         PW_DEBUG( "allocating %d",size );
          testMallocBuffer = static_cast<char *>(malloc( size ));
          if ( !testMallocBuffer )
          {
@@ -594,13 +600,12 @@ void setup( void )
 // Loop
 
 #define LOOP_PERIOD_MS     5000
-#define FASTLOOP_PERIOD_MS 500
 
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
-   static uint32_t networkStartBusyMillis = 0;
    static uint32_t loopMillis = LOOP_PERIOD_MS;
+   bool  restartRequired = false;
 
    START_TIMING( "Main Loop" );
 
@@ -609,62 +614,72 @@ void loop(void)
       targetMillis = millis();
    }
 
-   if ( networking->isBusy() )
+   // Take the networking mutex, it's a recursive mutex so if we take
+   // again in this task, e.g. to send an email then no problem.
+
+   if ( Networking::takeNewMutex( NETWORK_ALLOWED_BUSY_MS ) != 1 )
    {
-      if ( !networkStartBusyMillis )
+      PW_ERROR( "Timeout on network mutex, rebooting..." );
+      restartRequired = true;
+   }
+
+   // has an OTA update occurred
+
+   if ( networking->hasUpdated() )
+   {
+      restartRequired = true;
+      delay( 2500 );
+   }
+
+   if ( restartRequired )
+   {
+      PW_MSG( "Rebooting..." );
+
+      ESP.restart();
+      while( 1 )
       {
-         networkStartBusyMillis = millis();
-         loopMillis = FASTLOOP_PERIOD_MS;
+         delay( 500 );
       }
-      else if ( millis() - networkStartBusyMillis  > NETWORK_ALLOWED_BUSY_MS )
-      {
-         PW_ERROR( "Timeout on webserver busy, rebooting..." );
-         ESP.restart();
-      }
+   }
+
+   loopMillis = LOOP_PERIOD_MS;
+
+   // process button presses
+
+   if ( wasButton1Pressed )
+   {
+      START_TIMING( "Handle Touch1" );
+      handleTouch1();
+      wasButton2Pressed = false;
+      END_TIMING;
+   }
+
+   if ( wasButton2Pressed )
+   {
+      START_TIMING( "Handle Touch2" );
+      handleTouch2();
+      wasButton1Pressed = false;
+      END_TIMING;
+   }
+
+   START_TIMING( "takeSample" );
+   measurement->takeSample();
+   END_TIMING;
+
+   START_TIMING( "UserIO Update" );
+   userIO->update();
+   END_TIMING;
+
+   START_TIMING( "UserIO Show Screen" );
+   if ( userIOHoldScreen )
+   {
+      userIO->refresh();
    }
    else
    {
-      networkStartBusyMillis = 0;
-      loopMillis = LOOP_PERIOD_MS;
-
-      // process button presses
-
-      if ( wasButton1Pressed )
-      {
-         START_TIMING( "Handle Touch1" );
-         handleTouch1();
-         wasButton2Pressed = false;
-         END_TIMING;
-      }
-
-      if ( wasButton2Pressed )
-      {
-         START_TIMING( "Handle Touch2" );
-         handleTouch2();
-         wasButton1Pressed = false;
-         END_TIMING;
-      }
-
-      START_TIMING( "takeSample" );
-      measurement->takeSample();
-      END_TIMING;
-
-      START_TIMING( "UserIO Update" );
-      userIO->update();
-      END_TIMING;
-
-      START_TIMING( "UserIO Show Screen" );
-      if ( userIOHoldScreen )
-      {
-         userIO->refresh();
-      }
-      else
-      {
-         userIO->showNext();
-      }
-
-      END_TIMING;
+      userIO->showNext();
    }
+   END_TIMING;
 
    // our target MS is our original millis at entry of this loop, plus
    // our sampling delay
@@ -682,6 +697,10 @@ void loop(void)
    deltaMillis = targetMillis - currentMillis;
 
    END_TIMING;
+
+   // Now we release the mutex and delay for next cycle
+
+   Networking::releaseNewMutex();
 
    PW_DEBUG( "Loop Delay %u",deltaMillis );
 

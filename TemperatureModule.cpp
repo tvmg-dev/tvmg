@@ -251,8 +251,19 @@ void  TemperatureModule::initialise()
       }
    }
 
+   // Get UDP for broadcast rx/tx
+
+   m_udp = Networking::getUDP();
+
    // are we broadcasting data ?
    m_sendPort = GET_REGISTRY_INT( BROADCAST_UDP_PORT );
+
+   // are we listening ?
+
+   if ( m_numRemoteSensors && m_udp )
+   {
+      addUDPListener();
+   }
 }
 
 TempSensor  *TemperatureModule::readNextSensor( uint8_t index )
@@ -275,8 +286,10 @@ void TemperatureModule::addUDPListener()
 {
    uint16_t  listenPort = GET_REGISTRY_INT( LISTEN_UDP_PORT );
 
+   PW_MSG( "Adding UDP listener %d",listenPort );
    if( listenPort != -1 && m_udp && m_udp->listen( listenPort ) ) {
       m_udp->onPacket([ & ](AsyncUDPPacket packet) {
+         PW_DEBUG( "UDP rx" );
          if ( packet.length() < sizeof( s_udpPacket ) - 1 )
          {
             strncpy( s_udpPacket,reinterpret_cast<const char *>(packet.data()),packet.length() );
@@ -424,16 +437,10 @@ void  TemperatureModule::localBroadcastData()
       PW_WARN( "No local temp sensors to broadcast" );
       return;
    }
-   else if ( ! Networking::getUDP() )
+   else if ( ! m_udp )
    {
       PW_WARN( "No UDP broadcast" );
       return;
-   }
-
-   if ( !m_udp )
-   {
-      m_udp = Networking::getUDP();
-      addUDPListener();
    }
 
    root = cJSON_CreateObject();

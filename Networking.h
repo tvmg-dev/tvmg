@@ -6,21 +6,10 @@
 #include <mutex>
 
 #include "utils.h"
-#include "UserIO.h"
-
-#define  SCOPE_LOCK_NW_MUTEX \
-do { \
-   std::lock_guard<std::recursive_mutex> lock( Networking::getNetworkingMutex() ); \
-} while( 0 );
-
-#define  SCOPE_RELEASE_WEB_CLIENT \
-do { \
-   std::lock_guard<std::recursive_mutex> lock( Networking::getNetworkingMutex() ); \
-   Networking::releaseWebClient(); \
-} while( 0 );
 
 class WebServer;
 class Emailer;
+class UserIO;
 
 class Networking
 {
@@ -53,17 +42,15 @@ public:
    bool  startAccessPoint();
    bool  startMDNS();
    bool  acquireNTP();
-   void  setUpdateProgress( int index, const String &filename,bool finished );
+   void  setUpdateProgress( int size, const String &filename,bool finished );
    void  setUserIO( UserIO *userIO );
-   void  serverHome();
-   void  startFileEdit( const String &filename );
-
+   bool  hasUpdated();
 
    static void  releaseWebClient();
-   static std::recursive_mutex   &getNetworkingMutex();
    WebServer   *getWebServer();
-   bool  isBusy();
 
+   static int   takeNewMutex( int ms );
+   static void  releaseNewMutex();
 
    static   AsyncUDP    *getUDP();
 
@@ -71,12 +58,14 @@ private:
    Emailer           *m_emailer;
    WebServer         *m_webServer;
    UserIO            *m_userIO;
-   static  AsyncUDP  *s_udp;
    Status            m_status;
    String            m_emonCert;
    bool              m_willSendEmails;
-   bool              m_isUpdating;
-   bool              m_isEditing;
+   bool              m_hasUpdated;
+
+   static AsyncUDP            *s_udp;
+   static SemaphoreHandle_t   s_newMutex;
+   static uint32_t            s_mutexAcquiredMillis;
 };
 
 #endif

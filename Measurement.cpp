@@ -85,7 +85,6 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
              m_heatPump( heatPump ),
              m_heatMeterModule( hmModule ),
              m_storageModule( storage ),
-             m_networking( nullptr ),
              m_lastSample(),
              m_millisLastAquisition( 0 )
 {
@@ -138,7 +137,6 @@ void  Measurement::takeSample( void )
       tempSensor = &newSample.m_actualTemps[ i ];
 
       PW_MSG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
-
       i++;
    }
 

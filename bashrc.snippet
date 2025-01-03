@@ -1,4 +1,38 @@
 
+
 export SPIFFSGEN=~/Documents/github/esp-idf/components/spiffs/spiffsgen.py
 export PARTTOOL=~/Documents/github/esp-idf/components/partition_table/parttool.py
 export ESPTOOL=~/Documents/github/esptool/esptool.py
+
+export PYTHON_LOG_SCRIPT=~/Documents/github/Multiple/logging.py
+export LOGGING_DIR=~/Documents
+
+_log()
+{
+  local port=""
+  case $1 in
+    "pheating")   port=51101 ;;
+    "test")       port=51100 ;;
+    "thermav")    port=51102 ;;
+    "master")     port=51003 ;;
+    "ground")     port=51004 ;;
+    "first")      port=51005 ;;
+    "second")     port=51006 ;;
+    *) printf "\n\n  No known device\n\n"
+       return;
+   esac
+
+  python -u "$PYTHON_LOG_SCRIPT" $port | tee "${LOGGING_DIR}/$1.log"
+}
+
+export -f _log
+
+alias log-pheating='_log pheating'
+alias log-test='_log test'
+alias log-thermav='_log thermav'
+alias log-master='_log master'
+alias log-ground='_log ground'
+alias log-first='_log first'
+alias log-second='_log second'
+
+

@@ -194,8 +194,11 @@ void  UserIO::showStorage()
    }
 
    uint32_t freeHeap = ESP.getFreeHeap();
-   snprintf( line,MAX_OLED_COLUMNS,"Heap Free: %u KiB",freeHeap / 1024 );
+
+   snprintf( line,MAX_OLED_COLUMNS,"Heap Free" );
    storeLine( 2,line );
+   snprintf( line,MAX_OLED_COLUMNS," %u [ %u ] KiB",freeHeap / 1024,largestFreeInternalBlock() / 1024 );
+   storeLine( 3,line );
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
    storeLine( 4,"SPIFFS" );

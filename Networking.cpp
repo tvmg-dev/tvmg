@@ -18,8 +18,6 @@ extern UserIO  *userIO;
 
 const char* ntpServer = "pool.ntp.org";
 
-std::recursive_mutex  networkingMutex;
-
 static WiFiClientSecure *s_emoncmsClient = nullptr;
 static HTTPClient       *s_webClient = nullptr;
 static String           s_emoncmsApiKey;
@@ -27,6 +25,12 @@ static String           s_emoncmsApiKey;
 #define  KEEP_ALIVE_MS                 6000
 #define  DEFAULT_WIFI_CONNECT_TIMEOUT  60000
 #define  DEFAULT_NTP_UPDATE_TIMEOUT    60000
+
+
+#define  EMON_ACQUIRE_MUTEX_MS         20000    // time allowed for emon task to get the nw mutex
+#define  EMAIL_ACQUIRE_MUTEX_MS        10000    // time allowed for email to get the nw mutex
+
+//----------------------------------------------------------------------
 
 static uint32_t emonSendRequests = 0,emonQFailures = 0, emonSendFailures = 0;
 
@@ -40,6 +44,7 @@ struct   EmonData {
 
 static TaskHandle_t  backgroundHandle = NULL;
 static QueueHandle_t dataQueue = NULL;
+static char          threadBuff[ 128 ];     // to reduce stack use
 
 void  sendToEmonCMS( uint32_t emonFeedId,float_t value );
 
@@ -59,15 +64,22 @@ void  backgroundThread( void *params )
       {
          if ( xQueueReceive( dataQueue,&data,portTICK_PERIOD_MS * 60000 ) )
          {
-            char  buff[ 128 ];
-            snprintf( buff,128,"EMONCMS: Processed Q for [%u], %.2f",data->emonFeedId,data->value );
-            START_TIMING( buff );
+            snprintf( threadBuff,sizeof(threadBuff),"EMONCMS: Processed Q for [%u], %.2f",data->emonFeedId,data->value );
+            START_TIMING( threadBuff );
 
             PW_DEBUG( "EMONCMS: Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
 
             if ( sendData )
             {
-               sendToEmonCMS( data->emonFeedId,data->value );
+               // We only send if we can take the network mutex as we may be
+               // releasing the web-client in sendToEmonCMS().  If we can't get
+               // the mutex (e.g. OTA download occuring) then we simply don't send.
+
+               if ( Networking::takeNewMutex( EMON_ACQUIRE_MUTEX_MS ) == 1 )
+               {
+                  sendToEmonCMS( data->emonFeedId,data->value );
+                  Networking::releaseNewMutex();
+               }
             }
             else
             {
@@ -94,13 +106,7 @@ void  backgroundThread( void *params )
 void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 {
    static uint32_t   lastSentMillis = 0;
-   char        path[ 128 ];
    time_t      utc;
-
-   // possible fix for lack of emails, take mutex before doing anything
-   // still have UDP traffic ??
-
-   SCOPE_LOCK_NW_MUTEX;
 
    // If we've not processed a send request for KEEP_ALIVE_MS then force
    // the connection to drop. Maybe unecessary but don't want to try and
@@ -139,13 +145,13 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
    // Form our path for the GET request based on the feed Id
    time( &utc );
 
-   snprintf( path,128,"/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,s_emoncmsApiKey.c_str() );
+   snprintf( threadBuff,sizeof(threadBuff),"/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,s_emoncmsApiKey.c_str() );
 
-   PW_MSG( "EMONCMS: Will %s",path );
+   PW_MSG( "EMONCMS: Will %s",threadBuff );
 
    // Send the GET request - which will force a connect if necessary
 
-   s_webClient->setURL( path );
+   s_webClient->setURL( threadBuff );
    int httpCode = s_webClient->GET();
 
    PW_DEBUG( "EMONCMS: GET response %d",httpCode );
@@ -171,6 +177,9 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
    lastSentMillis = millis();
 }
+
+//----------------------------------------------------------------------
+// Emailer class
 
 class Emailer
 {
@@ -237,8 +246,12 @@ void  Emailer::initialise()
 
 bool Emailer::sendEmail( const char *recipient,const char *subject,const String &msg )
 {
-   if ( m_sender )
+   if ( m_sender && Networking::takeNewMutex( EMAIL_ACQUIRE_MUTEX_MS ) == 1 )
    {
+      // Release the web-client before we go onto send the message
+
+      Networking::releaseWebClient();
+
       EMailSender::EMailMessage message;
       String newSubject = m_networking->getLocalMDNSName() + " : " + String( subject );
 
@@ -250,28 +263,25 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
 
       EMailSender::Response resp;
 
-      {
-         // remove the web client before we send, cautionary to avoid
-         // networking conflicts
-
-         SCOPE_RELEASE_WEB_CLIENT;
-         resp = m_sender->send( recipient,message );
-      }
+      resp = m_sender->send( recipient,message );
 
       if ( !resp.status )
       {
          PW_WARN( "Failed to send email %s, %s", resp.code.c_str(),resp.desc.c_str() );
       }
 
+      Networking::releaseNewMutex();
+
       return resp.status;
    }
+
    return false;
 }
 
 bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
 {
-   char buff[ 256 ];
-   snprintf( buff,256,"Sending to %s [%s]",recipient,subject );
+   char buff[ 128 ];
+   snprintf( buff,sizeof(buff),"Sending to %s [%s]",recipient,subject );
 
    START_TIMING( buff );
 
@@ -280,8 +290,12 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       PW_MSG( "  attachment %s",fileName );
    }
 
-   if ( m_sender )
+   if ( m_sender && Networking::takeNewMutex( EMAIL_ACQUIRE_MUTEX_MS ) == 1 )
    {
+      // Release the web-client before we go onto send the message
+
+      Networking::releaseWebClient();
+
       EMailSender::EMailMessage message;
       EMailSender::FileDescriptior fileDescriptor[ 1 ];
 
@@ -307,9 +321,10 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
          if ( ! SD.exists( fileName ) )
          {
             PW_WARN( "%s doesn't exist, not sending email",fileName );
+            Networking::releaseNewMutex();
+
             return false;
          }
-
       }
 
       EMailSender::Attachments attachments = { 1, fileDescriptor };
@@ -322,18 +337,14 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
 
       EMailSender::Response resp;
 
-      {
-         // remove the web client before we send, cautionary to avoid
-         // networking conflicts
-
-         SCOPE_RELEASE_WEB_CLIENT;
-         resp = m_sender->send( recipient,message,attachments );
-      }
+      resp = m_sender->send( recipient,message,attachments );
 
       if ( !resp.status )
       {
          PW_WARN( "Failed to send email %s, %s", resp.code.c_str(),resp.desc.c_str() );
       }
+
+      Networking::releaseNewMutex();
 
       return resp.status;
    }
@@ -343,7 +354,11 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
    return false;
 }
 
+//----------------------------------------------------------------------
+
 AsyncUDP *Networking::s_udp = nullptr;
+uint32_t Networking::s_mutexAcquiredMillis;
+SemaphoreHandle_t Networking::s_newMutex = NULL;
 
 Networking::Networking()
           : m_emailer( nullptr ),
@@ -352,11 +367,15 @@ Networking::Networking()
             m_status(),
             m_emonCert(),
             m_willSendEmails( false ),
-            m_isUpdating( false ),
-            m_isEditing( false )
+            m_hasUpdated( false )
 {
    PW_DEBUG( "Networking::Networking()" );
    PW_MSG( "Networking Startup" );
+
+   if ( !s_newMutex )
+   {
+      s_newMutex = xSemaphoreCreateRecursiveMutex();
+   }
 
    // set status to defaults, not connected etc.
 
@@ -459,12 +478,6 @@ bool Networking::startMDNS()
    return( mdnsOk );
 }
 
-#define  OLED_DEBUG( x ) \
-do {\
-  userIO->updateLine( 5,x ); \
-  delay( 1000 ); \
-} while( 0 )
-
 void Networking::initialise()
 {
    PW_DEBUG( "Networking::initialise" );
@@ -547,11 +560,11 @@ void Networking::initialise()
       xTaskCreatePinnedToCore(
          backgroundThread,    // thread fn
          "EmonCMS-Task",      // Name of the task
-         10000,               // Stack size in words
+         (6 * 1024),          // Stack size in bytes
          NULL,                // no input params
          0,                   // Priority
          &backgroundHandle,   // handle
-         0 );                 // Assign to core 0, core 1 used for main loop
+         1 );                 // Assign to core 0, core 1 used for main loop
    }
 }
 
@@ -715,21 +728,27 @@ void  Networking::releaseWebClient()
    }
 }
 
-std::recursive_mutex   &Networking::getNetworkingMutex()
+void  Networking::setUpdateProgress( int size,const String &filename,bool finished )
 {
-   return networkingMutex;
-}
+   // If update start fails then we get size -1 and finished is false
 
-bool  Networking::isBusy()
-{
-   return ( m_isUpdating | m_isEditing );
-}
+   if ( size == -1 )
+   {
+      if ( m_userIO )
+      {
+         m_userIO->clear();
+         m_userIO->updateLine( 1,"Updating :" );
+         m_userIO->updateLine( 3,"FAILED !" );
 
-void  Networking::setUpdateProgress( int index,const String &filename,bool finished )
-{
+         delay( 2000 );
+      }
+
+      return;
+   }
+
    if ( finished )
    {
-      m_isUpdating = false;
+      m_hasUpdated = true;
       if ( m_userIO )
       {
          m_userIO->updateLine( 5,"Completed" );
@@ -737,7 +756,7 @@ void  Networking::setUpdateProgress( int index,const String &filename,bool finis
       return;
    }
 
-   m_isUpdating = true;
+   m_hasUpdated = false;
 
    // Update UserIO if available
 
@@ -746,25 +765,27 @@ void  Networking::setUpdateProgress( int index,const String &filename,bool finis
       return;
    }
 
-   if ( !index )
+   if ( !size )
    {
+      PW_MSG( "OTA update with %s",filename.c_str() );
+
       m_userIO->clear();
       m_userIO->updateLine( 1,"Updating :" );
 
-      char line[ 128 ];
+      char line[ MAX_OLED_COLUMNS + 1 ];
       snprintf( line,MAX_OLED_COLUMNS," %s",filename.c_str() );
       m_userIO->updateLine( 2,line );
-   }
-   else if ( index == -1 )
-   {
-      m_userIO->updateLine( 5,"FAILED !!" );
-      delay( 2000 );
    }
    else
    {
       static int i = 0;
       char  progress[] = ".oOo";
       char  line[ 2 ];
+
+      if ( i % 5 == 0 )
+      {
+         PW_MSG( "OTA size %d",size );
+      }
 
       line[ 0 ] = progress[ i++ % 4 ];
       line[ 1 ] = 0;
@@ -773,31 +794,50 @@ void  Networking::setUpdateProgress( int index,const String &filename,bool finis
    }
 }
 
+bool  Networking::hasUpdated()
+{
+   return m_hasUpdated;
+}
+
 void  Networking::setUserIO( UserIO *userIO )
 {
    m_userIO = userIO;
 }
 
-void  Networking::serverHome()
+int Networking::takeNewMutex( int ms )
 {
-   m_isEditing = false;
+   if ( ! s_newMutex )
+   {
+      PW_WARN( "No nw mutex" );
+      return -1;
+   }
+
+   uint32_t startMillis;
+
+   PW_DEBUG( "Take n/w mutex" );
+   startMillis = millis();
+   int ok = xSemaphoreTakeRecursive( s_newMutex,ms * portTICK_PERIOD_MS);
+
+   if ( ok != pdTRUE )
+   {
+      PW_WARN( "Failed to take nw mutex" );
+   }
+   else
+   {
+      s_mutexAcquiredMillis = millis();
+      PW_DEBUG( "n/w mutex took %d ms",s_mutexAcquiredMillis - startMillis );
+   }
+
+   return( ok == pdTRUE );
 }
 
-void  Networking::startFileEdit( const String &filename )
+void  Networking::releaseNewMutex()
 {
-   char line[ MAX_OLED_COLUMNS + 1 ];
-
-   m_isEditing = true;
-
-   m_userIO->clear();
-   m_userIO->updateLine( 1,"Editing :" );
-
-   snprintf( line,MAX_OLED_COLUMNS,"%s",filename.c_str() );
-   m_userIO->updateLine( 2,line );
-
-   // To release memory we release the http client which returns ~ 50KB
-   // to the heap.
-
-   SCOPE_RELEASE_WEB_CLIENT;
+   if ( s_newMutex )
+   {
+      PW_DEBUG( "n/w mutex held for %d",millis() - s_mutexAcquiredMillis );
+      xSemaphoreGiveRecursive( s_newMutex );
+   }
 }
+
 
