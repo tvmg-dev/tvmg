@@ -14,7 +14,16 @@
 #include "Networking.h"
 #include "LGHeatPump.h"
 
+//----------------------------------------------------------------------
+
+uint8_t  scratchBuffer[ 4096 ];
+int      scratchBufferSize = sizeof( scratchBuffer );
+
+//----------------------------------------------------------------------
+
 bool isBootSerialEnabled = true;
+
+//----------------------------------------------------------------------
 
 static char buffer[ 2 * 1024 ];
 
@@ -39,6 +48,256 @@ static IPAddress   subNet;
 static uint16_t    UDPDebugPort = 0;
 
 std::mutex  loggingMutex;
+
+//----------------------------------------------------------------------
+// cJSON/file helpers
+
+static   cJSON *sensorJSON = nullptr;
+
+static int   numChars( char findChar,const char *str )
+{
+   int   num = 0;
+
+   if ( str )
+   {
+      while ( *str )
+      {
+         if ( *str == findChar )
+         {
+            num++;
+         }
+         str++;
+      }
+   }
+
+   return num;
+}
+
+void  replaceSpiffsFile( const String &origFile,const String &newFile )
+{
+   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+
+   if ( !spiffs )
+   {
+      PW_WARN( "No spiffs, can't replace file" );
+      return;
+   }
+
+   // First remove the original file, then we'll copy from the new file
+   // back to the original
+
+   spiffs->remove( origFile );
+
+   File ipFile = spiffs->open( newFile,"r" );
+   if ( ipFile )
+   {
+      File opFile = spiffs->open( origFile,"w" );
+      if ( opFile )
+      {
+         PW_MSG( "Replacing %s with %s",origFile,newFile );
+
+         int count;
+         while( ( count = ipFile.read( scratchBuffer,scratchBufferSize ) ) > 0 )
+         {
+            PW_DEBUG( "from %s read %d",newFile,count );
+            opFile.write( scratchBuffer,count );
+         }
+         opFile.close();
+      }
+
+      ipFile.close();
+   }
+}
+
+cJSON *getAllSensorJSON()
+{
+   if ( sensorJSON )
+   {
+      return sensorJSON;
+   }
+
+   if ( iscJSONFileOk( SENSORS_FILENAME ) )
+   {
+      fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+
+      File file = spiffs->open( SENSORS_FILENAME,FILE_READ );
+      if ( !file )
+      {
+         PW_WARN( "%s is missing",SENSORS_FILENAME );
+      }
+      else
+      {
+         PW_MSG( "Reading %s",SENSORS_FILENAME );
+
+         String data = file.readStringUntil( '@' );
+
+         file.close();
+
+         sensorJSON = cJSON_Parse( data.c_str() );
+
+         if ( sensorJSON && cJSON_IsArray( sensorJSON ) )
+         {
+            PW_MSG( "cJSON array read ok" );
+         }
+         else if ( sensorJSON )
+         {
+            cJSON_Delete( sensorJSON );
+            sensorJSON = nullptr;
+
+            PW_ERROR( "cJSON from %s was not an array",SENSORS_FILENAME );
+         }
+      }
+   }
+
+   PW_DEBUG( "JSON at 0x%x",sensorJSON );
+
+   return sensorJSON;
+}
+
+void  releaseSensorJSON()
+{
+   if ( sensorJSON )
+   {
+      PW_MSG( "Releasing JSON" );
+
+      cJSON_Delete( sensorJSON );
+      sensorJSON = nullptr;
+   }
+}
+
+// very basic file checking, only making sure braces are balanced -
+// so braces can't be used in name strings
+
+bool  iscJSONFileOk( const String &fileName )
+{
+   bool  isOk = false;
+
+   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+   File file = spiffs->open( fileName,FILE_READ );
+   if ( !file )
+   {
+      PW_WARN( "%s is missing",fileName.c_str() );
+   }
+   else
+   {
+      String data = file.readStringUntil( '@' );
+
+      if ( data.length() )
+      {
+         const char *buf = data.c_str();
+
+         isOk = true;
+
+         // check for equal opening/closing braces
+
+         int openBraces = numChars( '{',buf );
+         int closeBraces = numChars( '{',buf );
+
+         if ( openBraces != closeBraces )
+         {
+            PW_ERROR( "%s {} == %d %d",fileName.c_str(),openBraces,closeBraces );
+            isOk = false;
+         }
+
+         if ( isOk )
+         {
+            // check for equal opening/closing square braces
+
+            int openBraces = numChars( '[',buf );
+            int closeBraces = numChars( ']',buf );
+
+            if ( openBraces != closeBraces )
+            {
+               PW_ERROR( "%s [] == %d %d",fileName.c_str(),openBraces,closeBraces );
+               isOk = false;
+            }
+         }
+      }
+
+      file.close();
+   }
+
+   return isOk;
+}
+
+bool  isSensorRequired( const char *sensorName )
+{
+   bool isReq = false;
+
+   cJSON *root = getAllSensorJSON();
+
+   if ( root )
+   {
+      cJSON *sensor;
+      cJSON_ArrayForEach( sensor,root )
+      {
+         if ( strcmpcJSON( sensor,"type",sensorName ) == 0 )
+         {
+            isReq = true;
+            break;
+         }
+      }
+   }
+
+   if ( isReq )
+   {
+      PW_DEBUG( "%s required",sensorName );
+   }
+
+   return isReq;
+}
+
+int   getIntFromcJSON( cJSON *node,const char *key, int defaultValue )
+{
+   int   value = defaultValue;
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsNumber( obj ) )
+   {
+      value = obj->valueint;
+   }
+
+   return value;
+}
+
+float   getFloatFromcJSON( cJSON *node,const char *key, float defaultValue )
+{
+   float   value = defaultValue;
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsNumber( obj ) )
+   {
+      value = static_cast<float> (obj->valuedouble);
+   }
+
+   return value;
+}
+
+String   getStringFromcJSON( cJSON *node,const char *key, const String &defaultValue )
+{
+   String   value = defaultValue;
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsString( obj ) )
+   {
+      value = obj->valuestring;
+   }
+
+   return value;
+}
+
+int strcmpcJSON( cJSON *node,const char *key, const char *string )
+{
+   int ret = -1;
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsString( obj ) )
+   {
+      ret = strcmp( obj->valuestring,string );
+   }
+
+   return ret;
+}
 
 //----------------------------------------------------------------------
 // Memory info
@@ -361,97 +620,3 @@ Timing::~Timing()
    String timing( millis() - m_startMillis,DEC );
    PW_TIMING( "%s : %s",m_name.c_str(),timing.c_str() );
 }
-
-int   getIntFromcJSON( cJSON *node,const char *key, int defaultValue )
-{
-   int   value = defaultValue;
-
-   cJSON *obj = cJSON_GetObjectItem( node,key );
-   if ( cJSON_IsNumber( obj ) )
-   {
-      value = obj->valueint;
-   }
-
-   return value;
-}
-
-float   getFloatFromcJSON( cJSON *node,const char *key, float defaultValue )
-{
-   float   value = defaultValue;
-
-   cJSON *obj = cJSON_GetObjectItem( node,key );
-   if ( cJSON_IsNumber( obj ) )
-   {
-      value = static_cast<float> (obj->valuedouble);
-   }
-
-   return value;
-}
-
-String   getStringFromcJSON( cJSON *node,const char *key, const String &defaultValue )
-{
-   String   value = defaultValue;
-
-   cJSON *obj = cJSON_GetObjectItem( node,key );
-   if ( cJSON_IsString( obj ) )
-   {
-      value = obj->valuestring;
-   }
-
-   return value;
-}
-
-int strcmpcJSON( cJSON *node,const char *key, const char *string )
-{
-   int ret = -1;
-
-   cJSON *obj = cJSON_GetObjectItem( node,key );
-   if ( cJSON_IsString( obj ) )
-   {
-      ret = strcmp( obj->valuestring,string );
-   }
-
-   return ret;
-}
-
-bool  isSensorRequired( const char *sensorName )
-{
-   bool  isReq = false;
-
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-   File file = spiffs->open( "/sensors.dat",FILE_READ );
-   if ( !file )
-   {
-      PW_WARN( "/sensors.dat is missing" );
-   }
-   else
-   {
-      String data = file.readStringUntil( '@' );
-
-      cJSON *root = cJSON_Parse( data.c_str() );
-      cJSON *sensor;
-
-      if ( cJSON_IsArray( root ) )
-      {
-         cJSON_ArrayForEach( sensor,root )
-         {
-            if ( strcmpcJSON( sensor,"type",sensorName ) == 0 )
-            {
-               isReq = true;
-               break;
-            }
-         }
-      }
-
-      cJSON_Delete( root );
-      close( file );
-   }
-
-   if ( isReq )
-   {
-      PW_DEBUG( "%s required",sensorName );
-   }
-
-   return isReq;
-}
-

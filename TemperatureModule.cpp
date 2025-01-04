@@ -66,76 +66,62 @@ TemperatureModule::TemperatureModule()
       m_sensors[ i ].m_sensor.m_name = nullptr;
    }
 
-   // Parse the /sensors.dat file for thermometers
+   cJSON *root = getAllSensorJSON();
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-   File file = spiffs->open( "/sensors.dat",FILE_READ );
-   if ( !file )
+   if ( root && isSensorRequired( TEMPERATURE_SENSOR_NAME ) )
    {
-      PW_WARN( "/sensors.dat is missing" );
-   }
-   else
-   {
-      String data = file.readStringUntil( '@' );
-
-      cJSON *root = cJSON_Parse( data.c_str() );
+      int   sensorNum = 1;
       cJSON *sensor;
 
-      if ( cJSON_IsArray( root ) )
+      cJSON_ArrayForEach( sensor,root )
       {
-         int   sensorNum = 1;
-         cJSON_ArrayForEach( sensor,root )
+         PW_DEBUG( "sensor : %s",getStringFromcJSON( sensor,"name","none" ).c_str() );
+         if ( strcmpcJSON( sensor,"type",TEMPERATURE_SENSOR_NAME ) == 0 )
          {
-            if ( strcmpcJSON( sensor,"type","THERM" ) == 0 )
+            PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
+
+            strncpy( tempSensor->m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_TEMP_NAME );
+
+            tempSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
+            tempSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
+
+            tempSensor->m_sensor.m_name = tempSensor->m_name;
+            tempSensor->m_isValid = true;
+
+            if ( cJSON_GetObjectItem( sensor,"remote" ) )
             {
-               PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
+               tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
+               tempSensor->m_sensor.m_isRemote = true;
+               m_numRemoteSensors++;
 
-               strncpy( tempSensor->m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_TEMP_NAME );
+               PW_DEBUG( "Remote Therm: name %s",tempSensor->m_name );
+               PW_DEBUG( "Id %u, feed %u",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId );
+            }
+            else
+            {
+               strncpy( tempSensor->m_addressStr,getStringFromcJSON( sensor,"address" ).c_str(),sizeof( tempSensor->m_addressStr ) - 1 );
+               tempSensor->m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
+               tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
+               tempSensor->m_sensor.m_isRemote = false;
 
-               tempSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
-               tempSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
-
-               tempSensor->m_sensor.m_name = tempSensor->m_name;
-               tempSensor->m_isValid = true;
-
-               if ( cJSON_GetObjectItem( sensor,"remote" ) )
+               for ( int i = 0; i < 8; i++ )
                {
-                  tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
-                  tempSensor->m_sensor.m_isRemote = true;
-                  m_numRemoteSensors++;
-
-                  PW_DEBUG( "Remote Therm: name %s",tempSensor->m_name );
-                  PW_DEBUG( "Id %u, feed %u",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId );
+                  uint8_t  byte;
+                  byte = toHex( tempSensor->m_addressStr[ i * 2 ] );
+                  byte <<= 4;
+                  byte |= toHex( tempSensor->m_addressStr[ (i * 2) + 1 ] );
+                  tempSensor->m_address[ i ] = byte;
                }
-               else
-               {
-                  strncpy( tempSensor->m_addressStr,getStringFromcJSON( sensor,"address" ).c_str(),sizeof( tempSensor->m_addressStr ) - 1 );
-                  tempSensor->m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
-                  tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
-                  tempSensor->m_sensor.m_isRemote = false;
+               char addr[ 32 ];
+               getAddressString( tempSensor->m_address,addr );
 
-                  for ( int i = 0; i < 8; i++ )
-                  {
-                     uint8_t  byte;
-                     byte = toHex( tempSensor->m_addressStr[ i * 2 ] );
-                     byte <<= 4;
-                     byte |= toHex( tempSensor->m_addressStr[ (i * 2) + 1 ] );
-                     tempSensor->m_address[ i ] = byte;
-                  }
-                  char addr[ 32 ];
-                  getAddressString( tempSensor->m_address,addr );
+               m_numLocalSensors++;
 
-                  m_numLocalSensors++;
-
-                  PW_DEBUG( "Local Therm: name %s address %s",tempSensor->m_name,addr );
-                  PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId,tempSensor->m_calibrationOffset );
-               }
+               PW_DEBUG( "Local Therm: name %s address %s",tempSensor->m_name,addr );
+               PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId,tempSensor->m_calibrationOffset );
             }
          }
       }
-
-      cJSON_Delete( root );
-      close( file );
 
       PW_MSG( "Registered %d local thermometers",m_numLocalSensors );
       PW_MSG( "Registered %d remote thermometers",m_numRemoteSensors );

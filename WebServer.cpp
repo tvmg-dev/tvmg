@@ -28,7 +28,9 @@
 // this will be executing on the second CPU core, so probably hazards with
 // SPIFFS here - should probably mutex it
 
-fs::SPIFFSFS *s_spiffs = nullptr;
+static fs::SPIFFSFS *s_spiffs = nullptr;
+
+// should have password in a file somewhere for user modification
 
 const char* http_username = "admin";
 const char* http_password = "admin";
@@ -48,12 +50,6 @@ const char* param_edit_path = "edit_path";
 const char* param_download_path = "download_path";
 const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
-
-//----------------------------------------------------------------------
-// This buffer is also used by email sender !
-
-uint8_t  tmpBuffer[ 4096 ];
-int      tmpBufferSize = sizeof( tmpBuffer );
 
 //----------------------------------------------------------------------
 // Additional section for debug purposes, usually not defined
@@ -99,37 +95,6 @@ String convertFileSize(const size_t bytes)
    }
 }
 
-void  replaceFile( const char *origFile,const char *newFile )
-{
-   if ( !s_spiffs )
-      return;
-
-   // First remove the original file, then we'll copy from the new file
-   // back to the original
-
-   s_spiffs->remove( origFile );
-
-   File ipFile = s_spiffs->open( newFile,"r" );
-   if ( ipFile )
-   {
-      File opFile = s_spiffs->open( origFile,"w" );
-      if ( opFile )
-      {
-         PW_MSG( "Replacing %s with %s",origFile,newFile );
-
-         int count;
-         while( ( count = ipFile.read( tmpBuffer,sizeof( tmpBuffer ) ) ) > 0 )
-         {
-            PW_DEBUG( "from %s read %d",newFile,count );
-            opFile.write( tmpBuffer,count );
-         }
-         opFile.close();
-      }
-
-      ipFile.close();
-   }
-}
-
 void resetFS()
 {
    // Find default files and copy to their 'dat' equivalent - crude as
@@ -154,7 +119,7 @@ void resetFS()
             String newName = fileName;
             newName.replace( DEFAULT_EXTENSION,".dat" );
 
-            replaceFile( newName.c_str(),fileName.c_str() );
+            replaceSpiffsFile( newName,fileName );
          }
 
          entry.close();
@@ -243,11 +208,11 @@ String readFile(fs::FS *fs, const char * path)
    }
 
    int count;
-   while( ( count = file.read( tmpBuffer,sizeof( tmpBuffer ) ) ) > 0 )
+   while( ( count = file.read( scratchBuffer,scratchBufferSize ) ) > 0 )
    {
       for ( int i = 0; i < count; i++ )
       {
-         fileContent += static_cast<char>( tmpBuffer[ i ] );
+         fileContent += static_cast<char>( scratchBuffer[ i ] );
       }
    }
    file.close();
@@ -462,27 +427,27 @@ void WebServer::setupAsyncServer()
       {
          int   copyLen;
 
-         // We copy as many bytes into our tmpBuffer as we can
+         // We copy as many bytes into our scratchBuffer as we can
 
-         if ( updatePos + len <= sizeof( tmpBuffer ) )
+         if ( updatePos + len <= scratchBufferSize )
          {
             copyLen = len;
          }
          else
          {
-            copyLen = sizeof( tmpBuffer ) - updatePos;
+            copyLen = scratchBufferSize - updatePos;
          }
 
 #ifdef DEBUG_OTA_BUFFER
          PW_DEBUG( "curr %d, add %d",updatePos,copyLen );
 #endif
 
-         memcpy( &tmpBuffer[ updatePos ],data,copyLen );
+         memcpy( &scratchBuffer[ updatePos ],data,copyLen );
 
          // Now set out next update position in our buffer (therefore modulo buff size)
 
          updatePos += copyLen;
-         updatePos %= sizeof( tmpBuffer );
+         updatePos %= scratchBufferSize;
 
          // If our update position is zero then we need to write the buffer to file
 
@@ -496,7 +461,7 @@ void WebServer::setupAsyncServer()
             PW_DEBUG( "Writing buffer... %d",buffs );
 #endif
 
-            Update.write( tmpBuffer,sizeof( tmpBuffer ) );
+            Update.write( scratchBuffer,scratchBufferSize );
 
             // Now need to set a new update position based on the bytes we didn't copy over
             // and of course copy these bytes into the start of the buffer
@@ -504,14 +469,14 @@ void WebServer::setupAsyncServer()
 #ifdef DEBUG_OTA_BUFFER
             PW_DEBUG( "new tmpBuff from %d - %d bytes",copyLen,len-copyLen );
 #endif
-            memcpy( tmpBuffer,&data[ copyLen ],len - copyLen );
+            memcpy( scratchBuffer,&data[ copyLen ],len - copyLen );
             updatePos = len - copyLen;
          }
 
          if ( final )
          {
-            PW_MSG( "Final size %d, final buffer %d",index + len,buffs * sizeof( tmpBuffer ) + updatePos );
-            Update.write( tmpBuffer,updatePos );
+            PW_MSG( "Final size %d, final buffer %d",index + len,buffs * scratchBufferSize + updatePos );
+            Update.write( scratchBuffer,updatePos );
          }
       }
 

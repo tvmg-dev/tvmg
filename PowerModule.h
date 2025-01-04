@@ -5,6 +5,8 @@
 
 #include "utils.h"
 
+#define POWER_SENSOR_NAME "POWER"
+
 #define MAX_POWER_SENSORS  3
 #define MAX_POWER_NAME     32
 

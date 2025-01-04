@@ -6,19 +6,45 @@
 
 #define MAX_FILENAME    32
 
+#define SENSORS_FILENAME   "/sensors.dat"
+
+//----------------------------------------------------------------------
+// General buffer - also used by the external email sender library
+// this is used to try and keep RAM usage to a minimum
+
+extern  uint8_t   scratchBuffer[];
+extern  int       scratchBufferSize;
+
+//----------------------------------------------------------------------
+// Usage info
+
 extern void  GetRunTimeInfo();
 extern uint32_t largestFreeInternalBlock();
+
+//----------------------------------------------------------------------
 
 extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
 
+//----------------------------------------------------------------------
+// Reading cJSON fields etc
+
 class cJSON;
 
+extern cJSON *getAllSensorJSON();
+extern void  releaseSensorJSON();
+
+extern bool    iscJSONFileOk( const String &fileName );
 extern bool    isSensorRequired( const char *sensorName );
 extern int     getIntFromcJSON( cJSON *node,const char *key, int defaultValue = -1 );
 extern float   getFloatFromcJSON( cJSON *node,const char *key, float defaultValue = 0 );
 extern String  getStringFromcJSON( cJSON *node,const char *key, const String &defaultValue = "" );
 extern int     strcmpcJSON( cJSON *node,const char *key, const char *item );
+
+extern void    replaceSpiffsFile( const String &origFile,const String &newFile );
+
+//----------------------------------------------------------------------
+// Debugging macros/helper
 
 #define START_DEBUG \
 do \

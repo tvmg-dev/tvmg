@@ -120,55 +120,40 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
-   // Parse the /sensors.dat file for thermaV
+   cJSON *root = getAllSensorJSON();
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-   File file = spiffs->open( "/sensors.dat",FILE_READ );
-   if ( !file )
+   if ( root && isSensorRequired( LGHEATPUMP_SENSOR_NAME ) )
    {
-      PW_WARN( "/sensors.dat is missing" );
-   }
-   else
-   {
-      String data = file.readStringUntil( '@' );
-
-      cJSON *root = cJSON_Parse( data.c_str() );
       cJSON *sensor;
-
-      if ( cJSON_IsArray( root ) )
+      cJSON_ArrayForEach( sensor,root )
       {
-         cJSON_ArrayForEach( sensor,root )
+         if ( strcmpcJSON( sensor,"type",LGHEATPUMP_SENSOR_NAME ) == 0 )
          {
-            if ( strcmpcJSON( sensor,"type",LGHEATPUMP_SENSOR_NAME ) == 0 )
+            uint8_t series,writeReg;
+
+            strncpy( m_softwareVersion,getStringFromcJSON( sensor,"software" ).c_str(),MAX_LGSOFTWARE_LENGTH );
+
+            m_logRegisters = getIntFromcJSON( sensor,"write",0 );
+            series = getIntFromcJSON( sensor,"series",0 );
+            m_modbusAddress = getIntFromcJSON( sensor,"address",0x11 );
+            s_modbusAddress = m_modbusAddress;
+            m_flowRateWhenNotHeating = getIntFromcJSON( sensor,"flowInNotHeating",0 );
+
+            if ( series == 4 )
             {
-               uint8_t series,writeReg;
-
-               strncpy( m_softwareVersion,getStringFromcJSON( sensor,"software" ).c_str(),MAX_LGSOFTWARE_LENGTH );
-
-               m_logRegisters = getIntFromcJSON( sensor,"write",0 );
-               series = getIntFromcJSON( sensor,"series",0 );
-               m_modbusAddress = getIntFromcJSON( sensor,"address",0x11 );
-               s_modbusAddress = m_modbusAddress;
-               m_flowRateWhenNotHeating = getIntFromcJSON( sensor,"flowInNotHeating",0 );
-
-               if ( series == 4 )
-               {
-                  m_series = series;
-               }
-               else
-               {
-                  PW_WARN( "Unsupported LG series (%d)", series );
-               }
-
-               PW_DEBUG( "address %u, write %d series %d flow in !heating %d",m_modbusAddress,m_logRegisters,series,m_flowRateWhenNotHeating );
-               break;
+               m_series = series;
             }
+            else
+            {
+               PW_WARN( "Unsupported LG series (%d)", series );
+            }
+
+            PW_DEBUG( "address %u, write %d series %d flow in !heating %d",m_modbusAddress,m_logRegisters,series,m_flowRateWhenNotHeating );
+            break;
          }
       }
-
-      cJSON_Delete( root );
-      close( file );
    }
+
 
    if ( m_series )
    {

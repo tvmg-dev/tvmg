@@ -592,6 +592,9 @@ void setup( void )
          }
       }
    }
+
+   // Can release the sensor JSON data now as we're setup
+   releaseSensorJSON();
 }
 
 // ---------------------------------------------------------------------

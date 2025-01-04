@@ -31,63 +31,48 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
 
    m_sensor.m_isValid = false;
 
-   // Parse the /sensors.dat file for modbus-tcp
+   cJSON *root = getAllSensorJSON();
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-   File file = spiffs->open( "/sensors.dat",FILE_READ );
-   if ( !file )
+   if ( root && isSensorRequired( MODBUSTCP_SENSOR_NAME ) )
    {
-      PW_WARN( "/sensors.dat is missing" );
+      cJSON *sensor;
+
+      cJSON_ArrayForEach( sensor,root )
+      {
+         if ( strcmpcJSON( sensor,"type",MODBUSTCP_SENSOR_NAME ) == 0 )
+         {
+            char  tcpServerAddress[ 64 ];
+
+            m_sensor.m_isValid = true;
+
+            strncpy( m_sensor.m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_MODBUSTCP_NAME );
+
+            m_sensor.m_id = getIntFromcJSON( sensor,"id",1 );
+
+            if ( ! m_sensor.m_tcpServerAddress.fromString( getStringFromcJSON( sensor,"tcpServerAddress" ) ) )
+            {
+               PW_ERROR( "Failed to convert TCP server IP address" );
+               m_sensor.m_isValid = false;
+            }
+
+            m_sensor.m_tcpServerPort = getIntFromcJSON( sensor,"tcpServerPort",MODBUS_TCP_DEFAULT_PORT );
+            m_sensor.m_requestDelay = getIntFromcJSON( sensor,"tcpServerDelay",MODBUS_TC_DEFAULT_DELAY );
+
+            PW_MSG( "ModbusTCP : name %s, Server : %s, port %u",m_sensor.m_name,
+                              m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort );
+
+            break;
+         }
+      }
+   }
+
+   if ( m_sensor.m_isValid )
+   {
+      PW_MSG( "Registered ModbusTCP" );
    }
    else
    {
-      String data = file.readStringUntil( '@' );
-
-      cJSON *root = cJSON_Parse( data.c_str() );
-      cJSON *sensor;
-
-      if ( cJSON_IsArray( root ) )
-      {
-         cJSON_ArrayForEach( sensor,root )
-         {
-            if ( strcmpcJSON( sensor,"type",MODBUSTCP_SENSOR_NAME ) == 0 )
-            {
-               char  tcpServerAddress[ 64 ];
-
-               m_sensor.m_isValid = true;
-
-               strncpy( m_sensor.m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_MODBUSTCP_NAME );
-
-               m_sensor.m_id = getIntFromcJSON( sensor,"id",1 );
-
-               if ( ! m_sensor.m_tcpServerAddress.fromString( getStringFromcJSON( sensor,"tcpServerAddress" ) ) )
-               {
-                  PW_ERROR( "Failed to convert TCP server IP address" );
-                  m_sensor.m_isValid = false;
-               }
-
-               m_sensor.m_tcpServerPort = getIntFromcJSON( sensor,"tcpServerPort",MODBUS_TCP_DEFAULT_PORT );
-               m_sensor.m_requestDelay = getIntFromcJSON( sensor,"tcpServerDelay",MODBUS_TC_DEFAULT_DELAY );
-
-               PW_MSG( "ModbusTCP : name %s, Server : %s, port %u",m_sensor.m_name,
-                                 m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort );
-
-               break;
-            }
-         }
-      }
-
-      cJSON_Delete( root );
-      close( file );
-
-      if ( m_sensor.m_isValid )
-      {
-         PW_MSG( "Registered ModbusTCP" );
-      }
-      else
-      {
-         PW_WARN( "Failed to register ModbusTCP" );
-      }
+      PW_WARN( "Failed to register ModbusTCP" );
    }
 }
 

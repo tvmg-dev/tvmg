@@ -31,7 +31,7 @@ HardwareConfig MasterDevice =
 
 // T-Nodes use the integrated ESP32/OLED module
 // The don't support modbus transceiver module but may use modbus via
-// a modbusTCP adapter, set in config.dat/sensors.dat
+// a modbusTCP adapter, set in config.dat & sensors file
 
 HardwareConfig TemperatureNode =
 {

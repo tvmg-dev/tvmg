@@ -6,6 +6,8 @@
 
 #include "GrundfosUPS3.h"
 
+#define HEATMETER_SENSOR_NAME "HEATMETER"
+
 #define MAX_HEAT_METERS 5
 #define MAX_HM_NAME     32
 

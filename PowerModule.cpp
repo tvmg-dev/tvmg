@@ -24,59 +24,39 @@ PowerModule::PowerModule( ModbusMaster *modbus )
       m_sensors[ i ].m_sensor.m_energy = ENERGY_INVALID;
    }
 
-   // Parse the /sensors.dat file for thermometers
+   cJSON *root = getAllSensorJSON();
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-   File file = spiffs->open( "/sensors.dat",FILE_READ );
-   if ( !file )
+  if ( root && isSensorRequired( POWER_SENSOR_NAME ) )
    {
-      PW_WARN( "/sensors.dat is missing" );
-   }
-   else
-   {
-      String data = file.readStringUntil( '@' );
-
-      cJSON *root = cJSON_Parse( data.c_str() );
       cJSON *sensor;
-
-      if ( cJSON_IsArray( root ) )
+      cJSON_ArrayForEach( sensor,root )
       {
-         cJSON_ArrayForEach( sensor,root )
+         if ( strcmpcJSON( sensor,"type",POWER_SENSOR_NAME ) == 0 )
          {
-            if ( strcmpcJSON( sensor,"type","POWER" ) == 0 )
-            {
-               PrivateSensor *pwrSensor;
+            PrivateSensor *pwrSensor;
 
-               pwrSensor = &m_sensors[ m_numLocalSensors ];
+            pwrSensor = &m_sensors[ m_numLocalSensors ];
 
-               strncpy( pwrSensor->m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_POWER_NAME );
-               pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numLocalSensors );
-               pwrSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
-               pwrSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
+            strncpy( pwrSensor->m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_POWER_NAME );
+            pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numLocalSensors );
+            pwrSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
+            pwrSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
 
-               pwrSensor->m_sensor.m_name = pwrSensor->m_name;
-               pwrSensor->m_sensor.m_power = POWER_INVALID;
-               pwrSensor->m_sensor.m_energy = ENERGY_INVALID;
-               pwrSensor->m_isValid = true;
+            pwrSensor->m_sensor.m_name = pwrSensor->m_name;
+            pwrSensor->m_sensor.m_power = POWER_INVALID;
+            pwrSensor->m_sensor.m_energy = ENERGY_INVALID;
+            pwrSensor->m_isValid = true;
 
-               PW_DEBUG( "Power: name %s address %u",pwrSensor->m_name,pwrSensor->m_address );
-               PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_sensor.m_id,pwrSensor->m_sensor.m_emonFeedId );
-               m_numLocalSensors++;
-            }
+            PW_DEBUG( "Power: name %s address %u",pwrSensor->m_name,pwrSensor->m_address );
+            PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_sensor.m_id,pwrSensor->m_sensor.m_emonFeedId );
+            m_numLocalSensors++;
          }
       }
+   }
 
-      cJSON_Delete( root );
-      close( file );
-
-      if ( m_numLocalSensors )
-      {
-         PW_MSG( "Registered %d power sensors",m_numLocalSensors );
-      }
-      else
-      {
-         PW_ERROR( "No power sensors registered !" );
-      }
+   if ( m_numLocalSensors )
+   {
+      PW_MSG( "Registered %d power sensors",m_numLocalSensors );
    }
 
    if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )

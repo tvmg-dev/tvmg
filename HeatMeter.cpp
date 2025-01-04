@@ -21,62 +21,46 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
       m_sensors[ i ] = nullptr;
    }
 
-   // Parse the /sensors.dat file for heat meters
+   cJSON *root = getAllSensorJSON();
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-   File file = spiffs->open( "/sensors.dat",FILE_READ );
-   if ( !file )
+   if ( root && isSensorRequired( HEATMETER_SENSOR_NAME ) )
    {
-      PW_WARN( "/sensors.dat is missing" );
+      cJSON *sensor;
+      cJSON_ArrayForEach( sensor,root )
+      {
+         if ( strcmpcJSON( sensor,"type",HEATMETER_SENSOR_NAME ) == 0 && strcmpcJSON( sensor,"class","UPS3" ) == 0)
+         {
+            String name = getStringFromcJSON( sensor,"name" );
+            String mode = getStringFromcJSON( sensor,"mode" );
+
+            uint8_t gpio = hwConfig->PWMGPIO;
+            uint8_t id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
+            uint32_t emonFlowId = getIntFromcJSON( sensor,"emonFlowId",0 );
+            uint32_t emonPowerId = getIntFromcJSON( sensor,"emonPowerId",0 );
+
+            uint8_t flowTempId = getIntFromcJSON( sensor,"flowTempId",m_numLocalSensors + 1 );
+            uint8_t returnTempId = getIntFromcJSON( sensor,"returnTempId",m_numLocalSensors + 2 );
+
+            float_t shc = getFloatFromcJSON( sensor,"shc",4.2 );
+
+            PW_DEBUG( "Found UPS3 : %s",name.c_str() );
+
+            m_sensors[ m_numLocalSensors ] = new HeatMeter( new GrundfosUPS3( gpio,mode.c_str() ),m_tempModule,
+                                                      name.c_str(),id,emonFlowId,emonPowerId,flowTempId,returnTempId,shc );
+            m_sensors[ m_numLocalSensors ]->initialise();
+
+            m_numLocalSensors++;
+         }
+      }
+   }
+
+   if ( m_numLocalSensors )
+   {
+      PW_MSG( "Registered %d heat meters",m_numLocalSensors );
    }
    else
    {
-      String data = file.readStringUntil( '@' );
-
-      cJSON *root = cJSON_Parse( data.c_str() );
-      cJSON *sensor;
-
-      if ( cJSON_IsArray( root ) )
-      {
-         cJSON_ArrayForEach( sensor,root )
-         {
-            if ( strcmpcJSON( sensor,"type","HEATMETER" ) == 0 && strcmpcJSON( sensor,"class","UPS3" ) == 0)
-            {
-               String name = getStringFromcJSON( sensor,"name" );
-               String mode = getStringFromcJSON( sensor,"mode" );
-
-               uint8_t gpio = hwConfig->PWMGPIO;
-               uint8_t id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
-               uint32_t emonFlowId = getIntFromcJSON( sensor,"emonFlowId",0 );
-               uint32_t emonPowerId = getIntFromcJSON( sensor,"emonPowerId",0 );
-
-               uint8_t flowTempId = getIntFromcJSON( sensor,"flowTempId",m_numLocalSensors + 1 );
-               uint8_t returnTempId = getIntFromcJSON( sensor,"returnTempId",m_numLocalSensors + 2 );
-
-               float_t shc = getFloatFromcJSON( sensor,"shc",4.2 );
-
-               PW_DEBUG( "Found UPS3 : %s",name.c_str() );
-
-               m_sensors[ m_numLocalSensors ] = new HeatMeter( new GrundfosUPS3( gpio,mode.c_str() ),m_tempModule,
-                                                         name.c_str(),id,emonFlowId,emonPowerId,flowTempId,returnTempId,shc );
-               m_sensors[ m_numLocalSensors ]->initialise();
-
-               m_numLocalSensors++;
-            }
-         }
-      }
-
-      cJSON_Delete( root );
-      close( file );
-
-      if ( m_numLocalSensors )
-      {
-         PW_MSG( "Registered %d heat meters",m_numLocalSensors );
-      }
-      else
-      {
-         PW_WARN( "No heat meters registered" );
-      }
+      PW_WARN( "No heat meters registered" );
    }
 }
 

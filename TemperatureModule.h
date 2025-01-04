@@ -14,6 +14,8 @@ class AsyncUDP;
 //---------------------------------------------------------------------
 // Temperature monitoring
 
+#define TEMPERATURE_SENSOR_NAME  "THERM"        // for JSON name
+
 #define MAX_TEMP_SENSORS      13
 #define MAX_TEMP_NAME         32
 
