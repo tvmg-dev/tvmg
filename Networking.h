@@ -21,6 +21,7 @@ public:
       String   ipAddr;
       String   mdnsName;
       String   SSID;
+      time_t   startTime;
       int32_t  timeToConnect;
       int32_t  timeToAcquireNTP;
    } Status;
@@ -29,6 +30,7 @@ public:
    ~Networking();
 
    void initialise();
+   const Status   &getStatus();
    bool sendEmail( const char *recipient,const char *subject,const String &msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS = false );
    void sendToEmonCMS( uint32_t emonFeedId,float_t value );

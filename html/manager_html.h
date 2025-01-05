@@ -5,6 +5,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
   <title>ESP32 SPIFFS Manager</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="60">
   <style>
    body { background-color: #f7f7f7; }
    #submit { width:120px; }
@@ -104,9 +105,9 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <div id="spacer_5"></div>
      <fieldset><legend>Firmware Update</legend>
       <table><tbody><tr><td>
-       <p>Current Version : %VERSION%</p>
+       %VERSION%
        <hr style="color: white;">
-       <p>stuff</p>
+       %SYSTEM_INFO%
       </td></tr></tbody></table>
       <div id="spacer_5"></div>
       <form method="POST" action="/update" enctype="multipart/form-data">

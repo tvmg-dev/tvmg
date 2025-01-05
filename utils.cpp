@@ -343,11 +343,22 @@ void GetRunTimeInfo()
     volatile UBaseType_t numTasks;
     unsigned long ulTotalRunTime, ulStatsAsPercentage;
 
+   // Some memory info
+
+   printMemCapsInfo( MALLOC_CAP_INTERNAL,"INTERNAL" );
+   PW_DEBUG( "Largest Free %d",largestFreeInternalBlock() );
+
    // How many current tasks, could change as we execute
 
    numTasks = uxTaskGetNumberOfTasks();
 
    PW_DEBUG( "Total tasks %d",numTasks );
+
+   if ( numTasks > MAX_TASKS )
+   {
+      PW_WARN( "Exceeded number of tasks to process" );
+      return;
+   }
 
    START_TIMING( "TASK STATS" );
 
@@ -356,10 +367,7 @@ void GetRunTimeInfo()
                               &ulTotalRunTime );
    END_TIMING;
 
-   if ( numTasks > MAX_TASKS )
-   {
-      PW_WARN( "Exceeded number of tasks to process" );
-   }
+   PW_DEBUG( "runtime %ul %d %d %d",ulTotalRunTime,millis(),configTICK_RATE_HZ,portTICK_PERIOD_MS );
 
    ulTotalRunTime /= 100UL;
 
@@ -383,9 +391,6 @@ void GetRunTimeInfo()
          }
       }
    }
-
-   printMemCapsInfo( MALLOC_CAP_INTERNAL,"INTERNAL" );
-   PW_DEBUG( "Largest Free %d",largestFreeInternalBlock() );
 }
 //----------------------------------------------------------------------
 

@@ -145,10 +145,14 @@ void  UserIO::showNetwork()
    }
    else if ( m_networking )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"%s",m_networking->getLocalMDNSName().c_str() );
+      Networking::Status   state;
+
+      state = m_networking->getStatus();
+
+      snprintf( line,MAX_OLED_COLUMNS,"%s",state.mdnsName.c_str() );
       storeLine( 0,line );
 
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",m_networking->getIPAddress().c_str() );
+      snprintf( line,MAX_OLED_COLUMNS,"IP %s",state.ipAddr.c_str() );
       storeLine( 1,line );
 
       int   rsi = WiFi.RSSI();
@@ -162,13 +166,9 @@ void  UserIO::showNetwork()
       }
       else
       {
-         if ( ! m_startTime )
-         {
-            time( &m_startTime );
-         }
          time( &currentTime );
 
-         uint32_t secondsDiff = difftime( currentTime,m_startTime );
+         uint32_t secondsDiff = difftime( currentTime,state.startTime );
 
          getLocalTime( &timeInfo );
          strftime( m_currentLines[ 4 ],20,"%d/%m/%y : %H:%M:%S",&timeInfo );

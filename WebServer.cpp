@@ -12,6 +12,7 @@
 #include <FS.h>
 #include <ESPmDNS.h>
 #include <Update.h>
+#include <time.h>
 
 #include "WebServer.h"
 #include "html/edit_html.h"
@@ -29,6 +30,10 @@
 // SPIFFS here - should probably mutex it
 
 static fs::SPIFFSFS *s_spiffs = nullptr;
+
+// Need static here for web page template processing accee
+
+static Networking *s_networking = nullptr;
 
 // should have password in a file somewhere for user modification
 
@@ -252,10 +257,33 @@ void uploadFile(AsyncWebServerRequest *request, String filename, size_t index, u
 
 String processor(const String& var)
 {
-  if(var == "VERSION")
-  {
-     return String( VERSION_STR );
-  }
+   if(var == "VERSION")
+   {
+      String ver = "<p>Current Version : ";
+      ver += String( VERSION_STR );
+
+      if ( s_networking )
+      {
+         Networking::Status state = s_networking->getStatus();
+
+         time_t currentTime;
+
+         time( &currentTime );
+         uint32_t  secondsDiff = difftime( currentTime,state.startTime );
+
+         ver += " : uptime ";
+         ver += String( secondsDiff / ( 24 * 3600 ),DEC );
+
+         char timeStr[ 24 ];
+         snprintf( timeStr,sizeof(timeStr)," days, %02u:%02u (hh:mm)",
+                        (secondsDiff / 3600) % 24,(secondsDiff / 60) % 60 );
+
+         ver += String( timeStr );
+      }
+
+      ver += "</p>";
+      return ver;
+   }
 
   if(var == "ALLOWED_EXTENSIONS_EDIT")
   {
@@ -323,6 +351,21 @@ String processor(const String& var)
      return String( debugSection );
   }
 
+  if(var == "SYSTEM_INFO" )
+  {
+     String info = "<p>IP Address: ";
+
+     if ( s_networking )
+     {
+        Networking::Status state = s_networking->getStatus();
+        info += state.ipAddr;
+
+        info += "</p>";
+     }
+
+     return info;
+  }
+
   if(var == "RUNTIME_INFO")
   {
      return String( "Active for a while<br>and a little longer" );
@@ -353,6 +396,8 @@ WebServer::WebServer( Networking *networking )
    {
       showDefaultFiles = true;
    }
+
+   s_networking = m_networking;
 }
 
 WebServer::~WebServer()
@@ -378,6 +423,8 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
+      PW_DEBUG( "/manager request" );
+
       if(!request->authenticate(http_username, http_password))
       {
          return request->requestAuthentication();

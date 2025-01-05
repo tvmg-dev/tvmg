@@ -599,7 +599,14 @@ bool  Networking::acquireNTP()
       m_status.timeToAcquireNTP = ( millis() - start ) / 1000;
    }
 
+   time( &m_status.startTime );
+
    return( m_status.timeToAcquireNTP > -1  );
+}
+
+const Networking::Status   &Networking::getStatus()
+{
+   return m_status;
 }
 
 bool  Networking::isConnected()

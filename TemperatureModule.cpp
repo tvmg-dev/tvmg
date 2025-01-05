@@ -331,7 +331,7 @@ bool TemperatureModule::getTemperatures()
       return true;
    }
 
-   if ( !m_dallasController )
+   if ( !m_dallasController || ! m_numLocalSensors )
    {
       return false;
    }
