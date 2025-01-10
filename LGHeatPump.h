@@ -131,7 +131,6 @@ public:
    bool  isAvailable();
    bool  isLogging();
    LGRegister *readNextSensor( uint8_t index );
-   void  getModbusStats( uint32_t *requests,uint32_t *failures );
    void  setCurrentKW( float_t kw );
    void  updateUserIO( UserIO *userIO );
 
@@ -155,8 +154,6 @@ private:
    ModbusMaster   *m_modbus;
    uint16_t       m_modbusAddress;
    char           m_softwareVersion[ MAX_LGSOFTWARE_LENGTH ];
-   uint32_t       m_modbusRequests;
-   uint32_t       m_modbusFailures;
    int32_t        m_millisLastAquisition;       // milliseconds since last acquisition
    float_t        m_currentKW;                  // last reported
    uint16_t       m_flowRateWhenNotHeating;     // if non-zero then report this flow rate when heating but no compressor

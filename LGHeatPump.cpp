@@ -111,8 +111,6 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_modbus( master ),
      m_modbusAddress( 0 ),
      m_softwareVersion(),
-     m_modbusRequests( 0 ),
-     m_modbusFailures( 0 ),
      m_millisLastAquisition( -LG_MIN_SAMPLING_PERIOD_MS ),
      m_currentKW( 0 ),
      m_flowRateWhenNotHeating( 0 ),
@@ -328,8 +326,6 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
       return false;
    }
 
-   m_modbusRequests++;
-
    delay( 50 );
    m_modbus->clearResponseBuffer();
 
@@ -354,7 +350,6 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
    if ( mbusRes != ModbusMaster::ku8MBSuccess )
    {
       PW_ERROR( "Failed to get %u %s from %u [error %u]",numRegs,typeStr.c_str(),m_registers[ start ].m_address,numRegs,mbusRes );
-      m_modbusFailures++;
       return false;
    }
 
@@ -853,12 +848,6 @@ bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
    }
 
    return registerOk;
-}
-
-void  LGHeatPump::getModbusStats( uint32_t *requests,uint32_t *failures )
-{
-   *requests = m_modbusRequests;
-   *failures = m_modbusFailures;
 }
 
 void  LGHeatPump::updateUserIO( UserIO *userIO )

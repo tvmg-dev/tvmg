@@ -208,7 +208,7 @@ void  Measurement::saveLastSample( void )
    }
 }
 
-Measurement::Sample Measurement::getLastSample( void )
+const Measurement::Sample &Measurement::getLastSample( void )
 {
    return m_lastSample;
 }

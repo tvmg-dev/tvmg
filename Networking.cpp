@@ -384,6 +384,9 @@ Networking::Networking()
    m_status.isConnected = false;
    m_status.timeToAcquireNTP = -1;
    m_status.timeToConnect = 0;
+   m_status.emonFails = 0;
+   m_status.emonSent = 0;
+   m_status.emonQFails = 0;
 
    if ( GET_REGISTRY_INT( SEND_EMAILS ) == 1 )
    {
@@ -606,11 +609,25 @@ bool  Networking::acquireNTP()
 
 const Networking::Status   &Networking::getStatus()
 {
+   // Update WiFi info
+
+   m_status.isConnected = (WiFi.status() == WL_CONNECTED);
+   m_status.RSSI = WiFi.RSSI();
+
+   // now Emon stats, the emonSendFailures could be updated in the emontask
+   // but its not critical data so not protecting
+
+   m_status.emonSent = emonSendRequests;
+   m_status.emonFails = emonSendFailures;
+   m_status.emonQFails = emonQFailures;
+
    return m_status;
 }
 
 bool  Networking::isConnected()
 {
+   (void) getStatus();
+
    return m_status.isConnected;
 }
 
@@ -706,13 +723,6 @@ void Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
       }
    }
 }
-void Networking::getEMONStats( uint32_t *sends,uint32_t *qFails, uint32_t *fails )
-{
-   *sends = emonSendRequests;
-   *qFails = emonQFailures;
-   *fails = emonSendFailures;
-}
-
 
 WebServer   *Networking::getWebServer()
 {

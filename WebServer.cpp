@@ -59,7 +59,7 @@ const char* param_save_path = "save_path";
 //----------------------------------------------------------------------
 // Additional section for debug purposes, usually not defined
 
-#define  MANAGER_DEBUG_SECTION
+// #define  MANAGER_DEBUG_SECTION
 
 #ifdef MANAGER_DEBUG_SECTION
 const char debugSection[] = R"raw(
@@ -259,8 +259,12 @@ String processor(const String& var)
 {
    if(var == "VERSION")
    {
-      String ver = "<p>Current Version : ";
-      ver += String( VERSION_STR );
+      return( String( VERSION_STR ) );
+   }
+
+   if(var == "UPTIME")
+   {
+      String uptime( "Uptime " );
 
       if ( s_networking )
       {
@@ -271,19 +275,81 @@ String processor(const String& var)
          time( &currentTime );
          uint32_t  secondsDiff = difftime( currentTime,state.startTime );
 
-         ver += " : uptime ";
-         ver += String( secondsDiff / ( 24 * 3600 ),DEC );
+         uptime += String( secondsDiff / ( 24 * 3600 ),DEC );
 
          char timeStr[ 24 ];
          snprintf( timeStr,sizeof(timeStr)," days, %02u:%02u (hh:mm)",
                         (secondsDiff / 3600) % 24,(secondsDiff / 60) % 60 );
 
-         ver += String( timeStr );
+         uptime += String( timeStr );
       }
-
-      ver += "</p>";
-      return ver;
+      return uptime;
    }
+
+  if(var == "IPADDR" )
+  {
+     String info( "IP: ");
+
+     if ( s_networking )
+     {
+        Networking::Status state = s_networking->getStatus();
+        info += state.ipAddr;
+     }
+
+     return info;
+  }
+
+  if(var == "WIFI" )
+  {
+    String wifiStr;
+
+    if ( s_networking )
+    {
+      char line[ 32 ];
+
+      Networking::Status state = s_networking->getStatus();
+
+      snprintf( line,sizeof(line),"RSSI: %d dBm",state.RSSI );
+
+      wifiStr = String( line );
+   }
+
+    return wifiStr;
+  }
+
+  if(var == "MODBUS")
+  {
+    uint32_t   sends,fails;
+
+    getModbusStats( &sends,&fails );
+    char line[ 36 ];
+
+    snprintf( line,sizeof(line),"MB: %u / %u",sends,fails );
+
+    return String( line );
+  }
+
+  if(var == "EMON")
+  {
+    String emonStr;
+
+    if ( s_networking && GET_REGISTRY_INT( UPDATE_EMONCMS ) == 1 )
+    {
+      Networking::Status state = s_networking->getStatus();
+
+      if ( state.emonSent )
+      {
+        char line[ 36 ];
+
+        snprintf( line,sizeof(line),"EM: %u / %u",state.emonSent,state.emonFails );
+
+        emonStr = String( line );
+      }
+    }
+
+    return emonStr;
+  }
+
 
   if(var == "ALLOWED_EXTENSIONS_EDIT")
   {
@@ -351,27 +417,7 @@ String processor(const String& var)
      return String( debugSection );
   }
 
-  if(var == "SYSTEM_INFO" )
-  {
-     String info = "<p>IP Address: ";
-
-     if ( s_networking )
-     {
-        Networking::Status state = s_networking->getStatus();
-        info += state.ipAddr;
-
-        info += "</p>";
-     }
-
-     return info;
-  }
-
-  if(var == "RUNTIME_INFO")
-  {
-     return String( "Active for a while<br>and a little longer" );
-  }
-
-  return String();
+  return String( "N/A" );
 }
 
 void notFound(AsyncWebServerRequest *request)

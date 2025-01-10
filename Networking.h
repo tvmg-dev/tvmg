@@ -24,6 +24,10 @@ public:
       time_t   startTime;
       int32_t  timeToConnect;
       int32_t  timeToAcquireNTP;
+      int32_t  RSSI;
+      uint32_t emonSent;
+      uint32_t emonFails;
+      uint32_t emonQFails;
    } Status;
 
    Networking();
@@ -34,7 +38,6 @@ public:
    bool sendEmail( const char *recipient,const char *subject,const String &msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS = false );
    void sendToEmonCMS( uint32_t emonFeedId,float_t value );
-   void getEMONStats( uint32_t *sends,uint32_t *qFails, uint32_t *fails );
    bool isConnected();
    bool didAcquireNTP();
    String getIPAddress();

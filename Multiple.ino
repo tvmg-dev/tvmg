@@ -35,11 +35,22 @@ LGHeatPump        *lgThermaV = nullptr;
 // Amount of time we can have the network mutex held before the loop()
 // can proceed.  If this is exceeded then will reboot.
 
-#define  NETWORK_ALLOWED_BUSY_MS (60 * 1000)
+#define  NETWORK_ALLOWED_BUSY_MS (90 * 1000)
 
 // We'll malloc into this buffer for heap size debugging
 
 char  *testMallocBuffer = nullptr;
+
+// To get modbus stats :(
+
+void  getModbusStats( uint32_t *requests,uint32_t *fails )
+{
+   if ( modbusMaster && requests && fails )
+   {
+      modbusMaster->getTransactionCounts( requests,fails );
+   }
+}
+
 
 // ---------------------------------------------------------------------
 // Reboot handling code, if we have 3 reboots then we consider WiFi has
@@ -152,6 +163,11 @@ void IRAM_ATTR gotTouch2Event()
   wasButton2Pressed = true;
 }
 
+// Have an instance of Measurement::Sample here to avoid potential stack depth
+// issue, obviously consumes ram..
+
+Measurement::Sample  s_sample;
+
 void  handleTouch1()
 {
    PW_MSG( "Button-1 was pressed" );
@@ -166,35 +182,35 @@ void  handleTouch1()
    String   msgString;
    char     message[ 128 ];
 
-   Measurement::Sample  sample = measurement->getLastSample();
-   snprintf( message,128,"Button sample\n\n"
+   s_sample = measurement->getLastSample();
+   snprintf( message,sizeof(message),"Button samplen\n"
                     "IP : %s [%s]\n"
                     "Free Bytes : %u\n"
                     "Time signature %u\n\n",
                     networking->getLocalMDNSName().c_str(),
                     networking->getIPAddress().c_str(),
                     ESP.getFreeHeap(),
-                    sample.m_sampleTime );
+                    s_sample.m_sampleTime );
 
    msgString = message;
 
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
-      if ( sample.m_tempSensors[ i ] )
+      if ( s_sample.m_tempSensors[ i ] )
       {
          const TempSensor  *sensor;
-         sensor = &sample.m_actualTemps[ i ];
+         sensor = &s_sample.m_actualTemps[ i ];
 
-         snprintf( message,128,"%30s,%.1f\n",sensor->m_name,sensor->m_temp );
+         snprintf( message,sizeof(message),"%30s,%.1f\n",sensor->m_name,sensor->m_temp );
          msgString += message;
       }
    }
 
    int i = 0;
    const PowerSensor *sensor;
-   while( ( sensor = sample.m_powerSensors[ i++ ] ) )
+   while( ( sensor = s_sample.m_powerSensors[ i++ ] ) )
    {
-      snprintf( message,128,"%30s,%.1f\n",sensor->m_name,sensor->m_power,sensor->m_energy );
+      snprintf( message,sizeof(message),"%30s,%.1f\n",sensor->m_name,sensor->m_power,sensor->m_energy );
       msgString += message;
    }
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
@@ -704,6 +720,7 @@ void loop(void)
    Networking::releaseNewMutex();
 
    PW_DEBUG( "Loop Delay %u",deltaMillis );
+   PW_DEBUG( "sample size %d",sizeof( Measurement::Sample ) );
 
    delay( deltaMillis );
 }

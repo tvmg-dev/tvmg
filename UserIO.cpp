@@ -316,21 +316,22 @@ void  UserIO::showHeatMeter()
 void  UserIO::showCommsStatus()
 {
    char  line[ MAX_OLED_COLUMNS ];
-   uint32_t sends,qFails,fails;
 
    if ( m_networking )
    {
-      m_networking->getEMONStats( &sends,&qFails,&fails );
+      Networking::Status nwState = m_networking->getStatus();
 
-      snprintf( line,MAX_OLED_COLUMNS,"EMON: tx %u",sends );
+      snprintf( line,MAX_OLED_COLUMNS,"EMON: tx %u",nwState.emonSent );
       storeLine( 0,line );
 
-      snprintf( line,MAX_OLED_COLUMNS,"[QF,SF] %u,%u",qFails,fails );
+      snprintf( line,MAX_OLED_COLUMNS,"[QF,SF] %u,%u",nwState.emonQFails,nwState.emonFails );
       storeLine( 1,line );
    }
 
    if ( m_modbus )
    {
+      uint32_t sends,fails;
+
       m_modbus->getTransactionCounts( &sends,&fails );
 
       snprintf( line,MAX_OLED_COLUMNS,"MB: tx %u", sends );

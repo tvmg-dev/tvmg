@@ -75,7 +75,6 @@ TemperatureModule::TemperatureModule()
 
       cJSON_ArrayForEach( sensor,root )
       {
-         PW_DEBUG( "sensor : %s",getStringFromcJSON( sensor,"name","none" ).c_str() );
          if ( strcmpcJSON( sensor,"type",TEMPERATURE_SENSOR_NAME ) == 0 )
          {
             PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
