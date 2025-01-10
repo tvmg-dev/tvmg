@@ -2,6 +2,8 @@
 
 Config   *s_instance = nullptr;
 
+char  defaultConfigString[] = "unknown";
+
 uint8_t Config::numRegistryEntries = 0;
 
 KeyValue  Config::m_entries[ MAX_REGISTRY_ENTRIES ];
@@ -94,7 +96,7 @@ char *getRegistryString( char *key )
    if ( index == -1 )
    {
       PW_DEBUG( "Registry: no entry for %s",key );
-      return nullptr;
+      return defaultConfigString;
    }
    else
    {
