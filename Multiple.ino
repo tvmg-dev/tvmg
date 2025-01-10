@@ -130,7 +130,15 @@ void newConfiguration( void )
 
       userIO->clear();
 
-      snprintf( line,MAX_OLED_COLUMNS,"Failed %d reboots",failedReboots );
+      if ( !config->isFactoryReset() )
+      {
+         snprintf( line,MAX_OLED_COLUMNS,"Failed %d reboots",failedReboots );
+      }
+      else
+      {
+         snprintf( line,MAX_OLED_COLUMNS,"From Reset..." );
+      }
+
       userIO->updateLine( 0,line );
 
       snprintf( line,MAX_OLED_COLUMNS,"SSID %s",networking->getSSID().c_str() );
@@ -362,22 +370,20 @@ void setup( void )
       newConfiguration();
    }
 
-   // If this is a result of factory reset, then new configuration too
-
-   if ( config->isFactoryReset() )
-   {
-      config->clearFactoryReset();
-      newConfiguration();
-   }
-
    selectHardware();
-
-   // Must have a valid configuration at this stage
 
    // prepare the OLED display for output
 
    userIO = new UserIO();
    userIO->initialise();
+
+   // If this is a result of factory reset, then new configuration too,
+   // otherwise we can move on as normal
+
+   if ( config->isFactoryReset() )
+   {
+      newConfiguration();
+   }
 
    userIO->updateLine( 0,"Starting Networking..." );
    userIO->updateLine( 1,"SSID :-" );

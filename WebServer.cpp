@@ -731,10 +731,15 @@ void WebServer::setupAsyncServer()
       request->redirect("/manager");
    });
 
+   // if we reboot then we also clear down the factor reset marker if it exists
+
    m_webServer->on("/reboot", HTTP_POST, [](AsyncWebServerRequest *request)
    {
       request->send(200);
-      delay( 2 * 1000 );
+
+      Config::instance()->clearFactoryReset();
+
+      delay( 1500 );
       ESP.restart();
    });
 
