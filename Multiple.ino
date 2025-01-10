@@ -37,6 +37,10 @@ LGHeatPump        *lgThermaV = nullptr;
 
 #define  NETWORK_ALLOWED_BUSY_MS (90 * 1000)
 
+// Amount of time we tolerate no WiFi connection before rebooting
+
+#define  NETWORK_ALLOWED_DISCONNECTED_MS (90 * 1000)
+
 // We'll malloc into this buffer for heap size debugging
 
 char  *testMallocBuffer = nullptr;
@@ -45,9 +49,17 @@ char  *testMallocBuffer = nullptr;
 
 void  getModbusStats( uint32_t *requests,uint32_t *fails )
 {
-   if ( modbusMaster && requests && fails )
+   if ( requests && fails )
    {
-      modbusMaster->getTransactionCounts( requests,fails );
+      if ( modbusMaster )
+      {
+         modbusMaster->getTransactionCounts( requests,fails );
+      }
+      else
+      {
+         *requests = 0;
+         *fails = 0;
+      }
    }
 }
 
@@ -622,6 +634,8 @@ void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
    static uint32_t loopMillis = LOOP_PERIOD_MS;
+   static uint32_t networkLost = 0;
+
    bool  restartRequired = false;
 
    START_TIMING( "Main Loop" );
@@ -646,6 +660,28 @@ void loop(void)
    {
       restartRequired = true;
       delay( 2500 );
+   }
+
+   // Have we lost network connection ?  Check if connection dropped for
+   // too long...
+
+   if ( networkLost )
+   {
+      if ( networking->isConnected() )
+      {
+         PW_MSG( "Regained network" );
+         networkLost = 0;
+      }
+      else if ( millis() - networkLost > NETWORK_ALLOWED_DISCONNECTED_MS )
+      {
+         PW_ERROR( "Lost network, need to reboot" );
+         restartRequired = true;
+      }
+   }
+   else if ( networking && !networking->isConnected() )
+   {
+      PW_WARN( "Lost network" );
+      networkLost = millis();
    }
 
    if ( restartRequired )

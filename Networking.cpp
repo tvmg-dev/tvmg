@@ -626,7 +626,7 @@ const Networking::Status   &Networking::getStatus()
 
 bool  Networking::isConnected()
 {
-   (void) getStatus();
+   m_status.isConnected = (WiFi.status() == WL_CONNECTED);
 
    return m_status.isConnected;
 }
