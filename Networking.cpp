@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <EMailSender.h>
+#include <esp_wifi.h>
 
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
@@ -432,6 +433,8 @@ bool Networking::startAccessPoint()
 {
    String SSID( "ThermaV-Monitor" );
 
+   m_status.mdnsName = String( "tvm-init" );
+
    WiFi.disconnect();
 
    WiFi.mode( WIFI_AP );
@@ -448,8 +451,6 @@ bool Networking::startAccessPoint()
 
    m_webServer = new WebServer( this );
    m_webServer->initialise();
-
-   m_status.mdnsName = String( "tvm-init" );
 
    if ( !startMDNS() )
    {
@@ -495,6 +496,26 @@ void Networking::initialise()
    if ( wifiTimeout == -1 )
    {
       wifiTimeout = DEFAULT_WIFI_CONNECT_TIMEOUT;
+   }
+
+   // set hostname as mdns name + last 2 hex digits of MAC address
+
+   uint8_t  mac[ 6 ];
+   String   hostName( String( GET_REGISTRY_STRING( MDNS_NAME ) ) );
+
+   char line [ 32 ];
+
+   // get mac for STA mode
+   esp_wifi_get_mac( WIFI_IF_STA,mac );
+
+   hostName += "-";
+   hostName += String( mac[ 4 ],HEX );
+   hostName += String( mac[ 5 ],HEX );
+
+   PW_MSG( "Set hostname %s",hostName.c_str() );
+   if ( !WiFi.hostname( hostName ) )
+   {
+      PW_ERROR( "Failed to set hostname" );
    }
 
    WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
