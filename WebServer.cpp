@@ -132,6 +132,10 @@ void resetFS()
    }
 
    root.close();
+
+   // write out we've performed a reset via the server, then set factory reset
+
+   Config::instance()->setPersistentInt( k_rebootType,SERVER_RESET );
    Config::instance()->setFactoryReset();
 }
 
@@ -712,9 +716,11 @@ void WebServer::setupAsyncServer()
       }
 
       PW_WARN( "Resetting..." );
+
       resetFS();
 
       request->send(200);
+
       delay( 500 );
 
       ESP.restart();
@@ -738,6 +744,7 @@ void WebServer::setupAsyncServer()
       request->send(200);
 
       Config::instance()->clearFactoryReset();
+      Config::instance()->setPersistentInt( k_rebootType,SERVER_REBOOT );
 
       delay( 1500 );
       ESP.restart();

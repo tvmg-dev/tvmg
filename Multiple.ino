@@ -361,12 +361,20 @@ void setup( void )
 
    config = Config::instance();
 
+   // Bump the reboot count
+
+   int32_t  rebootCount;
+   (void) config->getPersistentInt( k_rebootCounter,&rebootCount );
+   rebootCount++;
+   config->setPersistentInt( k_rebootCounter,rebootCount );
+
    // Is registry available, if not then we need to enter configuration
    // mode, i.e. networking with AP only with SSID HeatPump-Monitor. The
    // user must download a suitable config.dat to the device.
 
    if ( ! config->isRegistryAvailable() )
    {
+      config->setPersistentInt( k_rebootType,BOOT_NO_CONFIG );
       newConfiguration();
    }
 
@@ -406,6 +414,8 @@ void setup( void )
 
       if ( failedReboots >= MAX_FAILED_WIFI_ATTEMPTS )
       {
+         config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
+
          delay( 5000 );
 
          // If we've had X failures to acquire WiFi, then revert to AP mode
@@ -454,6 +464,8 @@ void setup( void )
 
       networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                   "Heat Pump Monitoring - Startup NTP fault",msg );
+
+      config->setPersistentInt( k_rebootType,BOOT_NO_NTP );
 
       delay( 5000 );
       ESP.restart();
@@ -553,11 +565,48 @@ void setup( void )
 
    // Send emails, attachments if available
 
-   char initialMsg[ 128 ];
+   String emailMsg( "Initial boot up completed\nVersion : " VERSION_STR "\n\n" );
+   emailMsg += networking->getIPAddress();
+   emailMsg += "\n\n";
 
-   snprintf( initialMsg,128,"Initial boot up completed\nVersion : [%s]\nIP : [%s]\nStarting monitoring...\n\n",VERSION_STR,networking->getIPAddress().c_str()  );
+   emailMsg += "Reboot count : ";
+   emailMsg += String( rebootCount,DEC );
+   emailMsg += "\n";
 
-   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Startup",initialMsg );
+   emailMsg += "Last reboot reason : ";
+
+   int32_t  rebootReason;
+   String rebootType;
+
+   (void) config->getPersistentInt( k_rebootType,&rebootReason );
+   switch ( rebootReason )
+   {
+      case POWER_CYCLE : rebootType = "Power Cycle";
+                         break;
+      case BOOT_NO_CONFIG : rebootType = "No configuration";
+                         break;
+      case BOOT_NO_WIFI : rebootType = "Not connected to WiFi";
+                         break;
+      case BOOT_NO_NTP : rebootType = "No NTP discovered";
+                         break;
+      case LOST_WIFI : rebootType = "Lost WiFi connection";
+                         break;
+      case SERVER_REBOOT : rebootType = "Server initiated reboot";
+                         break;
+      case SERVER_RESET : rebootType = "Server initiated reset";
+                         break;
+      case SERVER_OTA_UPDATE : rebootType = "Server OTA";
+                         break;
+      default: rebootType = "Unknown";
+                         break;
+   }
+
+   emailMsg += rebootType;
+   emailMsg += "\n";
+
+   PW_MSG( "%s",emailMsg.c_str() );
+
+   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Startup",emailMsg );
 
    // Send register scan logs, modbus log and lg registers read so far, removing after sending
 
@@ -629,6 +678,10 @@ void setup( void )
 
    // Can release the sensor JSON data now as we're setup
    releaseSensorJSON();
+
+   // And we set the reboot as likely power cycle
+
+   config->setPersistentInt( k_rebootType,POWER_CYCLE );
 }
 
 // ---------------------------------------------------------------------
@@ -657,6 +710,7 @@ void loop(void)
    if ( Networking::takeNewMutex( NETWORK_ALLOWED_BUSY_MS ) != 1 )
    {
       PW_ERROR( "Timeout on network mutex, rebooting..." );
+      config->setPersistentInt( k_rebootType,LOOP_MUTEX );
       restartRequired = true;
    }
 
@@ -664,6 +718,7 @@ void loop(void)
 
    if ( networking->hasUpdated() )
    {
+      config->setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
       restartRequired = true;
       delay( 2500 );
    }
@@ -681,6 +736,7 @@ void loop(void)
       else if ( millis() - networkLost > NETWORK_ALLOWED_DISCONNECTED_MS )
       {
          PW_ERROR( "Lost network, need to reboot" );
+         config->setPersistentInt( k_rebootType,LOST_WIFI );
          restartRequired = true;
       }
    }

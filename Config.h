@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v25.01.7"
+#define VERSION_STR        "v25.01.8"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
@@ -24,11 +24,27 @@ extern void    setRegistryEntry( char *key,char *value );
 extern int32_t getRegistryInt( char *key );
 extern char    *getRegistryString( char *key );
 
+inline constexpr  char k_rebootCounter[] = "rebootCount";
+inline constexpr  char k_rebootType[] = "rebootType";
+
 #define CONFIG_DEF_TO_STR( x ) #x
 
 #define SET_REGISTRY( x,y )      setRegistryEntry( CONFIG_DEF_TO_STR( x ),CONFIG_DEF_TO_STR( y ) )
 #define GET_REGISTRY_INT( x )    getRegistryInt( CONFIG_DEF_TO_STR( x ) )
 #define GET_REGISTRY_STRING( x ) getRegistryString( CONFIG_DEF_TO_STR( x ) )
+
+enum RebootType {
+   POWER_CYCLE = 0,
+   BOOT_NO_CONFIG,
+   BOOT_NO_WIFI,
+   BOOT_NO_NTP,
+   LOST_WIFI,
+   SERVER_REBOOT,
+   SERVER_RESET,
+   SERVER_OTA_UPDATE,
+   LOOP_MUTEX,
+   UNKNOWN
+};
 
 typedef struct {
    uint8_t  keyInt;
@@ -44,9 +60,13 @@ public:
 
    bool  isRegistryAvailable();
    fs::SPIFFSFS   *getSPIFFS();
+
    bool    isFactoryReset();
    void    clearFactoryReset();
    void    setFactoryReset();
+
+   bool    getPersistentInt( const String &key,int32_t *value,int32_t defValue = -1 );
+   void    setPersistentInt( const String &key,int32_t value );
 
    static Config  *instance();
    static uint8_t    numRegistryEntries;

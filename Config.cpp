@@ -1,3 +1,5 @@
+#include <Preferences.h>
+
 #include "Config.h"
 
 Config   *s_instance = nullptr;
@@ -265,5 +267,63 @@ void  Config::setFactoryReset()
          resetFile.println( "reset" );
          resetFile.close();
       }
+
+      // we also reset the reboot count
+
+      setPersistentInt( k_rebootCounter,0 );
    }
 }
+
+// info under system namespace in non-volatile store
+//
+// rebootCount
+// lastRebootType
+//
+
+const char k_nvsNamespace[] = "sysinfo";
+
+bool  Config::getPersistentInt( const String &key,int32_t *value,int32_t defValue )
+{
+   bool ok = false;
+   Preferences pref;
+
+   *value = defValue;
+
+   if ( !pref.begin( k_nvsNamespace ) )
+   {
+      PW_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+   }
+   else
+   {
+      *value = pref.getInt( key.c_str(),defValue );
+
+      pref.end();
+
+      ok = (*value != defValue );
+   }
+
+   return ok;
+}
+
+void  Config::setPersistentInt( const String &key,int32_t value )
+{
+   Preferences pref;
+
+   if ( !pref.begin( k_nvsNamespace ) )
+   {
+      PW_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+   }
+   else
+   {
+      // should write 4 bytes
+      size_t   ret = pref.putInt( key.c_str(),value );
+
+      if ( ret != 4 )
+      {
+         PW_ERROR( "Failed to write %d to %s",value,key.c_str() );
+      }
+
+      pref.end();
+   }
+}
+
