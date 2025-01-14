@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v25.01.8"
+#define VERSION_STR        "v25.01.9"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
@@ -26,6 +26,7 @@ extern char    *getRegistryString( char *key );
 
 inline constexpr  char k_rebootCounter[] = "rebootCount";
 inline constexpr  char k_rebootType[] = "rebootType";
+inline constexpr  char k_noNetworkCounter[] = "noNetwork";
 
 #define CONFIG_DEF_TO_STR( x ) #x
 

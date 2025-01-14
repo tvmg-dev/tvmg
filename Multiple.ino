@@ -63,57 +63,11 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
    }
 }
 
-
 // ---------------------------------------------------------------------
-// Reboot handling code, if we have 3 reboots then we consider WiFi has
+// Reboot handling code, if we have N with no network then we consider WiFi has
 // failed and drop to AP mode which will remain active until reboot.
 
-#define REBOOT_COUNTER_FILE      "/failedreboot.dat"
 #define MAX_FAILED_WIFI_ATTEMPTS 3
-
-uint32_t failedReboots = 0;
-
-void  clearFailedRebootCount()
-{
-   fs::SPIFFSFS *spiffs = config->getSPIFFS();
-   if ( spiffs->exists( REBOOT_COUNTER_FILE ) )
-   {
-      spiffs->remove( REBOOT_COUNTER_FILE );
-   }
-   failedReboots = 0;
-}
-
-uint32_t getFailedRebootCount()
-{
-   uint32_t current = 0;
-   fs::SPIFFSFS *spiffs = config->getSPIFFS();
-   File file = spiffs->open( REBOOT_COUNTER_FILE,FILE_READ );
-
-   if ( file )
-   {
-      current = file.parseInt();
-      file.close();
-   }
-
-   PW_DEBUG( "reboot count %d",current );
-   return( current );
-}
-
-void  bumpFailedRebootCount( uint32_t count )
-{
-   count++;
-
-   fs::SPIFFSFS *spiffs = config->getSPIFFS();
-   File file = spiffs->open( REBOOT_COUNTER_FILE,FILE_WRITE );
-
-   if ( file )
-   {
-      file.println( count );
-      file.close();
-   }
-
-   PW_DEBUG( "New reboot count %d",count );
-}
 
 void newConfiguration( void )
 {
@@ -132,6 +86,10 @@ void newConfiguration( void )
 
       if ( !config->isFactoryReset() )
       {
+         int32_t  failedReboots;
+
+         config->getPersistentInt( k_noNetworkCounter,&failedReboots );
+
          snprintf( line,MAX_OLED_COLUMNS,"Failed %d reboots",failedReboots );
       }
       else
@@ -149,9 +107,9 @@ void newConfiguration( void )
       userIO->updateLine( 4,line );
    }
 
-   // Clear the reboot counter, so we can try and reboot again if possible
+   // Clear the no WiFi counter, so we can try and reboot again if possible
 
-   clearFailedRebootCount();
+   config->setPersistentInt( k_noNetworkCounter,0 );
 
    while( 1 )
    {
@@ -404,22 +362,24 @@ void setup( void )
 
    if ( !networking->isConnected() )
    {
-      failedReboots = getFailedRebootCount();
       char     line[ MAX_OLED_COLUMNS ];
+      int32_t  failedReboots;
 
-      bumpFailedRebootCount( failedReboots );
+      config->getPersistentInt( k_noNetworkCounter,&failedReboots );
       failedReboots++;
+
+      config->setPersistentInt( k_noNetworkCounter,failedReboots );
+
       snprintf( line,MAX_OLED_COLUMNS," Failure %u",failedReboots );
       userIO->updateLine( 4,line );
+
+      // If we've had X failures to acquire WiFi, then revert to AP mode
+      // and new configuration attempt
 
       if ( failedReboots >= MAX_FAILED_WIFI_ATTEMPTS )
       {
          config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
-
-         delay( 5000 );
-
-         // If we've had X failures to acquire WiFi, then revert to AP mode
-         // and new configuration attempt
+         delay( 2000 );
 
          newConfiguration();
       }
@@ -430,7 +390,7 @@ void setup( void )
    }
    else
    {
-      clearFailedRebootCount();
+      config->setPersistentInt( k_noNetworkCounter,0 );
    }
 
    PW_MSG( "Version: %s",VERSION_STR );
@@ -542,7 +502,7 @@ void setup( void )
 
    storageModule->setNetworking( networking );
 
-   delay( 2000 );
+   delay( 1000 );
 
    // Can now initialise the measurement module
 
@@ -602,6 +562,8 @@ void setup( void )
    }
 
    emailMsg += rebootType;
+   emailMsg += " : ";
+   emailMsg += String( rebootReason,DEC );
    emailMsg += "\n";
 
    PW_MSG( "%s",emailMsg.c_str() );
@@ -818,7 +780,6 @@ void loop(void)
    Networking::releaseNewMutex();
 
    PW_DEBUG( "Loop Delay %u",deltaMillis );
-   PW_DEBUG( "sample size %d",sizeof( Measurement::Sample ) );
 
    delay( deltaMillis );
 }

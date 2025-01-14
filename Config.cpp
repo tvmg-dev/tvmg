@@ -10,6 +10,9 @@ uint8_t Config::numRegistryEntries = 0;
 
 KeyValue  Config::m_entries[ MAX_REGISTRY_ENTRIES ];
 
+//----------------------------------------------------------------------
+// Registry utilities - should really replace with cJSON
+
 // As we use "a value" to refer to strings, as is it more conventional, then
 // we have to strip out these " characters otherwise they are part of the string
 
@@ -268,9 +271,10 @@ void  Config::setFactoryReset()
          resetFile.close();
       }
 
-      // we also reset the reboot count
+      // we also reset the reboot counts
 
       setPersistentInt( k_rebootCounter,0 );
+      setPersistentInt( k_noNetworkCounter,0 );
    }
 }
 
