@@ -294,6 +294,8 @@ void  configureModBus()
 
 void setup( void )
 {
+   char line[ MAX_OLED_COLUMNS ];
+
    // start serial port, if the GPIO controlling serial on boot behaviour is low,
    // i.e. no serial on boot, then we reconfigure uart0 (Serial) to have
    // alternate GPIO pins for other library use of Serial and we disable
@@ -326,6 +328,36 @@ void setup( void )
    rebootCount++;
    config->setPersistentInt( k_rebootCounter,rebootCount );
 
+   // Get the reboot reason
+
+   int32_t  rebootReason;
+   (void) config->getPersistentInt( k_rebootType,&rebootReason );
+
+   String rebootType;
+   switch ( rebootReason )
+   {
+      case POWER_CYCLE : rebootType = "Power Cycle";
+                         break;
+      case BOOT_NO_CONFIG : rebootType = "No configuration";
+                         break;
+      case BOOT_NO_WIFI : rebootType = "No WiFi";
+                         break;
+      case BOOT_NO_NTP : rebootType = "No NTP discovered";
+                         break;
+      case BOOT_IN_SETUP : rebootType = "During setup";
+                         break;
+      case LOST_WIFI : rebootType = "Lost WiFi connection";
+                         break;
+      case SERVER_REBOOT : rebootType = "Server reboot";
+                         break;
+      case SERVER_RESET : rebootType = "Server reset";
+                         break;
+      case SERVER_OTA_UPDATE : rebootType = "Server OTA";
+                         break;
+      default: rebootType = "Unknown";
+                         break;
+   }
+
    // Is registry available, if not then we need to enter configuration
    // mode, i.e. networking with AP only with SSID HeatPump-Monitor. The
    // user must download a suitable config.dat to the device.
@@ -342,6 +374,17 @@ void setup( void )
 
    userIO = new UserIO();
    userIO->initialise();
+
+   // Brief display of reboot reason
+
+   userIO->updateLine( 0,"Reboot Reason" );
+   snprintf( line,MAX_OLED_COLUMNS,"Code : %d",rebootReason );
+   userIO->updateLine( 1,line );
+   snprintf( line,MAX_OLED_COLUMNS,"%s",rebootType.c_str() );
+   userIO->updateLine( 3,line );
+
+   delay( 2000 );
+   userIO->clear();
 
    // If this is a result of factory reset, then new configuration too,
    // otherwise we can move on as normal
@@ -362,7 +405,6 @@ void setup( void )
 
    if ( !networking->isConnected() )
    {
-      char     line[ MAX_OLED_COLUMNS ];
       int32_t  failedReboots;
 
       config->getPersistentInt( k_noNetworkCounter,&failedReboots );
@@ -447,6 +489,10 @@ void setup( void )
          }
       }
   }
+
+   // Set the reboot type here to SETUP in case we don't complete
+
+   config->setPersistentInt( k_rebootType,BOOT_IN_SETUP );
 
    // Instantiate the temperature collecting module
 
@@ -535,32 +581,6 @@ void setup( void )
 
    emailMsg += "Last reboot reason : ";
 
-   int32_t  rebootReason;
-   String rebootType;
-
-   (void) config->getPersistentInt( k_rebootType,&rebootReason );
-   switch ( rebootReason )
-   {
-      case POWER_CYCLE : rebootType = "Power Cycle";
-                         break;
-      case BOOT_NO_CONFIG : rebootType = "No configuration";
-                         break;
-      case BOOT_NO_WIFI : rebootType = "Not connected to WiFi";
-                         break;
-      case BOOT_NO_NTP : rebootType = "No NTP discovered";
-                         break;
-      case LOST_WIFI : rebootType = "Lost WiFi connection";
-                         break;
-      case SERVER_REBOOT : rebootType = "Server initiated reboot";
-                         break;
-      case SERVER_RESET : rebootType = "Server initiated reset";
-                         break;
-      case SERVER_OTA_UPDATE : rebootType = "Server OTA";
-                         break;
-      default: rebootType = "Unknown";
-                         break;
-   }
-
    emailMsg += rebootType;
    emailMsg += " : ";
    emailMsg += String( rebootReason,DEC );
@@ -641,7 +661,7 @@ void setup( void )
    // Can release the sensor JSON data now as we're setup
    releaseSensorJSON();
 
-   // And we set the reboot as likely power cycle
+   // And we now set the reboot as likely power cycle
 
    config->setPersistentInt( k_rebootType,POWER_CYCLE );
 }

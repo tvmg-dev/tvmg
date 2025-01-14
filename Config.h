@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-#define VERSION_STR        "v25.01.9"
+#define VERSION_STR        "v25.01.10"
 
 #define TEMPERATURE_BOARD  1
 #define MASTER_BOARD       2
@@ -39,6 +39,7 @@ enum RebootType {
    BOOT_NO_CONFIG,
    BOOT_NO_WIFI,
    BOOT_NO_NTP,
+   BOOT_IN_SETUP,
    LOST_WIFI,
    SERVER_REBOOT,
    SERVER_RESET,
