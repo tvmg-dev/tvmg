@@ -565,10 +565,10 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    debugString += buffer;
    va_end( args );
 
-   // Only output to serial if enabled in config and serial boot behaviour
-   // is to have serial enabled
+   // Only output to serial if enabled in config, or config hasn't yet
+   // been determined - but only if boot serial is active
 
-   if ( serialLoggingEnabled == isTrue && isBootSerialEnabled )
+   if ( ( !serialLoggingEnabled || serialLoggingEnabled == isTrue) && isBootSerialEnabled )
    {
       Serial.println( debugString.c_str() );
    }

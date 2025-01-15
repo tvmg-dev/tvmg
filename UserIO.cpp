@@ -233,7 +233,7 @@ TempSensor *UserIO::findTempSensor( uint8_t id )
    {
       if ( m_sample.m_tempSensors[ i ]->m_id == id )
       {
-         sensor = &m_sample.m_actualTemps[ i ];
+         sensor = m_sample.m_tempSensors[ i ];
          break;
       }
       i++;
@@ -256,19 +256,25 @@ void  UserIO::showTemps()
 
    if ( hpFlow && hpReturn )
    {
+      TemperatureModule::takeMutex();
       snprintf( line,MAX_OLED_COLUMNS,"HP: %3.1f %3.1f (%3.1f)",hpFlow->m_temp,hpReturn->m_temp,hpFlow->m_temp - hpReturn->m_temp );
+      TemperatureModule::releaseMutex();
       storeLine( 0,line );
    }
 
    if ( HeatingFlow && HeatingReturn )
    {
+      TemperatureModule::takeMutex();
       snprintf( line,MAX_OLED_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",HeatingFlow->m_temp,HeatingReturn->m_temp,HeatingFlow->m_temp - HeatingReturn->m_temp );
+      TemperatureModule::releaseMutex();
       storeLine( 1,line );
    }
 
    if ( outside )
    {
+      TemperatureModule::takeMutex();
       snprintf( line,MAX_OLED_COLUMNS,"OS: %3.1f",outside->m_temp );
+      TemperatureModule::releaseMutex();
       storeLine( 2,line );
    }
 
@@ -277,7 +283,9 @@ void  UserIO::showTemps()
 
    if ( loftFlow && loftReturn )
    {
+      TemperatureModule::takeMutex();
       snprintf( line,MAX_OLED_COLUMNS,"2 : %3.1f %3.1f (%3.1f)",loftFlow->m_temp,loftReturn->m_temp,loftFlow->m_temp - loftReturn->m_temp );
+      TemperatureModule::releaseMutex();
       storeLine( 3,line );
    }
 
@@ -286,7 +294,9 @@ void  UserIO::showTemps()
 
    if ( firstFlow && firstReturn )
    {
+      TemperatureModule::takeMutex();
       snprintf( line,MAX_OLED_COLUMNS,"1 : %3.1f %3.1f (%3.1f)",firstFlow->m_temp,firstReturn->m_temp,firstFlow->m_temp - firstReturn->m_temp );
+      TemperatureModule::releaseMutex();
       storeLine( 4,line );
    }
 
@@ -295,7 +305,9 @@ void  UserIO::showTemps()
 
    if ( groundFlow && groundReturn )
    {
+      TemperatureModule::takeMutex();
       snprintf( line,MAX_OLED_COLUMNS,"0 : %3.1f %3.1f (%3.1f)",groundFlow->m_temp,groundReturn->m_temp,groundFlow->m_temp - groundReturn->m_temp );
+      TemperatureModule::releaseMutex();
       storeLine( 5,line );
    }
 

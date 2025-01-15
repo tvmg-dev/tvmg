@@ -89,7 +89,7 @@ TemperatureModule::TemperatureModule()
 
             if ( cJSON_GetObjectItem( sensor,"remote" ) )
             {
-               tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
+               tempSensor->m_sensor.m_temp = TEMPERATURE_INVALID;
                tempSensor->m_sensor.m_isRemote = true;
                m_numRemoteSensors++;
 
@@ -100,7 +100,7 @@ TemperatureModule::TemperatureModule()
             {
                strncpy( tempSensor->m_addressStr,getStringFromcJSON( sensor,"address" ).c_str(),sizeof( tempSensor->m_addressStr ) - 1 );
                tempSensor->m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
-               tempSensor->m_sensor.m_temp = DEVICE_DISCONNECTED_C;
+               tempSensor->m_sensor.m_temp = TEMPERATURE_INVALID;
                tempSensor->m_sensor.m_isRemote = false;
 
                for ( int i = 0; i < 8; i++ )
@@ -476,4 +476,15 @@ void  TemperatureModule::localBroadcastData()
 
    cJSON_Delete( root );
 }
+
+void TemperatureModule::takeMutex()
+{
+   tempSensorMutex.lock();
+}
+
+void TemperatureModule::releaseMutex()
+{
+   tempSensorMutex.unlock();
+}
+
 

@@ -295,6 +295,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 
       // Output header line if a new file
 
+      TemperatureModule::takeMutex();
       for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
       {
          const TempSensor  *sensor;
@@ -313,6 +314,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
          snprintf( line,128,",%.1f",sensor->m_temp );
          dataString += line;
       }
+      TemperatureModule::releaseMutex();
 
       for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
       {
@@ -389,18 +391,17 @@ void  Storage::updateEmon( const Measurement::Sample &sample )
    // send any temperatures, power, heat pump and heat meter data
 
    int i = 0;
-   while ( sample.m_tempSensors[ i ] )
+   const TempSensor  *tsensor;
+
+   TemperatureModule::takeMutex();
+   while ( (tsensor = sample.m_tempSensors[ i++ ] ) )
    {
-      const TempSensor  *sensor;
-      sensor = &sample.m_actualTemps[ i ];
-
-      if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
+      if ( tsensor->m_temp > TEMPERATURE_INVALID && tsensor->m_emonFeedId != 0 )
       {
-         m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_temp );
+         m_networking->sendToEmonCMS( tsensor->m_emonFeedId,tsensor->m_temp );
       }
-
-      i++;
    }
+   TemperatureModule::releaseMutex();
 
    i = 0;
    const PowerSensor *sensor;
@@ -493,11 +494,12 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       }
 
       int i = 0;
+      TemperatureModule::takeMutex();
       while ( sample.m_tempSensors[ i ] )
       {
-         const TempSensor  *sensor;
-         sensor = &sample.m_actualTemps[ i ];
+         const TempSensor  *sensor = sample.m_tempSensors[ i ];
 
+         PW_DEBUG( "TS %p %s %f %d",sensor,sensor->m_name,sensor->m_temp,sensor->m_emonFeedId );
          if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
          {
             snprintf( line,sizeof(line),"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
@@ -506,6 +508,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
          i++;
       }
+      TemperatureModule::releaseMutex();
 
       i = 0;
       const PowerSensor *sensor;

@@ -45,6 +45,8 @@ enum RebootType {
    SERVER_RESET,
    SERVER_OTA_UPDATE,
    LOOP_MUTEX,
+   ESP32_PANIC,
+   ESP32_WATCHDOG,
    UNKNOWN
 };
 
@@ -67,10 +69,13 @@ public:
    void    clearFactoryReset();
    void    setFactoryReset();
 
+   String  getRebootReason( RebootType *type );
+   bool    isFastReset();
+
    bool    getPersistentInt( const String &key,int32_t *value,int32_t defValue = -1 );
    void    setPersistentInt( const String &key,int32_t value );
 
-   static Config  *instance();
+   static Config  *instance( bool create = false );
    static uint8_t    numRegistryEntries;
    static KeyValue   m_entries[ MAX_REGISTRY_ENTRIES ];
 

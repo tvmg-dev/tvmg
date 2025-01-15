@@ -35,7 +35,6 @@ Measurement::Sample::Sample( const Measurement::Sample &other )
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
       m_tempSensors[ i ] = other.m_tempSensors[ i ];
-      m_actualTemps[ i ] = other.m_actualTemps[ i ];
    }
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
@@ -59,7 +58,6 @@ Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &
       for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
       {
          m_tempSensors[ i ] = other.m_tempSensors[ i ];
-         m_actualTemps[ i ] = other.m_actualTemps[ i ];
       }
       for ( int i = 0; i <  MAX_POWER_SENSORS; i++ )
       {
@@ -108,43 +106,30 @@ void  Measurement::takeSample( void )
    uint     start;
    float_t  hpKW = 1;
 
-   Sample   newSample;
-
    start = millis();
-   time( &newSample.m_sampleTime );
+   time( &m_newSample.m_sampleTime );
 
-   // Get all temperature sensor data, then power.
+   // Get all temperature sensor data, then power etc
 
    uint8_t     i = 0;
+
    TempSensor *tempSensor;
 
+   TemperatureModule::takeMutex();
    while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
    {
-      newSample.m_tempSensors[ i ] = tempSensor;
-
-      if ( tempSensor->m_isRemote )
-      {
-         // Take mutex as we copy temperature across, UDP could be updating
-
-         std::lock_guard<std::mutex> lock(tempSensorMutex);
-         newSample.m_actualTemps[ i ] = *tempSensor;
-      }
-      else
-      {
-         newSample.m_actualTemps[ i ] = *tempSensor;
-      }
-
-      tempSensor = &newSample.m_actualTemps[ i ];
+      m_newSample.m_tempSensors[ i ] = tempSensor;
 
       PW_MSG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
       i++;
    }
+   TemperatureModule::releaseMutex();
 
    i = 0;
    PowerSensor *powerSensor;
    while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) )
    {
-      newSample.m_powerSensors[ i++ ] = powerSensor;
+      m_newSample.m_powerSensors[ i++ ] = powerSensor;
 
       PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
 
@@ -164,7 +149,7 @@ void  Measurement::takeSample( void )
       LGRegister *lgRegister;
       while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
       {
-         newSample.m_lgRegisters[ i++ ] = lgRegister;
+         m_newSample.m_lgRegisters[ i++ ] = lgRegister;
  //     PW_DEBUG( "LG: %s %.1f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
       }
       PW_DEBUG( "Retrieved %d LG registers",i );
@@ -177,13 +162,13 @@ void  Measurement::takeSample( void )
 
       while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i ) ) )
       {
-         newSample.m_heatMeterSensors[ i++ ] = heatMeterSensor;
+         m_newSample.m_heatMeterSensors[ i++ ] = heatMeterSensor;
 
          PW_DEBUG( "%s %.1f %.1f",heatMeterSensor->m_name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
       }
    }
 
-   m_lastSample = newSample;
+   m_lastSample = m_newSample;
 
    // We only store data at the sample period, we may be taking measurements
    // more often than that.

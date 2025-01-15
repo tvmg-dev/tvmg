@@ -172,17 +172,19 @@ void  handleTouch1()
 
    msgString = message;
 
+   TemperatureModule::takeMutex();
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
       if ( s_sample.m_tempSensors[ i ] )
       {
-         const TempSensor  *sensor;
-         sensor = &s_sample.m_actualTemps[ i ];
+         const TempSensor  *sensor = s_sample.m_tempSensors[ i ];
 
          snprintf( message,sizeof(message),"%30s,%.1f\n",sensor->m_name,sensor->m_temp );
+
          msgString += message;
       }
    }
+   TemperatureModule::releaseMutex();
 
    int i = 0;
    const PowerSensor *sensor;
@@ -315,11 +317,24 @@ void setup( void )
 
    Serial.begin( 115200,SERIAL_8N1 );
 
-   delay( 1000 );
+   delay( 500 );
 
+   Serial.println( "pete is here" );
    // Initialise our configuration
 
-   config = Config::instance();
+#if 0
+   Config *newOne = new Config( "\rhubarb" );
+
+   int32_t valI;
+
+   (void) newOne->getPersistentInt( "hello",&valI );
+
+   PW_MSG( "val %d",valI );
+#endif
+
+   config = Config::instance( true );
+
+   PW_MSG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
    // Bump the reboot count
 
@@ -329,34 +344,8 @@ void setup( void )
    config->setPersistentInt( k_rebootCounter,rebootCount );
 
    // Get the reboot reason
-
-   int32_t  rebootReason;
-   (void) config->getPersistentInt( k_rebootType,&rebootReason );
-
-   String rebootType;
-   switch ( rebootReason )
-   {
-      case POWER_CYCLE : rebootType = "Power Cycle";
-                         break;
-      case BOOT_NO_CONFIG : rebootType = "No configuration";
-                         break;
-      case BOOT_NO_WIFI : rebootType = "No WiFi";
-                         break;
-      case BOOT_NO_NTP : rebootType = "No NTP discovered";
-                         break;
-      case BOOT_IN_SETUP : rebootType = "During setup";
-                         break;
-      case LOST_WIFI : rebootType = "Lost WiFi connection";
-                         break;
-      case SERVER_REBOOT : rebootType = "Server reboot";
-                         break;
-      case SERVER_RESET : rebootType = "Server reset";
-                         break;
-      case SERVER_OTA_UPDATE : rebootType = "Server OTA";
-                         break;
-      default: rebootType = "Unknown";
-                         break;
-   }
+   RebootType rebootReason;
+   String     rebootStr = config->getRebootReason( &rebootReason );
 
    // Is registry available, if not then we need to enter configuration
    // mode, i.e. networking with AP only with SSID HeatPump-Monitor. The
@@ -380,7 +369,7 @@ void setup( void )
    userIO->updateLine( 0,"Reboot Reason" );
    snprintf( line,MAX_OLED_COLUMNS,"Code : %d",rebootReason );
    userIO->updateLine( 1,line );
-   snprintf( line,MAX_OLED_COLUMNS,"%s",rebootType.c_str() );
+   snprintf( line,MAX_OLED_COLUMNS,"%s",rebootStr.c_str() );
    userIO->updateLine( 3,line );
 
    delay( 2000 );
@@ -397,6 +386,10 @@ void setup( void )
    userIO->updateLine( 0,"Starting Networking..." );
    userIO->updateLine( 1,"SSID :-" );
    userIO->updateLine( 2,GET_REGISTRY_STRING( WIFI_SSID ) );
+
+   // set reboot reason to no-wifi so if we fail here we detect it
+
+   config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
 
    networking = new Networking;
    networking->initialise();
@@ -435,20 +428,6 @@ void setup( void )
       config->setPersistentInt( k_noNetworkCounter,0 );
    }
 
-   PW_MSG( "Version: %s",VERSION_STR );
-   PW_MSG( "Arduino Board: %s", ARDUINO_BOARD );
-   PW_MSG( "Arduino Variant: %s", ARDUINO_VARIANT );
-   PW_MSG( "Arduino Version: %s", ESP_ARDUINO_VERSION_STR);
-
-   // Instantiate the storage module, and initialise it.  If the SD card
-   // is not operational the storage module will not save data but at least
-   // the system will continue to operate.
-
-   storageModule = new Storage();
-   storageModule->initialise();
-
-   PW_MSG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
-
    // show network status
 
    userIO->show( UserIO::NETWORK_STATUS );
@@ -473,6 +452,22 @@ void setup( void )
       ESP.restart();
    }
 
+   // set we got to setup, i.e. past WiFi & NTP
+
+   config->setPersistentInt( k_rebootType,BOOT_IN_SETUP );
+
+   PW_MSG( "Version: %s",VERSION_STR );
+   PW_MSG( "Arduino Board: %s", ARDUINO_BOARD );
+   PW_MSG( "Arduino Variant: %s", ARDUINO_VARIANT );
+   PW_MSG( "Arduino Version: %s", ESP_ARDUINO_VERSION_STR);
+
+   // Instantiate the storage module, and initialise it.  If the SD card
+   // is not operational the storage module will not save data but at least
+   // the system will continue to operate.
+
+   storageModule = new Storage();
+   storageModule->initialise();
+
    // did we boot with button down pressed, if so hold - allows webserver
    // to be used to re-configure the unit
 
@@ -489,10 +484,6 @@ void setup( void )
          }
       }
   }
-
-   // Set the reboot type here to SETUP in case we don't complete
-
-   config->setPersistentInt( k_rebootType,BOOT_IN_SETUP );
 
    // Instantiate the temperature collecting module
 
@@ -581,7 +572,7 @@ void setup( void )
 
    emailMsg += "Last reboot reason : ";
 
-   emailMsg += rebootType;
+   emailMsg += rebootStr;
    emailMsg += " : ";
    emailMsg += String( rebootReason,DEC );
    emailMsg += "\n";
@@ -676,6 +667,9 @@ void loop(void)
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
    static uint32_t loopMillis = LOOP_PERIOD_MS;
    static uint32_t networkLost = 0;
+static int c = 0;
+
+   c++;
 
    bool  restartRequired = false;
 
@@ -702,7 +696,7 @@ void loop(void)
    {
       config->setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
       restartRequired = true;
-      delay( 2500 );
+      delay( 1000 );
    }
 
    // Have we lost network connection ?  Check if connection dropped for

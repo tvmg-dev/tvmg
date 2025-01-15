@@ -1,4 +1,5 @@
 #include <Preferences.h>
+#include <map>
 
 #include "Config.h"
 
@@ -144,19 +145,12 @@ Config::~Config()
   delete m_spiffs;
 }
 
-Config   *Config::instance()
+Config   *Config::instance( bool create )
 {
-   // prevent recursion as the logging uses the Config registry to
-   // determine whether to o/p anything.
-
-   static bool isCreating = false;
-
-   if ( !s_instance && !isCreating )
+   if ( create && !s_instance )
    {
-      isCreating = true;
-      s_instance = new Config( "/config.dat" );
-
-      isCreating = false;
+      Config   *newConfig = new Config( "/config.dat" );
+      s_instance = newConfig;
    }
 
    return( s_instance );
@@ -331,3 +325,74 @@ void  Config::setPersistentInt( const String &key,int32_t value )
    }
 }
 
+static std::map<RebootType,String> resetMap = {
+   { POWER_CYCLE,"Power Cycle" },
+   { BOOT_NO_CONFIG,"No Config" },
+   { BOOT_NO_WIFI,"No WiFi" },
+   { BOOT_NO_NTP,"No NTP" },
+   { BOOT_IN_SETUP,"During Setup" },
+   { LOST_WIFI,"Lost WiFi" },
+   { SERVER_REBOOT,"Server Reboot" },
+   { SERVER_RESET,"Server Reset" },
+   { SERVER_OTA_UPDATE,"OTA Update" },
+   { LOOP_MUTEX,"Mutex Failure" },
+   { ESP32_PANIC,"ESP32 Panic" },
+   { ESP32_WATCHDOG,"ESP32 Watchdog" },
+   { UNKNOWN,"Unknown" }
+};
+
+RTC_NOINIT_ATTR   uint32_t s_fastResets;
+
+String  Config::getRebootReason( RebootType *type )
+{
+   RebootType reboot;
+   int32_t  rebootReason;
+
+   // get the ESP reason for reboot, and get out reboot marker from nvs
+
+   esp_reset_reason_t espReason = esp_reset_reason();
+   (void) getPersistentInt( k_rebootType,&rebootReason );
+
+   // now set our reboot marker for this cycle
+
+   switch( espReason )
+   {
+      case ESP_RST_POWERON:
+      case ESP_RST_EXT:
+      case ESP_RST_PWR_GLITCH:
+            reboot = POWER_CYCLE;
+            break;
+      case ESP_RST_PANIC:
+            reboot = ESP32_PANIC;
+            break;
+      case ESP_RST_INT_WDT:
+      case ESP_RST_TASK_WDT:
+      case ESP_RST_WDT:
+            reboot = ESP32_WATCHDOG;
+            break;
+      case ESP_RST_SW:
+            reboot = static_cast<RebootType> (rebootReason);
+            break;
+      default:
+            reboot = UNKNOWN;
+            break;
+   }
+
+   *type = reboot;
+   std::map<RebootType,String>::const_iterator it = resetMap.find( reboot );
+   if ( it == resetMap.end() )
+   {
+      return( String( "reason not mapped" ) );
+   }
+   else
+   {
+      return( it->second );
+   }
+}
+
+bool Config::isFastReset()
+{
+   bool isFast = false;
+
+   return isFast;
+}
