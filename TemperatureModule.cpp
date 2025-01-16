@@ -335,11 +335,7 @@ bool TemperatureModule::getTemperatures()
       return false;
    }
 
-   unsigned long start;
-   if ( isDebugEnabled() )
-   {
-      start = millis();
-   }
+   START_TIMING( "1-Wire Acquisition" );
 
    // Request temperatures of all devices on the bus.  This may block so is not
    // an ideal way to obtain temperatures...
@@ -365,13 +361,7 @@ bool TemperatureModule::getTemperatures()
       }
    }
 
-   // Using %ul as format specifier fails - can Serial.println to see value too
-   // It appears to take ~ 520 ms if only code running
-
-   if ( isDebugEnabled() )
-   {
-      PW_DEBUG( "Took %u ms to request temperatures", millis() - start );
-   }
+   END_TIMING;
 
    // Now broadcast on the network
 

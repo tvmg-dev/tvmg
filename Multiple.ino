@@ -319,18 +319,7 @@ void setup( void )
 
    delay( 500 );
 
-   Serial.println( "pete is here" );
    // Initialise our configuration
-
-#if 0
-   Config *newOne = new Config( "\rhubarb" );
-
-   int32_t valI;
-
-   (void) newOne->getPersistentInt( "hello",&valI );
-
-   PW_MSG( "val %d",valI );
-#endif
 
    config = Config::instance( true );
 
@@ -667,9 +656,6 @@ void loop(void)
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
    static uint32_t loopMillis = LOOP_PERIOD_MS;
    static uint32_t networkLost = 0;
-static int c = 0;
-
-   c++;
 
    bool  restartRequired = false;
 

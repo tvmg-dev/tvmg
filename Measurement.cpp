@@ -11,6 +11,10 @@
 Measurement::Sample::Sample()
 {
    m_sampleTime = 0;
+
+   // we use a nullptr to terminate the sensors when we iterate over them,
+   // so the arrays are actually sized with +1.
+
    for ( int i = 0; i < MAX_TEMP_SENSORS + 1; i++ )
    {
       m_tempSensors[ i ] = nullptr;
@@ -19,11 +23,11 @@ Measurement::Sample::Sample()
    {
       m_powerSensors[ i ] = nullptr;
    }
-   for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
+   for ( int i = 0; i < MAX_HP_REGISTERS + 1; i++ )
    {
       m_lgRegisters[ i ] = nullptr;
    }
-   for ( int i = 0; i < MAX_HEAT_METERS; i++ )
+   for ( int i = 0; i < MAX_HEAT_METERS + 1; i++ )
    {
       m_heatMeterSensors[ i ] = nullptr;
    }

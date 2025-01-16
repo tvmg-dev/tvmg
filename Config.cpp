@@ -1,5 +1,6 @@
 #include <Preferences.h>
 #include <map>
+#include <rtc.h>
 
 #include "Config.h"
 
@@ -341,7 +342,14 @@ static std::map<RebootType,String> resetMap = {
    { UNKNOWN,"Unknown" }
 };
 
+#define  MINIMUM_RUNTIME_SECS (10 * 60)
+#define  ALLOWED_FAST_RESETS  10
+
 RTC_NOINIT_ATTR   uint32_t s_fastResets;
+RTC_NOINIT_ATTR   uint32_t s_lastResetSeconds;
+RTC_NOINIT_ATTR   uint32_t s_sumResetSeconds;
+
+bool  s_isFast = false;
 
 String  Config::getRebootReason( RebootType *type )
 {
@@ -378,6 +386,59 @@ String  Config::getRebootReason( RebootType *type )
             break;
    }
 
+   // get approx microsecs since power on
+
+   uint64_t us = esp_rtc_get_time_us();
+   uint32_t secs = static_cast<uint32_t> (us / 1000000UL);
+   int32_t  lastCycleSecs = secs - s_lastResetSeconds;
+
+   // If the reboot was a power cycle type, OTA update or the time since
+   // last reboot exceeded a minium runtime then reset fast boot detection stats
+
+   if ( reboot == POWER_CYCLE || rebootReason == SERVER_OTA_UPDATE || lastCycleSecs > MINIMUM_RUNTIME_SECS )
+   {
+      String str( "Reset : reboot stats cleared (" );
+
+      if ( reboot == POWER_CYCLE )
+      {
+         str += "PWR)";
+      }
+      else if ( rebootReason == SERVER_OTA_UPDATE )
+      {
+         str += "OTA)";
+      }
+      else
+      {
+         str += "last cycle ";
+         str += String( lastCycleSecs,DEC );
+         str += "s )";
+      }
+
+      PW_MSG( str.c_str() );
+
+      s_fastResets = 0;
+      s_lastResetSeconds = 0;
+      s_sumResetSeconds = 0;
+   }
+   else
+   {
+      s_sumResetSeconds += lastCycleSecs;
+      s_lastResetSeconds = secs;
+      s_fastResets++;
+
+      PW_MSG( "%d soft resets : last cycle %d, total since PON %d ",s_fastResets,lastCycleSecs,s_sumResetSeconds );
+
+      // We only allow N fast reboots in X minimum run times
+      // E.g. 10 reboots in 2x 10 minutes
+
+      if ( s_fastResets >= ALLOWED_FAST_RESETS )
+      {
+         s_isFast = true;
+         PW_ERROR( "Too many fast resets" );
+      }
+
+   }
+
    *type = reboot;
    std::map<RebootType,String>::const_iterator it = resetMap.find( reboot );
    if ( it == resetMap.end() )
@@ -392,7 +453,5 @@ String  Config::getRebootReason( RebootType *type )
 
 bool Config::isFastReset()
 {
-   bool isFast = false;
-
-   return isFast;
+   return s_isFast;
 }

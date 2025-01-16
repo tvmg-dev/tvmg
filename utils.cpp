@@ -394,15 +394,9 @@ void GetRunTimeInfo()
 }
 //----------------------------------------------------------------------
 
-
 bool  isDebugEnabled()
 {
-   if ( debugLevelEnabled == isTrue )
-   {
-      return true;
-   }
-
-   return false;
+   return( debugLevelEnabled == isTrue );
 }
 
 void msgLog( LOGGING_LEVEL level,const char *format,... )
