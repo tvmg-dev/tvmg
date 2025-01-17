@@ -404,7 +404,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    // 1st check to see if we have configured yet, use the serialLoggingEnabled
    // to determine our debug options once (after config is available).
 
-   if ( !serialLoggingEnabled && Config::instance() )
+   if ( !serialLoggingEnabled && Config::instance() && Config::instance()->isRegistryAvailable() )
    {
       serialLoggingEnabled = isFalse;
       debugLevelEnabled = isFalse;

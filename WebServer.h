@@ -17,6 +17,7 @@ private:
 
    AsyncWebServer *m_webServer;
    Networking     *m_networking;
+   String         m_hiddenPage;
    File           m_downloadFile;
 };
 

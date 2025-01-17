@@ -45,6 +45,10 @@ LGHeatPump        *lgThermaV = nullptr;
 
 char  *testMallocBuffer = nullptr;
 
+// For testing fast reboot handling
+
+bool  testFastReboot = false;
+
 // To get modbus stats :(
 
 void  getModbusStats( uint32_t *requests,uint32_t *fails )
@@ -86,11 +90,17 @@ void newConfiguration( void )
 
       if ( !config->isFactoryReset() )
       {
-         int32_t  failedReboots;
+         if ( config->isFastReset() )
+         {
+            snprintf( line,MAX_OLED_COLUMNS,"Fast Reset Error" );
+         }
+         else
+         {
+            int32_t  numNoWifi;
 
-         config->getPersistentInt( k_noNetworkCounter,&failedReboots );
-
-         snprintf( line,MAX_OLED_COLUMNS,"Failed %d reboots",failedReboots );
+            config->getPersistentInt( k_noNetworkCounter,&numNoWifi,0 );
+            snprintf( line,MAX_OLED_COLUMNS,"No WiFi count %d",numNoWifi );
+         }
       }
       else
       {
@@ -316,35 +326,14 @@ void setup( void )
 //   Serial.setDebugOutput(true); from chip-debug-report.cpp
 
    Serial.begin( 115200,SERIAL_8N1 );
-
    delay( 500 );
-
-   // Initialise our configuration
-
-   config = Config::instance( true );
 
    PW_MSG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
-   // Bump the reboot count
+   // Initialise our configuration, this will create SPIFFS but not
+   // the registry
 
-   int32_t  rebootCount;
-   (void) config->getPersistentInt( k_rebootCounter,&rebootCount );
-   rebootCount++;
-   config->setPersistentInt( k_rebootCounter,rebootCount );
-
-   // Get the reboot reason
-   RebootType rebootReason;
-   String     rebootStr = config->getRebootReason( &rebootReason );
-
-   // Is registry available, if not then we need to enter configuration
-   // mode, i.e. networking with AP only with SSID HeatPump-Monitor. The
-   // user must download a suitable config.dat to the device.
-
-   if ( ! config->isRegistryAvailable() )
-   {
-      config->setPersistentInt( k_rebootType,BOOT_NO_CONFIG );
-      newConfiguration();
-   }
+   config = Config::instance( true );
 
    selectHardware();
 
@@ -353,16 +342,47 @@ void setup( void )
    userIO = new UserIO();
    userIO->initialise();
 
+   // Bump the reboot count
+
+   int32_t  rebootCount;
+   (void) config->getPersistentInt( k_rebootCounter,&rebootCount,0 );
+   rebootCount++;
+   config->setPersistentInt( k_rebootCounter,rebootCount );
+
+   // Get the reboot reason
+
+   RebootType rebootReason;
+   String     rebootStr = config->getRebootReason( &rebootReason );
+
    // Brief display of reboot reason
 
    userIO->updateLine( 0,"Reboot Reason" );
    snprintf( line,MAX_OLED_COLUMNS,"Code : %d",rebootReason );
    userIO->updateLine( 1,line );
-   snprintf( line,MAX_OLED_COLUMNS,"%s",rebootStr.c_str() );
+   snprintf( line,MAX_OLED_COLUMNS,"%s",config->getAppRebootReason( rebootReason ).c_str() );
    userIO->updateLine( 3,line );
+
+   // If we fast booted then drop to AP mode again
+
+   if ( config->isFastReset() )
+   {
+      newConfiguration();
+   }
 
    delay( 2000 );
    userIO->clear();
+
+   // Is registry available, if not then we need to enter configuration
+   // mode, i.e. networking with AP only. The user must resolve issues
+   // via the webserver hopefully.  We need to initialise to get registry
+   // working here.
+
+   config->initialise();
+   if ( ! config->isRegistryAvailable() )
+   {
+      config->setPersistentInt( k_rebootType,BOOT_NO_CONFIG );
+      newConfiguration();
+   }
 
    // If this is a result of factory reset, then new configuration too,
    // otherwise we can move on as normal
@@ -389,7 +409,7 @@ void setup( void )
    {
       int32_t  failedReboots;
 
-      config->getPersistentInt( k_noNetworkCounter,&failedReboots );
+      config->getPersistentInt( k_noNetworkCounter,&failedReboots,0 );
       failedReboots++;
 
       config->setPersistentInt( k_noNetworkCounter,failedReboots );
@@ -562,9 +582,6 @@ void setup( void )
    emailMsg += "Last reboot reason : ";
 
    emailMsg += rebootStr;
-   emailMsg += " : ";
-   emailMsg += String( rebootReason,DEC );
-   emailMsg += "\n";
 
    PW_MSG( "%s",emailMsg.c_str() );
 
@@ -638,10 +655,20 @@ void setup( void )
       }
    }
 
+   if ( !testFastReboot )
+   {
+      int shouldAssert = GET_REGISTRY_INT( ASSERT_FOR_FAST_BOOT );
+      if ( shouldAssert > 0 )
+      {
+         PW_MSG( "Testing fast boot" );
+         testFastReboot = true;
+      }
+   }
+
    // Can release the sensor JSON data now as we're setup
    releaseSensorJSON();
 
-   // And we now set the reboot as likely power cycle
+   // And we now set the reboot marker as hopefully next is a power cycle
 
    config->setPersistentInt( k_rebootType,POWER_CYCLE );
 }
@@ -649,12 +676,13 @@ void setup( void )
 // ---------------------------------------------------------------------
 // Loop
 
+extern void hwReset();
+
 #define LOOP_PERIOD_MS     5000
 
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
-   static uint32_t loopMillis = LOOP_PERIOD_MS;
    static uint32_t networkLost = 0;
 
    bool  restartRequired = false;
@@ -676,13 +704,20 @@ void loop(void)
       restartRequired = true;
    }
 
-   // has an OTA update occurred
-
    if ( networking->hasUpdated() )
    {
+      // OTA update has occurred, if so then we go for a hard reset
+      // which takes ~ 250ms for the watchdog to kick in, so we delay
+      // initially to let the webserver service the GET response, and
+      // then delay after the reset which will cycle the chip
+
       config->setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
-      restartRequired = true;
-      delay( 1000 );
+
+      delay( 2500 );
+      hwReset();
+
+      delay( 5000 );
+      PW_ERROR( "HW Reset Failed" );
    }
 
    // Have we lost network connection ?  Check if connection dropped for
@@ -718,8 +753,6 @@ void loop(void)
          delay( 500 );
       }
    }
-
-   loopMillis = LOOP_PERIOD_MS;
 
    // process button presses
 
@@ -761,14 +794,14 @@ void loop(void)
    // our target MS is our original millis at entry of this loop, plus
    // our sampling delay
 
-   targetMillis += loopMillis;
+   targetMillis += LOOP_PERIOD_MS;
    currentMillis = millis();
 
    // We may need to skip a sample(s) if we've executed too long in this loop
 
    while ( currentMillis >= targetMillis )
    {
-      targetMillis += loopMillis;
+      targetMillis += LOOP_PERIOD_MS;
    }
 
    deltaMillis = targetMillis - currentMillis;
@@ -782,4 +815,19 @@ void loop(void)
    PW_DEBUG( "Loop Delay %u",deltaMillis );
 
    delay( deltaMillis );
+
+   // Assert if we're testing fast reboot
+   if ( testFastReboot )
+   {
+      assert( 0 );
+   }
+
+   // If we've been up for 24 days then reboot - just to sure we
+   // don't have millis() (32 bits) causing issues.
+
+   if ( currentMillis > ( 24 * 24 * 3600 * 1000) )
+   {
+      PW_DEBUG( "24 day reboot" );
+      ESP.restart();
+   }
 }

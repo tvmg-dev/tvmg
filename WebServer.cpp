@@ -40,10 +40,12 @@ static Networking *s_networking = nullptr;
 const char* http_username = "admin";
 const char* http_password = "admin";
 
-String allowedExtensionsForEdit = "txt, dat, def";
-
 #define  DEFAULT_EXTENSION ".def"
-bool   showDefaultFiles = false;
+
+bool   showAllFiles = false;
+static char hiddenExtensions[][ 5 ] = { ".pub",".hid",DEFAULT_EXTENSION };
+
+String allowedExtensionsForEdit = "txt, dat, def";
 
 String filesDropdownOptions = "";
 String textareaContent = "";
@@ -84,22 +86,6 @@ const char debugSection[] = "";
 
 //----------------------------------------------------------------------
 
-String convertFileSize(const size_t bytes)
-{
-   if(bytes < 1024)
-   {
-      return String(bytes) + " B";
-   }
-   else if (bytes < 1048576)
-   {
-      return String(bytes / 1024.0) + " kB";
-   }
-   else if (bytes < 1073741824)
-   {
-      return String(bytes / 1048576.0) + " MB";
-   }
-}
-
 void resetFS()
 {
    // Find default files and copy to their 'dat' equivalent - crude as
@@ -137,6 +123,52 @@ void resetFS()
 
    Config::instance()->setPersistentInt( k_rebootType,SERVER_RESET );
    Config::instance()->setFactoryReset();
+}
+
+bool  isHiddenExtension( const String &filename )
+{
+   bool isHidden = false;
+
+   for ( int i = 0; i < sizeof(hiddenExtensions) /  sizeof(hiddenExtensions[ 0 ]); i++ )
+   {
+      if ( filename.indexOf( hiddenExtensions[ i ] ) != -1 )
+      {
+         isHidden = true;
+         break;
+      }
+   }
+
+   String msg = filename;
+   String add;
+   msg += String( " is " );
+   if ( isHidden )
+   {
+      add = "hidden";
+   }
+   else
+   {
+      add = "visible";
+   }
+   msg += add;
+   PW_DEBUG( msg.c_str() );
+
+   return isHidden;
+}
+
+String convertFileSize(const size_t bytes)
+{
+   if(bytes < 10240)
+   {
+      return String(bytes) + " B";
+   }
+   else if (bytes < 1048576)
+   {
+      return String(bytes / 1024.0) + " kB";
+   }
+   else if (bytes < 1073741824)
+   {
+      return String(bytes / 1048576.0) + " MB";
+   }
 }
 
 String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
@@ -182,7 +214,7 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
     }
     else
     {
-      if ( showDefaultFiles || !strstr( file.name(),DEFAULT_EXTENSION ) )
+      if ( showAllFiles || !isHiddenExtension( file.name() ) )
       {
          listenFiles += "<tr><td id=\"first_td_th\">";
          listenFiles += file.name();
@@ -354,7 +386,6 @@ String processor(const String& var)
     return emonStr;
   }
 
-
   if(var == "ALLOWED_EXTENSIONS_EDIT")
   {
     return allowedExtensionsForEdit;
@@ -432,6 +463,7 @@ void notFound(AsyncWebServerRequest *request)
 WebServer::WebServer( Networking *networking )
         : m_webServer( nullptr ),
           m_networking( networking ),
+          m_hiddenPage(),
           m_downloadFile()
 
 {
@@ -442,12 +474,26 @@ WebServer::WebServer( Networking *networking )
 
    assert( s_spiffs != 0 );
 
-   if ( GET_REGISTRY_INT( SHOW_DEFAULT_FILES ) > 0 )
+   if ( GET_REGISTRY_INT( SHOW_ALL_FILES ) > 0 )
    {
-      showDefaultFiles = true;
+      showAllFiles = true;
    }
 
    s_networking = m_networking;
+
+   // Assign a random page for debugging if not set in config
+
+   m_hiddenPage = GET_REGISTRY_STRING( HIDDEN_WEB_PAGE );
+   if ( m_hiddenPage.indexOf( "debug" ) == -1 )
+   {
+      randomSeed( analogRead( 0 ) );
+      int   ra = random( 1000000 );
+
+      m_hiddenPage = "/dbg-";
+      m_hiddenPage += String( ra,DEC );
+   }
+
+   PW_DEBUG( "Debug Page at %s",m_hiddenPage.c_str() );
 }
 
 WebServer::~WebServer()
@@ -724,6 +770,29 @@ void WebServer::setupAsyncServer()
       delay( 500 );
 
       ESP.restart();
+   });
+
+   m_webServer->on(m_hiddenPage.c_str(), HTTP_GET, [](AsyncWebServerRequest *request)
+   {
+      if(!request->authenticate(http_username, http_password))
+      {
+         return request->requestAuthentication();
+      }
+
+      if ( Networking::takeNewMutex( 100 ) == 1 )
+      {
+         GetRunTimeInfo();
+         Networking::releaseNewMutex();
+#if 1
+         // cause task watchog
+         uint32_t start = millis();
+         while( millis() - start < 10000 )
+         {
+            buffs++;
+         }
+#endif
+      }
+      request->send(200);
    });
 
    m_webServer->on("/debug", HTTP_POST, [](AsyncWebServerRequest *request)

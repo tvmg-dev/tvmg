@@ -1,3 +1,5 @@
+#include <SD.h>
+
 #include "utils.h"
 #include "Config.h"
 
@@ -91,30 +93,56 @@ HardwareConfig MonitorBoard =
    16             // PWM GPIO
 };
 
-HardwareConfig *hwConfig;
+#define  TNODE_BOARD_FILE     "/tnode.hid"
+#define  MASTER_BOARD_FILE    "/master.hid"
+#define  EXTERNAL_BOARD_FILE  "/external.hid"
+#define  MONITOR_BOARD_FILE   "/monitor.hid"
+
+HardwareConfig *hwConfig = nullptr;
 
 void  selectHardware()
 {
-   int boardType = GET_REGISTRY_INT( BOARD_TYPE );
+   fs::SPIFFSFS   *spiffs = nullptr;
 
-   if ( boardType == MASTER_BOARD )
+   PW_MSG( "Board selection..." );
+   if ( !Config::instance() )
    {
-      PW_MSG( "Master Device Detected" );
-      hwConfig = &MasterDevice;
+      PW_WARN( "No Config available" );
+
    }
-   else if ( boardType == TEMPERATURE_BOARD )
+   else if ( ! (spiffs = Config::instance()->getSPIFFS() ) )
    {
-      PW_MSG( "Temperature Module Detected" );
-      hwConfig = &TemperatureNode;
-   }
-   else if ( boardType == EXTERNAL_BOARD )
-   {
-      PW_MSG( "External Board Detected" );
-      hwConfig = &ExternalBoard;
+      PW_WARN( "No SPIFFS" );
    }
    else
    {
-      PW_MSG( "Monitor Board Detected" );
-      hwConfig = &MonitorBoard;
+      spiffs = Config::instance()->getSPIFFS();
+
+      if ( spiffs->exists( MASTER_BOARD_FILE ) )
+      {
+         PW_MSG( "Master Device" );
+         hwConfig = &MasterDevice;
+      }
+      else if ( spiffs->exists( EXTERNAL_BOARD_FILE ) )
+      {
+         PW_MSG( "External Board" );
+         hwConfig = &ExternalBoard;
+      }
+      else if ( spiffs->exists( MONITOR_BOARD_FILE ) )
+      {
+         PW_MSG( "Monitor Board" );
+         hwConfig = &MonitorBoard;
+      }
+      if ( spiffs->exists( TNODE_BOARD_FILE ) )
+      {
+         PW_MSG( "TNode" );
+         hwConfig = &TemperatureNode;
+      }
+   }
+
+   if ( !hwConfig )
+   {
+      PW_MSG( "No board file - default to TNode" );
+      hwConfig = &TemperatureNode;
    }
 }
