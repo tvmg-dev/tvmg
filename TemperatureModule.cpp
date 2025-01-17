@@ -348,7 +348,7 @@ bool TemperatureModule::getTemperatures()
    {
       if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
       {
-         m_sensors[ i ].m_sensor.m_temp = m_dallasController->getTempCByIndex( m_sensors[ i ].m_busIndex );
+         m_sensors[ i ].m_sensor.m_temp = m_dallasController->getTempC( m_sensors[ i ].m_address );
          if ( m_sensors[ i ].m_sensor.m_temp != DEVICE_DISCONNECTED_C )
          {
             PW_DEBUG( "Raw temperature of %s : %.2f",m_sensors[ i ].m_name,m_sensors[ i ].m_sensor.m_temp );
