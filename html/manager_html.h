@@ -191,21 +191,6 @@ const char manager_html[] PROGMEM = R"rawliteral(
      </fieldset>
 
      <div id="spacer_5"></div>
-     <fieldset><legend>Reset Board</legend>
-      <div id="spacer_5"></div>
-      <form method="POST" action="/reset" target="self_page">
-        <table><tr><td id="first_td_th">
-        <p id="reset_notice">Pressing the 'Reset' button will reset the board !</p>
-        </td><td>
-        <input type="submit" id="submit" value="Reset" onclick="return confirmReset()">
-        </td></tr></table>
-      </form>
-      <div id="spacer_5"></div>
-     </fieldset>
-
-     %DEBUG_SECTION%
-
-     <div id="spacer_5"></div>
      <fieldset><legend>Reboot</legend>
       <div id="spacer_5"></div>
       <form method="POST" action="/reboot" target="self_page">
@@ -217,6 +202,22 @@ const char manager_html[] PROGMEM = R"rawliteral(
       </form>
       <div id="spacer_5"></div>
      </fieldset>
+
+     <div id="spacer_5"></div>
+     <fieldset><legend>Reset Board</legend>
+      <div id="spacer_5"></div>
+      <form method="POST" action="/reset" target="self_page">
+        <table><tr><td id="first_td_th">
+        <p id="reset_notice">Pressing the 'Reset' button will reset the board ! <br>
+        (This will need additional confirmation) </p>
+        </td><td>
+        <input type="submit" id="submit" value="Reset" onclick="return confirmReset()">
+        </td></tr></table>
+      </form>
+      <div id="spacer_5"></div>
+     </fieldset>
+
+     %DEBUG_SECTION%
 
      <div id="spacer_10"></div>
      <iframe style="display:none" name="self_page"></iframe>
