@@ -47,9 +47,9 @@ void Storage::initialise( void )
 {
    PW_DEBUG( "Storage::initialise" );
 
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
+   if ( ! boardHasSDCard() )
    {
-      PW_MSG( "Not a master - not detecting SD card" );
+      PW_MSG( "Not detecting SD card" );
       m_storageOk = true;
       return;
    }
@@ -192,7 +192,7 @@ void  Storage::setNetworking( Networking *network )
 
    // Send an email if SD card is not OK
 
-   if ( ! m_storageOk && GET_REGISTRY_INT( BOARD_TYPE ) == MASTER_BOARD )
+   if ( boardHasSDCard() && ! m_storageOk )
    {
       char subject[ 128 ];
       snprintf( subject,128,"HP Monitoring : %s - SD Card Init Fault",m_networking->getLocalMDNSName().c_str() );
@@ -203,16 +203,9 @@ void  Storage::setNetworking( Networking *network )
 
 void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 {
-   // we won't store if the card isn't ok
+   // we won't store if the card isn't ok,or no card at all
 
-   if ( !m_storageOk )
-   {
-      return;
-   }
-
-   // If we're not a master then exit
-
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
+   if ( !boardHasSDCard() || !m_storageOk )
    {
       return;
    }
@@ -545,7 +538,7 @@ char  *Storage::getCurrentFileName()
 
 void  Storage::getStatus( char *line )
 {
-   if ( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
+   if ( ! boardHasSDCard() )
    {
       strncpy( line,"No Fitted SD",MAX_OLED_COLUMNS );
    }

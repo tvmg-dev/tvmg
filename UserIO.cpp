@@ -134,7 +134,6 @@ void  UserIO::setModBus( ModbusMaster *modbus )
 void  UserIO::showNetwork()
 {
    char        line[ MAX_OLED_COLUMNS ];
-   char        sdCardStatus[ MAX_OLED_COLUMNS ];
    struct tm   timeInfo;
    time_t      currentTime;
 

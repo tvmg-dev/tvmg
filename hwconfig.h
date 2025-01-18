@@ -21,10 +21,13 @@ typedef struct {
    int8_t        TouchButton1;
    int8_t        TouchButton2;
    int8_t        PWMGPIO;
+   bool          hasSDCard;
 } HardwareConfig;
 
 extern HardwareConfig *hwConfig;
 
 extern void selectHardware();
+
+extern bool  boardHasSDCard();
 
 #endif

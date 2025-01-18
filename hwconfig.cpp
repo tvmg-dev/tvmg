@@ -28,7 +28,8 @@ HardwareConfig MasterDevice =
    33,            // OLEDDataGPIO
    T6,            // TouchButton1
    T5,            // TouchButton2
-   -1             // PWM GPIO
+   -1,            // PWM GPIO
+   true           // has SD card
 };
 
 // T-Nodes use the integrated ESP32/OLED module
@@ -49,7 +50,8 @@ HardwareConfig TemperatureNode =
    5,             // OLEDDataGPIO
    T2,            // TouchButton1
    -1,            // TouchButton2
-   25             // PWM GPIO
+   25,            // PWM GPIO
+   false          // has SD card
 };
 
 // External board is a Temperature Bord but with different
@@ -69,7 +71,8 @@ HardwareConfig ExternalBoard =
    5,             // OLEDDataGPIO
    T2,            // TouchButton1
    -1,            // TouchButton2
-   -1             // PWM GPIO
+   -1,            // PWM GPIO
+   false          // has SD card
 };
 
 
@@ -90,7 +93,8 @@ HardwareConfig MonitorBoard =
    5,             // OLEDDataGPIO
    T2,            // TouchButton1 (esp32 touch 2)
    -1,            // TouchButton2
-   16             // PWM GPIO
+   16,            // PWM GPIO
+   false          // has SD card
 };
 
 #define  TNODE_BOARD_FILE     "/tnode.hid"
@@ -145,4 +149,14 @@ void  selectHardware()
       PW_MSG( "No board file - default to TNode" );
       hwConfig = &TemperatureNode;
    }
+}
+
+bool  boardHasSDCard()
+{
+   if ( hwConfig )
+   {
+      return hwConfig->hasSDCard;
+   }
+
+   return( false );
 }

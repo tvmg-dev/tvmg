@@ -4,13 +4,9 @@
 #include <SPIFFS.h>
 
 #include "utils.h"
+#include "hwconfig.h"
 
-#define VERSION_STR        "v25.01.15"
-
-#define TEMPERATURE_BOARD  1
-#define MASTER_BOARD       2
-#define MONITOR_BOARD      3
-#define EXTERNAL_BOARD     4
+#define VERSION_STR        "v25.01.16"
 
 #define SAMPLING_PERIOD_MS 30000
 

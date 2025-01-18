@@ -432,7 +432,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
       if ( GET_REGISTRY_INT( LOG_TO_FILE ) == 1 )
       {
-         if( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
+         if( ! boardHasSDCard() )
          {
             Serial.println( "Can't debug log to file, no SD" );
          }
@@ -454,7 +454,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
       if ( GET_REGISTRY_INT( LOG_HP_MODBUS ) == 1 )
       {
-         if( GET_REGISTRY_INT( BOARD_TYPE ) != MASTER_BOARD )
+         if( ! boardHasSDCard() )
          {
             Serial.println( "Can't debug log HP modbus to file, no SD" );
          }
