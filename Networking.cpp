@@ -159,7 +159,6 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
    // Check success from HTTP perspective, then check success from emon REST perspective
 
-#if 0
    if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY)
    {
       String payload = s_webClient->getString();
@@ -174,7 +173,6 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
       emonSendFailures++;
       PW_ERROR( "EMONCMS: GET failed [%s]",s_webClient->errorToString(httpCode).c_str() );
    }
-#endif
 
    lastSentMillis = millis();
 }
