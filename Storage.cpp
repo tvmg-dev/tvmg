@@ -443,9 +443,6 @@ void  Storage::updateEmon( const Measurement::Sample &sample )
 
 void  Storage::storeSample( const Measurement::Sample &sample )
 {
-   char     line[ 128 ];
-   String   thermometerStr, powerStr,lgStr;
-
    // First send data to emon
 
    updateEmon( sample );
@@ -474,17 +471,10 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    }
    else if ( timeInfo.tm_hour == m_dailyUpdateHour && !m_dailyUpdated && m_networking )
    {
+      char     line[ 128 ];
+      String   thermometerStr,powerStr,lgStr,commsStr;
+
       PW_MSG( "Sending daily update" );
-
-      // Send LG data if we have it
-
-      if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
-      {
-         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event Log",LGSTATUS_LOG,true ) )
-         {
-            Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
-         }
-      }
 
       int i = 0;
       TemperatureModule::takeMutex();
@@ -514,6 +504,37 @@ void  Storage::storeSample( const Measurement::Sample &sample )
          }
       }
 
+      // modbus, then emon
+
+      uint32_t   sends,fails;
+      float_t    percentSent = 100;
+
+      getModbusStats( &sends,&fails );
+      if ( sends )
+      {
+         if ( fails )
+         {
+            percentSent = (100.0 * sends) / (fails + sends);
+         }
+
+         snprintf( line,sizeof(line),"\nModbus Sent: %u, Failed: %u - (%.1f %% Ok)\n",sends,fails,percentSent );
+         commsStr += line;
+      }
+
+      Networking::Status state = m_networking->getStatus();
+      if ( state.emonSent )
+      {
+         percentSent = 100;
+         if ( state.emonFails )
+         {
+            percentSent = (100.0 * state.emonSent) / (state.emonFails + state.emonSent);
+         }
+
+         snprintf( line,sizeof(line),"EmonCMS Sent: %u, Failed: %u - (%.1f %% Ok)\n",state.emonSent,state.emonFails,percentSent );
+
+         commsStr += line;
+      }
+
       m_dailyUpdated = true;
       String updateStr;
 
@@ -525,9 +546,21 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       updateStr += line;
       updateStr += thermometerStr;
       updateStr += powerStr;
+      updateStr += commsStr;
       updateStr += "\n\n";
 
-      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
+      // Send LG data if we have it, otherwise simple email
+      if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
+      {
+         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG,true ) )
+         {
+            Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
+         }
+      }
+      else
+      {
+         m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
+      }
    }
 }
 

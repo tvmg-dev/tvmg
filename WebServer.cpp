@@ -360,14 +360,22 @@ String processor(const String& var)
     getModbusStats( &sends,&fails );
     char line[ 36 ];
 
-    snprintf( line,sizeof(line),"MB: %u / %u",sends,fails );
+    if ( sends )
+    {
+       snprintf( line,sizeof(line),"MB: %u / %u",sends,fails );
+    }
+    else
+    {
+       snprintf( line,sizeof(line),"MB: N/A" );
+    }
 
     return String( line );
   }
 
   if(var == "EMON")
   {
-    String emonStr;
+    char line[ 36 ];
+    String emonStr( "EM: N/A" );
 
     if ( s_networking && GET_REGISTRY_INT( UPDATE_EMONCMS ) == 1 )
     {
@@ -375,10 +383,7 @@ String processor(const String& var)
 
       if ( state.emonSent )
       {
-        char line[ 36 ];
-
         snprintf( line,sizeof(line),"EM: %u / %u",state.emonSent,state.emonFails );
-
         emonStr = String( line );
       }
     }

@@ -36,7 +36,7 @@ public:
    void initialise();
    const Status   &getStatus();
    bool sendEmail( const char *recipient,const char *subject,const String &msg );
-   bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS = false );
+   bool sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSPIFFS = false );
    void sendToEmonCMS( uint32_t emonFeedId,float_t value );
    bool isConnected();
    bool didAcquireNTP();

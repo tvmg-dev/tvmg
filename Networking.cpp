@@ -188,7 +188,7 @@ public:
 
    void initialise();
    bool sendEmail( const char *recipient,const char *subject,const String &msg );
-   bool sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS );
+   bool sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSPIFFS );
 
 private:
    String      m_ipDesc;
@@ -277,7 +277,7 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
    return false;
 }
 
-bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
+bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSPIFFS )
 {
    char buff[ 128 ];
    snprintf( buff,sizeof(buff),"Sending to %s [%s]",recipient,subject );
@@ -697,7 +697,7 @@ bool Networking::sendEmail( const char *recipient,const char *subject,const Stri
    return false;
 }
 
-bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const char *msg,const char *fileName,bool fromSPIFFS )
+bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSPIFFS )
 {
    if ( !m_willSendEmails )
    {
