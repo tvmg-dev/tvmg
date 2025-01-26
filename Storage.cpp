@@ -22,6 +22,10 @@ Storage::Storage()
          m_networking( nullptr ),
          m_dailyUpdated( false ),
          m_dailyUpdateHour( INVALID_UPDATE_HOUR ),
+         m_dailyModbusSent( 0 ),
+         m_dailyModbusFailed( 0 ),
+         m_dailyEmonSent( 0 ),
+         m_dailyEmonFailed( 0 ),
          m_storageOk( false )
 {
    PW_DEBUG( "Storage::Storage()" );
@@ -509,6 +513,13 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       float_t    percentSent = 100;
 
       getModbusStats( &sends,&fails );
+
+      sends -= m_dailyModbusSent;
+      fails -= m_dailyModbusFailed;
+
+      m_dailyModbusSent += sends;
+      m_dailyModbusFailed += fails;
+
       if ( sends )
       {
          if ( fails )
@@ -521,6 +532,13 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       }
 
       Networking::Status state = m_networking->getStatus();
+
+      state.emonSent -= m_dailyEmonSent;
+      state.emonFails -= m_dailyEmonFailed;
+
+      m_dailyEmonSent += state.emonSent;
+      m_dailyEmonFailed += state.emonFails;
+
       if ( state.emonSent )
       {
          percentSent = 100;
