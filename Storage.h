@@ -9,6 +9,7 @@ class Networking;
 
 class Storage
 {
+
 public:
    Storage();
    ~Storage();
@@ -25,7 +26,6 @@ private:
 
    char        m_currentFileName[ MAX_FILENAME +1 ];
    Networking  *m_networking;
-   uint8_t     m_lastSentHour;
    uint8_t     m_dailyUpdateHour;
    bool        m_dailyUpdated;
    bool        m_storageOk;

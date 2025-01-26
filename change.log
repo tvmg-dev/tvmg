@@ -1,0 +1,12 @@
+v25.01.20 - Single email with lg data
+v25.01.19 - not release
+v25.01.18 - parse emonCMS response to feed insert to obtain error state
+v25.01.17 - moved reset html to end of page with confirm text added
+v25.01.16 - fix SD card detection using board type not from config.dat
+v25.01.15 - fix temperatures recorded when device is lost off the 1-Wire bus
+v25.01.14 - Reset handling improvements, board select via file, debug webpage
+v25.01.13 - fast boot detection (prevent flash wear on continuous cycling)
+v25.01.11 - rework temperatures, reset handling, improved serial debug at boot
+v25.01.10 - new reboot code BOOT_SETUP for error in setup, OLED display reboot cause
+v25.01.9  - use nvs for entering AP mode when failed 3 reboots on current network
+

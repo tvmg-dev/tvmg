@@ -20,7 +20,6 @@
 Storage::Storage()
        : m_currentFileName(),
          m_networking( nullptr ),
-         m_lastSentHour( 23 ),
          m_dailyUpdated( false ),
          m_dailyUpdateHour( INVALID_UPDATE_HOUR ),
          m_storageOk( false )
