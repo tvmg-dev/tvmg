@@ -6,7 +6,7 @@
 #include "utils.h"
 #include "hwconfig.h"
 
-#define VERSION_STR        "v25.01.21"
+#define VERSION_STR        "v25.02.01"
 
 #define SAMPLING_PERIOD_MS 30000
 
@@ -19,6 +19,7 @@
 extern void    setRegistryEntry( char *key,char *value );
 extern int32_t getRegistryInt( char *key );
 extern char    *getRegistryString( char *key );
+extern void    hwReset();
 
 // for nvs data
 
@@ -46,7 +47,7 @@ enum RebootType {
    LOOP_MUTEX,
    ESP32_PANIC,
    ESP32_WATCHDOG,
-   APP_HW_RESET,
+   APP_24D_RESET,
    UNKNOWN
 };
 

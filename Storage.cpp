@@ -605,3 +605,8 @@ void  Storage::getStatus( char *line )
       strncpy( line,"SD Card Fault",MAX_OLED_COLUMNS );
    }
 }
+
+bool  Storage::didDailyUpdate()
+{
+   return m_dailyUpdated;
+}

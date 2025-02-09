@@ -130,6 +130,7 @@ public:
    void  initialise();
    bool  isAvailable();
    bool  isLogging();
+   void  resetEventLog();
    LGRegister *readNextSensor( uint8_t index );
    void  setCurrentKW( float_t kw );
    void  updateUserIO( UserIO *userIO );

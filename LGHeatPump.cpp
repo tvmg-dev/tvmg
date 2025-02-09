@@ -710,6 +710,7 @@ void  LGHeatPump::updateStatus()
                m_currentStatus.m_isImmersion,
                m_currentStatus.m_isDefrost );
 
+      PW_MSG( "LG events: %u",m_currentStatus.m_updates );
       PW_MSG( "LG state change: %s",line );
 
       // we may need to write header if the log file doesn't exist
@@ -734,6 +735,12 @@ void  LGHeatPump::updateStatus()
          file.close();
       }
    }
+}
+
+void  LGHeatPump::resetEventLog()
+{
+   PW_MSG( "Reset LG event counter" );
+   m_currentStatus.m_updates = 0;
 }
 
 void  LGHeatPump::dumpData()

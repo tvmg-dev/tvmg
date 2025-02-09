@@ -31,7 +31,7 @@ static std::map<RebootType,String> s_appRebootMap = {
    { LOOP_MUTEX,"Mutex Failure" },
    { ESP32_PANIC,"ESP32 Panic" },
    { ESP32_WATCHDOG,"ESP32 Watchdog" },
-   { APP_HW_RESET,"App HW Reset" },
+   { APP_24D_RESET,"24 day reset" },
    { UNKNOWN,"Unknown" }
 };
 

@@ -18,6 +18,7 @@ public:
    char  *getCurrentFileName();
    void  setNetworking( Networking *network );
    void  getStatus( char *line );
+   bool  didDailyUpdate();
 
 private:
    void  saveSampleToBackingStore( const Measurement::Sample &sample );

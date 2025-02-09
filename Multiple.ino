@@ -676,14 +676,13 @@ void setup( void )
 // ---------------------------------------------------------------------
 // Loop
 
-extern void hwReset();
-
 #define LOOP_PERIOD_MS     5000
 
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
    static uint32_t networkLost = 0;
+   static bool     didDailyUpdate = false;
 
    bool  restartRequired = false;
 
@@ -743,6 +742,16 @@ void loop(void)
       networkLost = millis();
    }
 
+   // If we've been up for 24 days then reboot - just to sure we
+   // don't have millis() (32 bits) causing issues.
+
+   if ( currentMillis > ( 24 * 24 * 3600 * 1000) )
+   {
+      PW_MSG( "24 day reboot %d",currentMillis );
+      config->setPersistentInt( k_rebootType,APP_24D_RESET );
+      restartRequired = true;
+   }
+
    if ( restartRequired )
    {
       PW_MSG( "Rebooting..." );
@@ -772,8 +781,30 @@ void loop(void)
       END_TIMING;
    }
 
+   // take measurement, if we performed a daily update in sample then
+   // set local daily update flag and reset LG event log if LG present.
+   // The storage didDailyUpdate() will be true for the update hour,
+   // so we reset the local daily update flag when storate returns false
+
    START_TIMING( "takeSample" );
    measurement->takeSample();
+   if ( storageModule )
+   {
+      if ( !didDailyUpdate && storageModule->didDailyUpdate() )
+      {
+         PW_DEBUG( "DailyUpdate : true" );
+         didDailyUpdate = true;
+         if ( lgThermaV )
+         {
+            lgThermaV->resetEventLog();
+         }
+      }
+      else if ( didDailyUpdate && !storageModule->didDailyUpdate() )
+      {
+         PW_DEBUG( "DailyUpdate : false" );
+         didDailyUpdate = false;
+      }
+   }
    END_TIMING;
 
    START_TIMING( "UserIO Update" );
@@ -820,14 +851,5 @@ void loop(void)
    if ( testFastReboot )
    {
       assert( 0 );
-   }
-
-   // If we've been up for 24 days then reboot - just to sure we
-   // don't have millis() (32 bits) causing issues.
-
-   if ( currentMillis > ( 24 * 24 * 3600 * 1000) )
-   {
-      PW_DEBUG( "24 day reboot" );
-      ESP.restart();
    }
 }
