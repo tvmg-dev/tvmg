@@ -68,7 +68,6 @@
 #define  COP               (MB_CALCULATED | 0x0004 )
 #define  COMPRESSION_RATIO (MB_CALCULATED | 0x0005 )
 
-
 class ModbusMaster;
 class UserIO;
 
@@ -94,6 +93,8 @@ typedef struct {
 
 struct LGStatus {
    LGStatus();
+
+   bool     m_modbusError;
 
    time_t   m_time;
    uint16_t m_updates;

@@ -118,6 +118,8 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
+   m_currentStatus.m_modbusError = false;
+
    cJSON *root = getAllSensorJSON();
 
    if ( root && isSensorRequired( LGHEATPUMP_SENSOR_NAME ) )
@@ -267,6 +269,14 @@ LGRegister *LGHeatPump::readNextSensor( uint8_t index )
       getLGData();
       m_millisLastAquisition = millis();
    }
+
+   // If we've had a modbus error don't send any registers
+   if ( m_currentStatus.m_modbusError )
+   {
+      PW_DEBUG( "LG: modbus error, not returning data this sample" );
+      return nullptr;
+   }
+
    return &m_registers[ index ];
 }
 
@@ -396,54 +406,69 @@ void  LGHeatPump::getLGData()
 {
    PW_MSG( "GetLGData" );
 
-   START_TIMING( "LG Data Aquisition" );
-   if ( m_modbus )
+   if ( ! m_modbus )
    {
+      return;
+   }
+
+   START_TIMING( "LG Data Aquisition" );
+   do
+   {
+      bool modbusFailed = false;
+      m_currentStatus.m_modbusError = false;
+
       m_modbus->setSlaveId( m_modbusAddress );
 
       uint8_t  start,end;
 
       start = 0;
-      while ( getContiguousRange( COIL, &start, &end ) )
+      while ( !modbusFailed && getContiguousRange( COIL, &start, &end ) )
       {
          PW_DEBUG( "LG Modbus coils from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
 
-         (void) getModbusData( COIL,start,end );
+         modbusFailed |= !getModbusData( COIL,start,end );
 
          start = end + 1;
       }
 
       start = 0;
-      while ( getContiguousRange( DISCRETE, &start, &end ) )
+      while ( !modbusFailed && getContiguousRange( DISCRETE, &start, &end ) )
       {
          PW_DEBUG( "LG Modbus discretes from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
 
-         (void) getModbusData( DISCRETE,start,end );
+         modbusFailed |= !getModbusData( DISCRETE,start,end );
 
          start = end + 1;
       }
 
       start = 0;
-      while ( getContiguousRange( HOLDING, &start, &end ) )
+      while ( !modbusFailed && getContiguousRange( HOLDING, &start, &end ) )
       {
          PW_DEBUG( "LG Modbus holding from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
 
-         (void) getModbusData( HOLDING,start,end );
+         modbusFailed |= !getModbusData( HOLDING,start,end );
 
          start = end + 1;
       }
 
       start = 0;
-      while ( getContiguousRange( INPUTR, &start, &end ) )
+      while ( !modbusFailed && getContiguousRange( INPUTR, &start, &end ) )
       {
          PW_DEBUG( "LG Modbus inputs from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
 
-         (void) getModbusData( INPUTR,start,end );
+         !modbusFailed && getModbusData( INPUTR,start,end );
          start = end + 1;
+      }
+
+      if ( modbusFailed )
+      {
+         PW_ERROR( "LG: Failed to read modbus" );
+         m_currentStatus.m_modbusError = true;
+         break;
       }
 
       // log to file temporarily if enabled
@@ -560,6 +585,7 @@ void  LGHeatPump::getLGData()
 
       updateStatus();
    }
+   while( 0 );
 
    END_TIMING;
 }

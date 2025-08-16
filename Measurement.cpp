@@ -110,12 +110,14 @@ void  Measurement::takeSample( void )
    uint     start;
    float_t  hpKW = 1;
 
+   m_newSample = Sample();
+
    start = millis();
    time( &m_newSample.m_sampleTime );
 
    // Get all temperature sensor data, then power etc
 
-   uint8_t     i = 0;
+   uint8_t i = 0;
 
    TempSensor *tempSensor;
 

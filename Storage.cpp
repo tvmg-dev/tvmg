@@ -374,6 +374,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 
 void  Storage::updateEmon( const Measurement::Sample &sample )
 {
+   static   float k_errorTemp = 60.0f;
    char     line[ 128 ];
    String   thermometerStr, powerStr,lgStr;
 
@@ -389,10 +390,14 @@ void  Storage::updateEmon( const Measurement::Sample &sample )
    int i = 0;
    const TempSensor  *tsensor;
 
+   // temps have to be > invalid and < error temp - seen the DS's return +128
+   // when master monitor has not retrieved sensible values
+
    TemperatureModule::takeMutex();
    while ( (tsensor = sample.m_tempSensors[ i++ ] ) )
    {
-      if ( tsensor->m_temp > TEMPERATURE_INVALID && tsensor->m_emonFeedId != 0 )
+      if ( tsensor->m_emonFeedId != 0 && tsensor->m_temp > TEMPERATURE_INVALID &&
+                        tsensor->m_temp < k_errorTemp )
       {
          m_networking->sendToEmonCMS( tsensor->m_emonFeedId,tsensor->m_temp );
       }
