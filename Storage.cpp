@@ -529,10 +529,10 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       {
          if ( fails )
          {
-            percentSent = (100.0 * sends) / (fails + sends);
+            percentSent = (100.0 * ( sends - fails )) / sends;
          }
 
-         snprintf( line,sizeof(line),"\nModbus Sent: %u, Failed: %u - (%.1f %% Ok)\n",sends,fails,percentSent );
+         snprintf( line,sizeof(line),"\nModbus Requests: %u, Failed: %u - (%.1f %% Ok)\n",sends,fails,percentSent );
          commsStr += line;
       }
 
