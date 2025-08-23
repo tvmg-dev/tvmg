@@ -1,4 +1,8 @@
-#include <U8g2lib.h>
+
+#if !PW_LCD
+   #include <U8g2lib.h>
+#endif
+
 #include <Wire.h>
 #include <WiFi.h>
 #include <SD.h>
@@ -29,7 +33,11 @@ UserIO::UserIO()
    PW_DEBUG( "UserIO::UserIO()" );
    PW_MSG( "UserIO Module Startup" );
 
+#if PW_LCD
+   PW_MSG( "LCD board - so no OLED" );
+#else
    m_display = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C( U8G2_R0,U8X8_PIN_NONE,hwConfig->OLEDClkGPIO,hwConfig->OLEDDataGPIO );
+#endif
 
    for ( int i = 1; i < MAX_OLED_ROWS; i++ )
    {
@@ -41,20 +49,27 @@ UserIO::~UserIO()
 {
    PW_DEBUG( "UserIO::~UserIO()" );
 
+#if !PW_LCD
    delete m_display;
+#endif
 }
 
 void  UserIO::initialise()
 {
    PW_DEBUG( "UserIO::initialise" );
 
-   m_display->begin();
+#if !PW_LCD
+   if ( m_display )
+   {
+      m_display->begin();
 
-   m_display->setFont(u8g2_font_6x10_tf);
-   m_display->setFontRefHeightExtendedText();
-   m_display->setDrawColor(1);
-   m_display->setFontPosTop();
-   m_display->setFontDirection(0);
+      m_display->setFont(u8g2_font_6x10_tf);
+      m_display->setFontRefHeightExtendedText();
+      m_display->setDrawColor(1);
+      m_display->setFontPosTop();
+      m_display->setFontDirection(0);
+   }
+#endif
 }
 
 void  UserIO::setMeasurement( Measurement *measurement )
@@ -97,6 +112,7 @@ void  UserIO::clear()
 
 void  UserIO::show( OLEDDisplayLine lines[] )
 {
+#if !PW_LCD
    m_display->clearBuffer();
 
    for ( int row = 0; row < MAX_OLED_ROWS; row++ )
@@ -105,6 +121,12 @@ void  UserIO::show( OLEDDisplayLine lines[] )
    }
 
    m_display->sendBuffer();
+#else
+   for ( int row = 0; row < MAX_OLED_ROWS; row++ )
+   {
+      PW_MSG( lines[ row ] );
+   }
+#endif
 }
 
 void  UserIO::setNetworking( Networking *network )

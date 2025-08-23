@@ -97,10 +97,32 @@ HardwareConfig MonitorBoard =
    false          // has SD card
 };
 
+// Monitor use the integrated ESP32/OLED module and also have modbus
+// transceiver module available.
+
+HardwareConfig WaveshareLCD =
+{
+   -1,            // OneWireGPIO
+   -1,             // ModBusSerial
+   9600,          // ModBusBaudRate
+   SERIAL_8N1,    // ModBusSerialFormat
+   -1,             // ModBusRxGPIO
+   -1,             // ModBusTxGPIO
+   50,            // ModBusMsgDelay
+   -1,            // ModBus485EnGPIO
+   -1,             // OLEDClkGPIO
+   -1,             // OLEDDataGPIO
+   -1,            // TouchButton1 (esp32 touch 2)
+   -1,            // TouchButton2
+   -1,            // PWM GPIO
+   false          // has SD card
+};
+
 #define  TNODE_BOARD_FILE     "/tnode.hid"
 #define  MASTER_BOARD_FILE    "/master.hid"
 #define  EXTERNAL_BOARD_FILE  "/external.hid"
 #define  MONITOR_BOARD_FILE   "/monitor.hid"
+#define  WAVESHARE_LCD_FILE   "/lcd.hid"
 
 HardwareConfig *hwConfig = nullptr;
 
@@ -122,7 +144,12 @@ void  selectHardware()
    {
       spiffs = Config::instance()->getSPIFFS();
 
-      if ( spiffs->exists( MASTER_BOARD_FILE ) )
+      if ( spiffs->exists( WAVESHARE_LCD_FILE ) )
+      {
+         PW_MSG( "Waveshare LCD" );
+         hwConfig = &WaveshareLCD;
+      }
+      else if ( spiffs->exists( MASTER_BOARD_FILE ) )
       {
          PW_MSG( "Master Device" );
          hwConfig = &MasterDevice;

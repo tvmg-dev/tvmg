@@ -173,10 +173,17 @@ bool  iscJSONFileOk( const String &fileName )
    bool  isOk = false;
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+
+   if ( !spiffs->exists( fileName ) )
+   {
+      PW_WARN( "%s is missing",fileName.c_str() );
+      return false;
+   }
+
    File file = spiffs->open( fileName,FILE_READ );
    if ( !file )
    {
-      PW_WARN( "%s is missing",fileName.c_str() );
+      PW_WARN( "%s failed to open",fileName );
    }
    else
    {
@@ -191,7 +198,7 @@ bool  iscJSONFileOk( const String &fileName )
          // check for equal opening/closing braces
 
          int openBraces = numChars( '{',buf );
-         int closeBraces = numChars( '{',buf );
+         int closeBraces = numChars( '}',buf );
 
          if ( openBraces != closeBraces )
          {

@@ -313,6 +313,9 @@ void setup( void )
    // alternate GPIO pins for other library use of Serial and we disable
    // our serial logging
 
+#if !PW_LCD
+   Serial.begin( 115200,SERIAL_8N1 );
+
    pinMode( SERIAL_DISABLE_GPIO,INPUT_PULLUP );
    int val = digitalRead( SERIAL_DISABLE_GPIO );
 
@@ -326,9 +329,15 @@ void setup( void )
 //   Serial.setDebugOutput(true); from chip-debug-report.cpp
 
    Serial.begin( 115200,SERIAL_8N1 );
+
    delay( 500 );
 
    PW_MSG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
+
+#else
+   Serial.begin( 115200 );
+   delay( 500 );
+#endif
 
    // Initialise our configuration, this will create SPIFFS but not
    // the registry
