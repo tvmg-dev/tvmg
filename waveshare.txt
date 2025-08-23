@@ -5,15 +5,11 @@ not checked against official versions and the 3.0.7 release
 
 (my current installed arduino-esp - boards manager ? is 3.1.0)
 
-
-
-From IDE installed
-   ESP32_IO_Expander v 1.0.0 (0.0.4 refer'd in waveshare zip)
-   lvgl v 9.2.2 (8.4.0 refer in zip)
-   ESP32_Display_Panel v 0.2.1 (0.1.8 in zip)
-
-
-ESP32_IO_Expander - downgraded to 0.10 version, then panel test sprung into life
+From IDE installed (to Documents/Arduino/libraries)
+Updated the ESP32_Display_Panel library to : 1.0.3
+   ESP32_IO_Expander updated : 1.0.1
+   esp-lib-utils : 0.1.2
+   lvgl : 8.4.0
 
 Need to set (in library for now) for using supported ws-43b board in
 ESP_Panel_Board_Supported.h
@@ -21,19 +17,39 @@ ESP_Panel_Board_Supported.h
    #define ESP_PANEL_USE_SUPPORTED_BOARD       (1)
    BOARD_WAVESHARE_ESP32_S3_Touch_LCD_4_3_B
 
-may need PSRAM enabled
+Need PSRAM enabled
 
-the paneltest example in the panel library works ok, showing colour bar & touch response.
+In the library: src/board/waveshare/ESP32_S3_Touch_LCD_4_3_B.h - this doesn't define the backlight active,
+but it does in the library update.
 
-Also the 08_DrawColorBar test from WShare examples works and shows refresh rate :)
+   ESP_PANEL_BOARD_USE_LCD             1
+   ESP_PANEL_BOARD_LCD_CONTROLLER      ST7262
+   ESP_PANEL_BOARD_LCD_BUS_TYPE        (ESP_PANEL_BUS_TYPE_RGB)
+   ...
+   ESP_PANEL_BOARD_USE_TOUCH           (1)
+   ESP_PANEL_BOARD_TOUCH_CONTROLLER    GT911
+   ESP_PANEL_BOARD_TOUCH_BUS_TYPE      (ESP_PANEL_BUS_TYPE_I2C)
+   ...
+   ESP_PANEL_BOARD_USE_BACKLIGHT       (1)
+   ESP_PANEL_BOARD_BACKLIGHT_TYPE      (ESP_PANEL_BACKLIGHT_TYPE_SWITCH_EXPANDER)
+   ESP_PANEL_BOARD_BACKLIGHT_IO        (2)
+   ESP_PANEL_BOARD_BACKLIGHT_ON_LEVEL  (1)
+   ...
+   ESP_PANEL_BOARD_USE_EXPANDER        (1)
+   ESP_PANEL_BOARD_EXPANDER_CHIP       CH422G
 
-Panel doesn't have backlight enabled (may not be present, or how controlled ?)
-   - see ESP32_S3_Touch_LCD_4_3_B.h
-   why is ESP_PANEL_TOUCH_I2C_ADDRESS set to zero - it gets set via macros & code to 0x5D or 0x14
-      ESP_PANEL_TOUCH_I2C_IO_SDA 8
-      ESP_PANEL_TOUCH_I2C_IO_CLK 9
-   GT911 is I2c touch
 
+Then the github source of ESP_Panel: https://github.com/esp-arduino-libs/ESP32_Display_Panel.git
+   version 0.2.1
+   in Documents/github/ESP32_Display_Panel
+      examples/Panel/PanelTest
+         modify ESP_Panel_Board_Supported.h to be same as the library
+            #define ESP_PANEL_USE_SUPPORTED_BOARD       (1)
+            BOARD_WAVESHARE_ESP32_S3_Touch_LCD_4_3_B
+         modify ESP_Panel_Conf.h
+            ESP_PANEL_ENABLE_LOG (1)      to enable logging - set Arduino core log to debug
+
+   the paneltest example in the panel library works ok, showing colour bar & touch response.
 
 Panel test reports a problem when debug enabled
    So the interrupt mode is disabled (possibly by defsign) but then there's
@@ -57,35 +73,16 @@ Panel test reports a problem when debug enabled
 
    Doesn't seem to cause problems as such - so not a problem.
 
-What is annoying is that the panel-conf & board-supported headers may
-need to be propagated beyond the library - madness somewhere.  It could do
-with just having the one set of headers used for library & apps/demos.
+Pulled the git repo's of lvgl, ESP32_Display_Panel to Documents/github and set to same ver in libs
 
-The 09 lvgl demo not working ok, so bodging around using panel stuff
+   /examples/arduino/board/board_static_config : ok
+   /examples/arduino/gui/lvgl_v8/squareline_port : ok
+   /examples/arduino/gui/lvgl_v8/simple_rotation : ok
 
-With the bodge its working but slower (although running debug) and
-possibly no double buffer...
+So lvgl up & running ok.  Not sure how performant etc but ok for now.
 
 
-E (1366) GT911: PW-1 -1 -1
-E (1366) GT911: PW-2 -1 -1
-E (1366) ESP_Panel: PETE getTouch 0x3fcaf8a8 0x3fcab26c
-Backlight is not available
-Initialize LVGL
-E (1368) ESP_Panel: PETE getTouch 0x3fcaf8a8 0x3fcab26c
-[  1384][D][lvgl_port_v8.cpp:599] lvgl_port_init(): [lvgl_port] Avoid tearing is enabled, mode: 3
-[  1392][D][lvgl_port_v8.cpp:610] lvgl_port_init(): [lvgl_port] Initialize LVGL display driver
-[  1400][D][lvgl_port_v8.cpp:447] display_init(): [lvgl_port] Malloc memory for LVGL buffer
-E (1397) lcd_panel.rgb: esp_lcd_rgb_panel_get_frame_buffer(450): invalid frame buffer number
-E (1406) ESP_PanelLcd: [ESP_ERR_INVALID_ARG] getFrameBufferByIndex(594): Get RGB buffer failed
-[  1425][D][lvgl_port_v8.cpp:485] display_init(): [lvgl_port] Register display driver to LVGL
-[  1435][D][lvgl_port_v8.cpp:623] lvgl_port_init(): [lvgl_port] Initialize LVGL input driver
-[  1441][D][lvgl_port_v8.cpp:537] indev_init(): [lvgl_port] Register input driver to LVGL
-[  1449][D][lvgl_port_v8.cpp:639] lvgl_port_init(): [lvgl_port] Create mutex for LVGL
-[  1457][D][lvgl_port_v8.cpp:643] lvgl_port_init(): [lvgl_port] Create LVGL task
-[  1464][D][lvgl_port_v8.cpp:568] lvgl_port_task(): [lvgl_port] Starting LVGL task
-Create UI
-LVGL porting example end
+
 
 
 
