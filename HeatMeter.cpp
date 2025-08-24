@@ -92,12 +92,12 @@ bool  HeatMeterModule::isMeterAvailable()
 
 void  HeatMeterModule::updateUserIO( UserIO *userIO )
 {
-   char line[ MAX_OLED_COLUMNS ];
+   char line[ MAX_DISPLAY_COLUMNS ];
 
    HeatMeter *meter = m_sensors[ 0 ];
    if ( !meter )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"No Heat Meter" );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"No Heat Meter" );
       userIO->storeLine( 0,line );
       return;
    }
@@ -106,26 +106,26 @@ void  HeatMeterModule::updateUserIO( UserIO *userIO )
    sensor = meter->getHeatMeterSensor();
 
    String str = meter->getMode();
-   snprintf( line,MAX_OLED_COLUMNS,"Mode  : %s",str.c_str() );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Mode  : %s",str.c_str() );
    userIO->storeLine( 0,line );
 
    str = meter->getBasicData();
-   snprintf( line,MAX_OLED_COLUMNS,"Watts : %s",str.c_str() );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Watts : %s",str.c_str() );
    userIO->storeLine( 1,line );
 
-   snprintf( line,MAX_OLED_COLUMNS,"Temp : %3.1f %3.1f",sensor->m_flowTemp,sensor->m_returnTemp );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Temp : %3.1f %3.1f",sensor->m_flowTemp,sensor->m_returnTemp );
    userIO->storeLine( 4,line );
 
    if ( sensor->m_power == HM_POWER_ERROR )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"Overflow power" );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Overflow power" );
       userIO->storeLine( 2,line );
    }
    else
    {
-      snprintf( line,MAX_OLED_COLUMNS,"Flow : %3.1f l/min",sensor->m_flowRate );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Flow : %3.1f l/min",sensor->m_flowRate );
       userIO->storeLine( 2,line );
-      snprintf( line,MAX_OLED_COLUMNS,"Heat : %.0f W",sensor->m_power );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Heat : %.0f W",sensor->m_power );
       userIO->storeLine( 5,line );
    }
 }

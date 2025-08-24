@@ -808,8 +808,8 @@ void  Networking::setUpdateProgress( int size,const String &filename,bool finish
       m_userIO->clear();
       m_userIO->updateLine( 1,"Updating :" );
 
-      char line[ MAX_OLED_COLUMNS + 1 ];
-      snprintf( line,MAX_OLED_COLUMNS," %s",filename.c_str() );
+      char line[ MAX_DISPLAY_COLUMNS + 1 ];
+      snprintf( line,MAX_DISPLAY_COLUMNS," %s",filename.c_str() );
       m_userIO->updateLine( 2,line );
    }
    else

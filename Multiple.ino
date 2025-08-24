@@ -84,7 +84,7 @@ void newConfiguration( void )
 
    if ( userIO )
    {
-      char line[ MAX_OLED_COLUMNS ];
+      char line[ MAX_DISPLAY_COLUMNS ];
 
       userIO->clear();
 
@@ -92,28 +92,28 @@ void newConfiguration( void )
       {
          if ( config->isFastReset() )
          {
-            snprintf( line,MAX_OLED_COLUMNS,"Fast Reset Error" );
+            snprintf( line,MAX_DISPLAY_COLUMNS,"Fast Reset Error" );
          }
          else
          {
             int32_t  numNoWifi;
 
             config->getPersistentInt( k_noNetworkCounter,&numNoWifi,0 );
-            snprintf( line,MAX_OLED_COLUMNS,"No WiFi count %d",numNoWifi );
+            snprintf( line,MAX_DISPLAY_COLUMNS,"No WiFi count %d",numNoWifi );
          }
       }
       else
       {
-         snprintf( line,MAX_OLED_COLUMNS,"From Reset..." );
+         snprintf( line,MAX_DISPLAY_COLUMNS,"From Reset..." );
       }
 
       userIO->updateLine( 0,line );
 
-      snprintf( line,MAX_OLED_COLUMNS,"SSID %s",networking->getSSID().c_str() );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"SSID %s",networking->getSSID().c_str() );
       userIO->updateLine( 2,line );
-      snprintf( line,MAX_OLED_COLUMNS,"Use %s",networking->getMDNSName().c_str() );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Use %s",networking->getMDNSName().c_str() );
       userIO->updateLine( 3,line );
-      snprintf( line,MAX_OLED_COLUMNS,"Use %s",networking->getIPAddress().c_str() );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Use %s",networking->getIPAddress().c_str() );
       userIO->updateLine( 4,line );
    }
 
@@ -379,7 +379,7 @@ void setupSerial()
 
 String handleBootReason()
 {
-   char line[ MAX_OLED_COLUMNS ];
+   char line[ MAX_DISPLAY_COLUMNS ];
 
    // Bump the reboot count
 
@@ -396,9 +396,9 @@ String handleBootReason()
    // Brief display of reboot reason
 
    userIO->updateLine( 0,"Reboot Reason" );
-   snprintf( line,MAX_OLED_COLUMNS,"Code : %d",rebootReason );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Code : %d",rebootReason );
    userIO->updateLine( 1,line );
-   snprintf( line,MAX_OLED_COLUMNS,"%s",config->getAppRebootReason( rebootReason ).c_str() );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"%s",config->getAppRebootReason( rebootReason ).c_str() );
    userIO->updateLine( 3,line );
 
    delay( 2000 );
@@ -436,7 +436,7 @@ String handleBootReason()
 
 void startNetworking()
 {
-   char line[ MAX_OLED_COLUMNS ];
+   char line[ MAX_DISPLAY_COLUMNS ];
 
    userIO->updateLine( 0,"Starting Networking..." );
    userIO->updateLine( 1,"SSID :-" );
@@ -460,7 +460,7 @@ void startNetworking()
 
       config->setPersistentInt( k_noNetworkCounter,failedReboots );
 
-      snprintf( line,MAX_OLED_COLUMNS," Failure %u",failedReboots );
+      snprintf( line,MAX_DISPLAY_COLUMNS," Failure %u",failedReboots );
       userIO->updateLine( 4,line );
 
       // If we've had X failures to acquire WiFi, then revert to AP mode
@@ -756,7 +756,7 @@ void  handleDebugTests()
 
 void setup( void )
 {
-   char line[ MAX_OLED_COLUMNS ];
+   char line[ MAX_DISPLAY_COLUMNS ];
 
    setupSerial();
 
