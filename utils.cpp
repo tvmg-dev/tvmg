@@ -492,7 +492,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
    String  debugString;
 
-   if ( logTimestamps == isTrue )
+   if ( logTimestamps == isTrue || !logTimestamps )
    {
       struct tm      timeInfo;
       struct timeval tv_now;
@@ -512,7 +512,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       debugString += line;
    }
 
-   if ( logMemStats == isTrue )
+   if ( logMemStats == isTrue || !logMemStats )
    {
       char line[ 64 ];
       TaskStatus_t   taskStatus;

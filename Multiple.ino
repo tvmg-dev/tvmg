@@ -308,19 +308,19 @@ void  configureModBus()
 }
 
 // ---------------------------------------------------------------------
-// Create/initialise all modules prior to main loop
+// Setup serial port
 
-void setup( void )
+void setupSerial()
 {
-   char line[ MAX_OLED_COLUMNS ];
-
-   // start serial port, if the GPIO controlling serial on boot behaviour is low,
-   // i.e. no serial on boot, then we reconfigure uart0 (Serial) to have
-   // alternate GPIO pins for other library use of Serial and we disable
-   // our serial logging
-
 #if !PW_LCD
    Serial.begin( 115200,SERIAL_8N1 );
+
+   // The monitor board has a switch to disable serial as the port is used for
+   // modbus.  This SERIAL_DISABLE_GPIO is the MTDO strapping pin of the ESP32
+   // wroom device, which determines whether serial output is enabled on boot.
+   // If boot serial isn't enabled then we configure alternate pins to ensure
+   // if anything attempts to use serial then it won't affect modbus for the
+   // monitor board.
 
    pinMode( SERIAL_DISABLE_GPIO,INPUT_PULLUP );
    int val = digitalRead( SERIAL_DISABLE_GPIO );
@@ -338,21 +338,33 @@ void setup( void )
 
    delay( 500 );
 
-   PW_MSG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
+   PW_DEBUG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
 #else
+   // should have CDC USB active
+
    Serial.begin( 115200 );
    delay( 500 );
 #endif
+}
 
-   // Initialise our configuration, this will create SPIFFS but not
+// ---------------------------------------------------------------------
+// Create/initialise all modules prior to main loop
+
+void setup( void )
+{
+   char line[ MAX_OLED_COLUMNS ];
+
+   setupSerial();
+
+   // Initialise our configuration, this will create SPIFFS if neeeded but not
    // the registry
 
    config = Config::instance( true );
 
    selectHardware();
 
-   // prepare the OLED display for output
+   // prepare the display for output
 
    userIO = new UserIO();
    userIO->initialise();

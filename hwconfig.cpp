@@ -135,7 +135,6 @@ void  selectHardware()
    if ( !Config::instance() )
    {
       PW_WARN( "No Config available" );
-
    }
    else if ( ! (spiffs = Config::instance()->getSPIFFS() ) )
    {

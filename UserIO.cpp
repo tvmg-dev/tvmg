@@ -30,7 +30,6 @@ UserIO::UserIO()
         m_sample(),
         m_startTime(0)
 {
-   PW_DEBUG( "UserIO::UserIO()" );
    PW_MSG( "UserIO Module Startup" );
 
 #if PW_LCD
@@ -124,7 +123,10 @@ void  UserIO::show( OLEDDisplayLine lines[] )
 #else
    for ( int row = 0; row < MAX_OLED_ROWS; row++ )
    {
-      PW_MSG( lines[ row ] );
+      if ( strlen( lines[ row ] ) )
+      {
+         PW_MSG( "%d : %s",row + 1,lines[ row ] );
+      }
    }
 #endif
 }
