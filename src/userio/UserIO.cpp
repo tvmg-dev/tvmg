@@ -1,16 +1,22 @@
-#include <U8g2lib.h>
 #include <Wire.h>
 #include <WiFi.h>
 #include <SD.h>
 
 #include <time.h>
 
-#include "Config.h"
-#include "hwconfig.h"
-#include "utils.h"
+#include "src/core/utils.h"
+#include "src/core/Storage.h"
+
+#include "src/config/Config.h"
+#include "src/config/hwconfig.h"
+
+#if PW_LCD
+   #include "LcdDisplay.h"
+#else
+   #include "OledDisplay.h"
+#endif
 
 #include "UserIO.h"
-#include "Storage.h"
 
 extern Storage *storageModule;
 
@@ -26,12 +32,15 @@ UserIO::UserIO()
         m_sample(),
         m_startTime(0)
 {
-   PW_DEBUG( "UserIO::UserIO()" );
    PW_MSG( "UserIO Module Startup" );
 
-   m_display = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C( U8G2_R0,U8X8_PIN_NONE,hwConfig->OLEDClkGPIO,hwConfig->OLEDDataGPIO );
+#ifdef PW_LCD
+   m_display = new LcdDisplay;
+#else
+   m_display = new OledDisplay;
+#endif
 
-   for ( int i = 1; i < MAX_OLED_ROWS; i++ )
+   for ( int i = 1; i < MAX_DISPLAY_ROWS; i++ )
    {
       m_currentLines[ i ][ 0 ] = 0;
    }
@@ -48,13 +57,7 @@ void  UserIO::initialise()
 {
    PW_DEBUG( "UserIO::initialise" );
 
-   m_display->begin();
-
-   m_display->setFont(u8g2_font_6x10_tf);
-   m_display->setFontRefHeightExtendedText();
-   m_display->setDrawColor(1);
-   m_display->setFontPosTop();
-   m_display->setFontDirection(0);
+   m_display->initialise();
 }
 
 void  UserIO::setMeasurement( Measurement *measurement )
@@ -64,9 +67,9 @@ void  UserIO::setMeasurement( Measurement *measurement )
 
 void  UserIO::updateLine( uint8_t lineNum,char *line,bool isForLog )
 {
-   if ( lineNum < MAX_OLED_ROWS )
+   if ( lineNum < MAX_DISPLAY_ROWS )
    {
-      strncpy( m_currentLines[ lineNum ],line,MAX_OLED_COLUMNS );
+      strncpy( m_currentLines[ lineNum ],line,MAX_DISPLAY_COLUMNS );
       if ( isForLog )
       {
          PW_MSG( line );
@@ -78,16 +81,16 @@ void  UserIO::updateLine( uint8_t lineNum,char *line,bool isForLog )
 
 void  UserIO::storeLine( uint8_t lineNum,char *line )
 {
-   if ( lineNum < MAX_OLED_ROWS )
+   if ( lineNum < MAX_DISPLAY_ROWS )
    {
-      strncpy( m_currentLines[ lineNum ],line,MAX_OLED_COLUMNS );
+      strncpy( m_currentLines[ lineNum ],line,MAX_DISPLAY_COLUMNS );
    }
 }
 
 
 void  UserIO::clear()
 {
-   for ( int i = 0; i < MAX_OLED_ROWS; i++ )
+   for ( int i = 0; i < MAX_DISPLAY_ROWS; i++ )
    {
       m_currentLines[ i ][ 0 ] = 0;
    }
@@ -95,16 +98,9 @@ void  UserIO::clear()
    show( m_currentLines );
 }
 
-void  UserIO::show( OLEDDisplayLine lines[] )
+void  UserIO::show( DisplayLine lines[] )
 {
-   m_display->clearBuffer();
-
-   for ( int row = 0; row < MAX_OLED_ROWS; row++ )
-   {
-      m_display->drawStr( 0,row * 10, lines[ row ] );
-   }
-
-   m_display->sendBuffer();
+   m_display->show( lines );
 }
 
 void  UserIO::setNetworking( Networking *network )
@@ -133,7 +129,7 @@ void  UserIO::setModBus( ModbusMaster *modbus )
 
 void  UserIO::showNetwork()
 {
-   char        line[ MAX_OLED_COLUMNS ];
+   char        line[ MAX_DISPLAY_COLUMNS ];
    struct tm   timeInfo;
    time_t      currentTime;
 
@@ -148,14 +144,14 @@ void  UserIO::showNetwork()
 
       state = m_networking->getStatus();
 
-      snprintf( line,MAX_OLED_COLUMNS,"%s",state.mdnsName.c_str() );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%s",state.mdnsName.c_str() );
       storeLine( 0,line );
 
-      snprintf( line,MAX_OLED_COLUMNS,"IP %s",state.ipAddr.c_str() );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"IP %s",state.ipAddr.c_str() );
       storeLine( 1,line );
 
       int   rsi = WiFi.RSSI();
-      snprintf( line,MAX_OLED_COLUMNS,"RSSI : %d dBm",rsi );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"RSSI : %d dBm",rsi );
       storeLine( 2,line );
       PW_MSG( "RSSI : %d dBm",rsi );
 
@@ -181,9 +177,9 @@ void  UserIO::showNetwork()
 
 void  UserIO::showStorage()
 {
-   char  line[ MAX_OLED_COLUMNS ];
+   char  line[ MAX_DISPLAY_COLUMNS ];
 
-   snprintf( line,MAX_OLED_COLUMNS,"Version : %s",VERSION_STR );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Version : %s",VERSION_STR );
    storeLine( 0,line );
 
    if ( storageModule )
@@ -194,14 +190,14 @@ void  UserIO::showStorage()
 
    uint32_t freeHeap = ESP.getFreeHeap();
 
-   snprintf( line,MAX_OLED_COLUMNS,"Heap Free" );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Heap Free" );
    storeLine( 2,line );
-   snprintf( line,MAX_OLED_COLUMNS," %u [ %u ] KiB",freeHeap / 1024,largestFreeInternalBlock() / 1024 );
+   snprintf( line,MAX_DISPLAY_COLUMNS," %u [ %u ] KiB",freeHeap / 1024,largestFreeInternalBlock() / 1024 );
    storeLine( 3,line );
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
    storeLine( 4,"SPIFFS" );
-   snprintf( line,MAX_OLED_COLUMNS,"Used %u of %u KiB",spiffs->usedBytes()/1024, spiffs->totalBytes()/1024 );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Used %u of %u KiB",spiffs->usedBytes()/1024, spiffs->totalBytes()/1024 );
    storeLine( 5,line );
 
    show( m_currentLines );
@@ -209,14 +205,14 @@ void  UserIO::showStorage()
 
 void  UserIO::showEnergy()
 {
-   char  line[ MAX_OLED_COLUMNS ];
+   char  line[ MAX_DISPLAY_COLUMNS ];
    const PowerSensor *sensor;
 
    int i = 0;
    while( ( sensor = m_sample.m_powerSensors[ i ] ) )
    {
       storeLine( i * 2,sensor->m_name );
-      snprintf( line,MAX_OLED_COLUMNS,"%.0f W %.0f kWh",sensor->m_power,sensor->m_energy / 1000.0 );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f W %.0f kWh",sensor->m_power,sensor->m_energy / 1000.0 );
       storeLine( 1 + i * 2,line );
       i++;
    }
@@ -243,7 +239,7 @@ TempSensor *UserIO::findTempSensor( uint8_t id )
 
 void  UserIO::showTemps()
 {
-   char  line[ MAX_OLED_COLUMNS ];
+   char  line[ MAX_DISPLAY_COLUMNS ];
 
    TempSensor *hpFlow = findTempSensor( HEAT_PUMP_FLOW );
    TempSensor *hpReturn = findTempSensor( HEAT_PUMP_RETURN );
@@ -256,7 +252,7 @@ void  UserIO::showTemps()
    if ( hpFlow && hpReturn )
    {
       TemperatureModule::takeMutex();
-      snprintf( line,MAX_OLED_COLUMNS,"HP: %3.1f %3.1f (%3.1f)",hpFlow->m_temp,hpReturn->m_temp,hpFlow->m_temp - hpReturn->m_temp );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"HP: %3.1f %3.1f (%3.1f)",hpFlow->m_temp,hpReturn->m_temp,hpFlow->m_temp - hpReturn->m_temp );
       TemperatureModule::releaseMutex();
       storeLine( 0,line );
    }
@@ -264,7 +260,7 @@ void  UserIO::showTemps()
    if ( HeatingFlow && HeatingReturn )
    {
       TemperatureModule::takeMutex();
-      snprintf( line,MAX_OLED_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",HeatingFlow->m_temp,HeatingReturn->m_temp,HeatingFlow->m_temp - HeatingReturn->m_temp );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",HeatingFlow->m_temp,HeatingReturn->m_temp,HeatingFlow->m_temp - HeatingReturn->m_temp );
       TemperatureModule::releaseMutex();
       storeLine( 1,line );
    }
@@ -272,7 +268,7 @@ void  UserIO::showTemps()
    if ( outside )
    {
       TemperatureModule::takeMutex();
-      snprintf( line,MAX_OLED_COLUMNS,"OS: %3.1f",outside->m_temp );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"OS: %3.1f",outside->m_temp );
       TemperatureModule::releaseMutex();
       storeLine( 2,line );
    }
@@ -283,7 +279,7 @@ void  UserIO::showTemps()
    if ( loftFlow && loftReturn )
    {
       TemperatureModule::takeMutex();
-      snprintf( line,MAX_OLED_COLUMNS,"2 : %3.1f %3.1f (%3.1f)",loftFlow->m_temp,loftReturn->m_temp,loftFlow->m_temp - loftReturn->m_temp );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"2 : %3.1f %3.1f (%3.1f)",loftFlow->m_temp,loftReturn->m_temp,loftFlow->m_temp - loftReturn->m_temp );
       TemperatureModule::releaseMutex();
       storeLine( 3,line );
    }
@@ -294,7 +290,7 @@ void  UserIO::showTemps()
    if ( firstFlow && firstReturn )
    {
       TemperatureModule::takeMutex();
-      snprintf( line,MAX_OLED_COLUMNS,"1 : %3.1f %3.1f (%3.1f)",firstFlow->m_temp,firstReturn->m_temp,firstFlow->m_temp - firstReturn->m_temp );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"1 : %3.1f %3.1f (%3.1f)",firstFlow->m_temp,firstReturn->m_temp,firstFlow->m_temp - firstReturn->m_temp );
       TemperatureModule::releaseMutex();
       storeLine( 4,line );
    }
@@ -305,7 +301,7 @@ void  UserIO::showTemps()
    if ( groundFlow && groundReturn )
    {
       TemperatureModule::takeMutex();
-      snprintf( line,MAX_OLED_COLUMNS,"0 : %3.1f %3.1f (%3.1f)",groundFlow->m_temp,groundReturn->m_temp,groundFlow->m_temp - groundReturn->m_temp );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"0 : %3.1f %3.1f (%3.1f)",groundFlow->m_temp,groundReturn->m_temp,groundFlow->m_temp - groundReturn->m_temp );
       TemperatureModule::releaseMutex();
       storeLine( 5,line );
    }
@@ -326,16 +322,16 @@ void  UserIO::showHeatMeter()
 
 void  UserIO::showCommsStatus()
 {
-   char  line[ MAX_OLED_COLUMNS ];
+   char  line[ MAX_DISPLAY_COLUMNS ];
 
    if ( m_networking )
    {
       Networking::Status nwState = m_networking->getStatus();
 
-      snprintf( line,MAX_OLED_COLUMNS,"EMON: tx %u",nwState.emonSent );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"EMON: tx %u",nwState.emonSent );
       storeLine( 0,line );
 
-      snprintf( line,MAX_OLED_COLUMNS,"[QF,SF] %u,%u",nwState.emonQFails,nwState.emonFails );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"[QF,SF] %u,%u",nwState.emonQFails,nwState.emonFails );
       storeLine( 1,line );
    }
 
@@ -345,10 +341,10 @@ void  UserIO::showCommsStatus()
 
       m_modbus->getTransactionCounts( &sends,&fails );
 
-      snprintf( line,MAX_OLED_COLUMNS,"MB: tx %u", sends );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"MB: tx %u", sends );
       storeLine( 3,line );
 
-      snprintf( line,MAX_OLED_COLUMNS," Err: %u",fails );
+      snprintf( line,MAX_DISPLAY_COLUMNS," Err: %u",fails );
       storeLine( 4,line );
 
       PW_DEBUG( "modbus info %u %u",sends,fails );

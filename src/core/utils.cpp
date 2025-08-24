@@ -9,10 +9,10 @@
 #include <FS.h>
 
 #include "utils.h"
-#include "Config.h"
+#include "src/config/Config.h"
 
-#include "Networking.h"
-#include "LGHeatPump.h"
+#include "src/network/Networking.h"
+#include "src/sensors/LGHeatPump.h"
 
 //----------------------------------------------------------------------
 
@@ -173,10 +173,17 @@ bool  iscJSONFileOk( const String &fileName )
    bool  isOk = false;
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
+
+   if ( !spiffs->exists( fileName ) )
+   {
+      PW_WARN( "%s is missing",fileName.c_str() );
+      return false;
+   }
+
    File file = spiffs->open( fileName,FILE_READ );
    if ( !file )
    {
-      PW_WARN( "%s is missing",fileName.c_str() );
+      PW_WARN( "%s failed to open",fileName );
    }
    else
    {
@@ -191,7 +198,7 @@ bool  iscJSONFileOk( const String &fileName )
          // check for equal opening/closing braces
 
          int openBraces = numChars( '{',buf );
-         int closeBraces = numChars( '{',buf );
+         int closeBraces = numChars( '}',buf );
 
          if ( openBraces != closeBraces )
          {
@@ -485,7 +492,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
    String  debugString;
 
-   if ( logTimestamps == isTrue )
+   if ( logTimestamps == isTrue || !logTimestamps )
    {
       struct tm      timeInfo;
       struct timeval tv_now;
@@ -505,7 +512,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       debugString += line;
    }
 
-   if ( logMemStats == isTrue )
+   if ( logMemStats == isTrue || !logMemStats )
    {
       char line[ 64 ];
       TaskStatus_t   taskStatus;

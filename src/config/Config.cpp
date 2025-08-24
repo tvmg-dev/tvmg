@@ -171,7 +171,7 @@ Config::Config( char *fileName )
    // Instantiate spiffs for config file
    if ( !m_spiffs )
    {
-      PW_WARN( "No SPIFFS instantiated" );
+      PW_ERROR( "No SPIFFS available" );
    }
    else
    {

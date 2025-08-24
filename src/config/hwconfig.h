@@ -28,6 +28,6 @@ extern HardwareConfig *hwConfig;
 
 extern void selectHardware();
 
-extern bool  boardHasSDCard();
+extern bool boardHasSDCard();
 
 #endif

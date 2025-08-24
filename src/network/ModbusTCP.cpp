@@ -2,8 +2,8 @@
 
 #include <cJSON.h>
 
-#include "hwconfig.h"
-#include "config.h"
+#include "src/config/hwconfig.h"
+#include "src/config/Config.h"
 
 #include "ModbusTCP.h"
 #include "Networking.h"

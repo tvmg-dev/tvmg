@@ -7,9 +7,9 @@
 
 #include "LGHeatPump.h"
 
-#include "hwconfig.h"
-#include "config.h"
-#include "UserIO.h"
+#include "src/config/hwconfig.h"
+#include "src/config/Config.h"
+#include "src/userio/UserIO.h"
 
 // Some statics for quick bodge on register sampling
 
@@ -885,30 +885,30 @@ bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
 
 void  LGHeatPump::updateUserIO( UserIO *userIO )
 {
-   char line[ MAX_OLED_COLUMNS ];
+   char line[ MAX_DISPLAY_COLUMNS ];
 
    float_t  flowRate,targetTemp;
    (void) getValue( FLOW_RATE,&flowRate );
    (void) getValue( TARGET_TEMP,&targetTemp );
-   snprintf( line,MAX_OLED_COLUMNS,"%.1f l/m. t: %.1f",flowRate,targetTemp );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"%.1f l/m. t: %.1f",flowRate,targetTemp );
    userIO->storeLine( 0,line );
 
    float_t inlet,outlet;
    (void) getValue( INLET_TEMP,&inlet );
    (void) getValue( OUTLET_TEMP,&outlet );
-   snprintf( line,MAX_OLED_COLUMNS,"i: %.1f o: %.1f",inlet,outlet );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"i: %.1f o: %.1f",inlet,outlet );
    userIO->storeLine( 1,line );
 
    if ( !getRawValue( COMPRESSOR_STATUS ) )
    {
-      snprintf( line,MAX_OLED_COLUMNS,"Compress: OFF" );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Compress: OFF" );
       userIO->storeLine( 3,line );
       return;
    }
 
    float pwr;
    (void) getValue( HEATING_POWER,&pwr );
-   snprintf( line,MAX_OLED_COLUMNS,"%.0f [%.0f]",pwr,m_currentKW );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f [%.0f]",pwr,m_currentKW );
    userIO->storeLine( 2,line );
 
    float_t cop,carnotCOP,copRatio;
@@ -928,7 +928,7 @@ void  LGHeatPump::updateUserIO( UserIO *userIO )
    }
    PW_DEBUG( "HP COP %.1f %.1f %.0f%",cop,carnotCOP,copRatio );
 
-   snprintf( line,MAX_OLED_COLUMNS,"%.1f %.1f %.0f",cop,carnotCOP,copRatio );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"%.1f %.1f %.0f",cop,carnotCOP,copRatio );
    userIO->storeLine( 3,line );
 
    float_t cr;
@@ -939,10 +939,10 @@ void  LGHeatPump::updateUserIO( UserIO *userIO )
    }
 
    (void) getValue( COMPRESSION_RATIO,&cr );
-   snprintf( line,MAX_OLED_COLUMNS,"%d Hz %c %.1f",getRawValue( COMPRESSOR_HZ ),powerChar,cr );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"%d Hz %c %.1f",getRawValue( COMPRESSOR_HZ ),powerChar,cr );
    userIO->storeLine( 4,line );
 
-   snprintf( line,MAX_OLED_COLUMNS,"Evap %.1f cond %.1f",lowT,highT );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Evap %.1f cond %.1f",lowT,highT );
    userIO->storeLine( 5,line );
 
 

@@ -4,8 +4,8 @@
 
 #include "PowerModule.h"
 
-#include "hwconfig.h"
-#include "config.h"
+#include "src/config/hwconfig.h"
+#include "src/config/Config.h"
 
 PowerModule::PowerModule( ModbusMaster *modbus )
            : m_modbus( modbus ),

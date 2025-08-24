@@ -1,5 +1,9 @@
+v25.08.02 - Fix modbus stats percentage calculation in daily email update
+v25.08.01 - Defensive changes to prevent invalid bad data sent to emon (modbus read error, bad DS18B20 data)
+v25.02.01 - LG 1000 event log limit resets on daily basis. 24 day reboot reason added
+v25.01.21 - email communication statistics no longer cummulative
 v25.01.20 - Single email with lg data
-v25.01.19 - not release
+v25.01.19 - not released
 v25.01.18 - parse emonCMS response to feed insert to obtain error state
 v25.01.17 - moved reset html to end of page with confirm text added
 v25.01.16 - fix SD card detection using board type not from config.dat

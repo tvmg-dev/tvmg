@@ -4,7 +4,7 @@
 #include <ModbusMaster.h>
 #include <WiFiClient.h>
 
-#include "utils.h"
+#include "src/core/utils.h"
 
 #define MAX_MODBUSTCP_NAME 32
 #define MAX_REGISTERS      16

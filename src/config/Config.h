@@ -3,10 +3,10 @@
 
 #include <SPIFFS.h>
 
-#include "utils.h"
+#include "src/core/utils.h"
 #include "hwconfig.h"
 
-#define VERSION_STR        "v25.08.02"
+#define VERSION_STR        "v25.08.03d"
 
 #define SAMPLING_PERIOD_MS 30000
 

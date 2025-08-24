@@ -1,24 +1,20 @@
 #ifndef USERIO_H
 #define USERIO_H
 
-#include "utils.h"
+#include "src/core/utils.h"
 
-#include "Measurement.h"
-#include "Networking.h"
-#include "LGHeatPump.h"
-#include "HeatMeter.h"
+#include "Display.h"
 
-class U8G2_SSD1306_128X64_NONAME_F_HW_I2C;
+#include "src/core/Measurement.h"
+#include "src/network/Networking.h"
+#include "src/sensors/LGHeatPump.h"
+#include "src/sensors/HeatMeter.h"
+
 class ModbusMaster;
-
-#define  MAX_OLED_ROWS     6
-#define  MAX_OLED_COLUMNS  24
 
 class UserIO
 {
 public:
-   typedef char  OLEDDisplayLine[ MAX_OLED_COLUMNS + 1 ];
-
    enum  ScreenType {
       NETWORK_STATUS,
       STORAGE_STATUS,
@@ -48,7 +44,7 @@ public:
    void  storeLine( uint8_t lineNum,char *line );
 
 private:
-   void  show( OLEDDisplayLine lines[] );
+   void  show( DisplayLine lines[] );
    bool  setNextScreen();
    void  showNetwork();
    void  showStorage();
@@ -63,9 +59,9 @@ private:
    bool  isPowerDataAvailable();
    bool  isHeatMeterDataAvailable();
 
-   U8G2_SSD1306_128X64_NONAME_F_HW_I2C *m_display;
+   Display              *m_display;
    ScreenType           m_currentScreen;
-   OLEDDisplayLine      m_currentLines[ MAX_OLED_ROWS ];
+   DisplayLine          m_currentLines[ MAX_DISPLAY_ROWS ];
    Measurement          *m_measurement;
    Networking           *m_networking;
    LGHeatPump           *m_heatPump;

@@ -1,7 +1,7 @@
 #ifndef GRUNDFOS_UPS3_H
 #define GRUNDFOS_UPS3_H
 
-#include "utils.h"
+#include "src/core/utils.h"
 
 class GrundfosUPS3
 {

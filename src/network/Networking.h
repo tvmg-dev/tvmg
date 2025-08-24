@@ -5,8 +5,6 @@
 #include <AsyncUDP.h>
 #include <mutex>
 
-#include "utils.h"
-
 class WebServer;
 class Emailer;
 class UserIO;

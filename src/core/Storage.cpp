@@ -2,12 +2,12 @@
 #include <FS.h>
 
 #include "Storage.h"
-#include "Networking.h"
-#include "Config.h"
-#include "UserIO.h"
+#include "src/network/Networking.h"
+#include "src/config/Config.h"
+#include "src/userio/UserIO.h"
 
-#include "TemperatureModule.h"
-#include "PowerModule.h"
+#include "src/sensors/TemperatureModule.h"
+#include "src/sensors/PowerModule.h"
 
 #define WRITE_TEST_FILE "/test.dat"
 
@@ -595,7 +595,7 @@ void  Storage::getStatus( char *line )
 {
    if ( ! boardHasSDCard() )
    {
-      strncpy( line,"No Fitted SD",MAX_OLED_COLUMNS );
+      strncpy( line,"No Fitted SD",MAX_DISPLAY_COLUMNS );
    }
    else if ( m_storageOk )
    {
@@ -603,11 +603,11 @@ void  Storage::getStatus( char *line )
       totalMiB = SD.totalBytes() / (1024 * 1024);
       usedMiB = SD.usedBytes() / (1024 * 1024);
 
-      snprintf( line,MAX_OLED_COLUMNS,"SD: %u MiB free",totalMiB - usedMiB );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"SD: %u MiB free",totalMiB - usedMiB );
    }
    else
    {
-      strncpy( line,"SD Card Fault",MAX_OLED_COLUMNS );
+      strncpy( line,"SD Card Fault",MAX_DISPLAY_COLUMNS );
    }
 }
 

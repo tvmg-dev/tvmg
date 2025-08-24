@@ -4,19 +4,23 @@
 
 #include <time.h>
 
-#include "utils.h"
-#include "hwconfig.h"
-#include "TemperatureModule.h"
-#include "PowerModule.h"
-#include "ModbusTCP.h"
-#include "HeatMeter.h"
-#include "UserIO.h"
-#include "Measurement.h"
-#include "Config.h"
-#include "Storage.h"
-#include "Networking.h"
-#include "WebServer.h"
-#include "LGHeatPump.h"
+#include "src/core/utils.h"
+#include "src/core/Measurement.h"
+#include "src/core/Storage.h"
+
+#include "src/config/Config.h"
+#include "src/config/hwconfig.h"
+
+#include "src/sensors/TemperatureModule.h"
+#include "src/sensors/PowerModule.h"
+#include "src/sensors/HeatMeter.h"
+
+#include "src/userio/UserIO.h"
+
+#include "src/network/Networking.h"
+#include "src/network/WebServer.h"
+#include "src/sensors/LGHeatPump.h"
+#include "src/network/ModbusTCP.h"
 
 // ---------------------------------------------------------------------
 
@@ -68,7 +72,7 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
 }
 
 // ---------------------------------------------------------------------
-// Reboot handling code, if we have N with no network then we consider WiFi has
+// Reboot handling code, if we have no network then we consider WiFi has
 // failed and drop to AP mode which will remain active until reboot.
 
 #define MAX_FAILED_WIFI_ATTEMPTS 3
@@ -84,7 +88,7 @@ void newConfiguration( void )
 
    if ( userIO )
    {
-      char line[ MAX_OLED_COLUMNS ];
+      char line[ MAX_DISPLAY_COLUMNS ];
 
       userIO->clear();
 
@@ -92,28 +96,28 @@ void newConfiguration( void )
       {
          if ( config->isFastReset() )
          {
-            snprintf( line,MAX_OLED_COLUMNS,"Fast Reset Error" );
+            snprintf( line,MAX_DISPLAY_COLUMNS,"Fast Reset Error" );
          }
          else
          {
             int32_t  numNoWifi;
 
             config->getPersistentInt( k_noNetworkCounter,&numNoWifi,0 );
-            snprintf( line,MAX_OLED_COLUMNS,"No WiFi count %d",numNoWifi );
+            snprintf( line,MAX_DISPLAY_COLUMNS,"No WiFi count %d",numNoWifi );
          }
       }
       else
       {
-         snprintf( line,MAX_OLED_COLUMNS,"From Reset..." );
+         snprintf( line,MAX_DISPLAY_COLUMNS,"From Reset..." );
       }
 
       userIO->updateLine( 0,line );
 
-      snprintf( line,MAX_OLED_COLUMNS,"SSID %s",networking->getSSID().c_str() );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"SSID %s",networking->getSSID().c_str() );
       userIO->updateLine( 2,line );
-      snprintf( line,MAX_OLED_COLUMNS,"Use %s",networking->getMDNSName().c_str() );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Use %s",networking->getMDNSName().c_str() );
       userIO->updateLine( 3,line );
-      snprintf( line,MAX_OLED_COLUMNS,"Use %s",networking->getIPAddress().c_str() );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Use %s",networking->getIPAddress().c_str() );
       userIO->updateLine( 4,line );
    }
 
@@ -140,6 +144,11 @@ bool userIOHoldScreen = false;   // if true then don't cycle screens
 
 int  touch1Value = 0;
 
+// Have an instance of Measurement::Sample here to avoid potential stack depth
+// issue, obviously consumes ram..
+
+Measurement::Sample  s_sample;
+
 void IRAM_ATTR gotTouch1Event()
 {
   wasButton1Pressed = true;
@@ -150,11 +159,6 @@ void IRAM_ATTR gotTouch2Event()
 {
   wasButton2Pressed = true;
 }
-
-// Have an instance of Measurement::Sample here to avoid potential stack depth
-// issue, obviously consumes ram..
-
-Measurement::Sample  s_sample;
 
 void  handleTouch1()
 {
@@ -226,17 +230,38 @@ void  handleTouch2()
    }
 }
 
+void  processButtons()
+{
+   // process button presses
+
+   if ( wasButton1Pressed )
+   {
+      START_TIMING( "Handle Touch1" );
+      handleTouch1();
+      wasButton2Pressed = false;
+      END_TIMING;
+   }
+
+   if ( wasButton2Pressed )
+   {
+      START_TIMING( "Handle Touch2" );
+      handleTouch2();
+      wasButton1Pressed = false;
+      END_TIMING;
+   }
+}
+
 // ---------------------------------------------------------------------
 // Configure modbus
 
 void modbusPreTransmission()
 {
-  digitalWrite( hwConfig->ModBus485EnGPIO,1 );
+   digitalWrite( hwConfig->ModBus485EnGPIO,1 );
 }
 
 void modbusPostTransmission()
 {
-  digitalWrite( hwConfig->ModBus485EnGPIO,0 );
+   digitalWrite( hwConfig->ModBus485EnGPIO,0 );
 }
 
 void  configureModBus()
@@ -288,12 +313,18 @@ void  configureModBus()
          PW_MSG( "Starting MODBUS port %u",hwConfig->ModBusSerial );
          PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
 
-         // setup the MAX3485 device, need to set the device enable high for transmit to slaves
+         // If enabled setup the MAX3485 device, need to set the device enable high for transmit to slaves
          // and low for receive.  The ModbusMaster has callbacks to facilitate that.
+         // The waveshare LCD doesn't have enable/disable for the bus and uses the logic level of the
+         // transmit pin to enable tx or rx mode of the SP3485EN using bias resistors to pull AB signals
+         // to vcc/gnd if in rx mode.
 
-         pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
-         modbusMaster->preTransmission( modbusPreTransmission );
-         modbusMaster->postTransmission( modbusPostTransmission );
+         if ( hwConfig->ModBus485EnGPIO != -1 )
+         {
+            pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
+            modbusMaster->preTransmission( modbusPreTransmission );
+            modbusMaster->postTransmission( modbusPostTransmission );
+         }
 
          serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
          modbusMaster->begin( 1, *serial );
@@ -302,16 +333,19 @@ void  configureModBus()
 }
 
 // ---------------------------------------------------------------------
-// Create/initialise all modules prior to main loop
+// Setup serial port
 
-void setup( void )
+void setupSerial()
 {
-   char line[ MAX_OLED_COLUMNS ];
+#if !PW_LCD
+   Serial.begin( 115200,SERIAL_8N1 );
 
-   // start serial port, if the GPIO controlling serial on boot behaviour is low,
-   // i.e. no serial on boot, then we reconfigure uart0 (Serial) to have
-   // alternate GPIO pins for other library use of Serial and we disable
-   // our serial logging
+   // The monitor board has a switch to disable serial as the port is used for
+   // modbus.  This SERIAL_DISABLE_GPIO is the MTDO strapping pin of the ESP32
+   // wroom device, which determines whether serial output is enabled on boot.
+   // If boot serial isn't enabled then we configure alternate pins to ensure
+   // if anything attempts to use serial then it won't affect modbus for the
+   // monitor board.
 
    pinMode( SERIAL_DISABLE_GPIO,INPUT_PULLUP );
    int val = digitalRead( SERIAL_DISABLE_GPIO );
@@ -326,21 +360,30 @@ void setup( void )
 //   Serial.setDebugOutput(true); from chip-debug-report.cpp
 
    Serial.begin( 115200,SERIAL_8N1 );
+
    delay( 500 );
 
-   PW_MSG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
+   PW_DEBUG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
-   // Initialise our configuration, this will create SPIFFS but not
-   // the registry
+#else
+   // should have CDC USB active
 
-   config = Config::instance( true );
+   Serial.begin( 115200 );
+   delay( 500 );
+#endif
+}
 
-   selectHardware();
+// ---------------------------------------------------------------------
+// Display the reboot reason and bump the reboot counter.  If we've had
+// too many fast reboots then we'll drop into new configuration mode as
+// that shouldn't happen.
+//
+// Fast reboot is considered a runtime less than 10 minutes, and if we
+// have 10 such reboots then that is criteria for AP mode.
 
-   // prepare the OLED display for output
-
-   userIO = new UserIO();
-   userIO->initialise();
+String handleBootReason()
+{
+   char line[ MAX_DISPLAY_COLUMNS ];
 
    // Bump the reboot count
 
@@ -357,10 +400,13 @@ void setup( void )
    // Brief display of reboot reason
 
    userIO->updateLine( 0,"Reboot Reason" );
-   snprintf( line,MAX_OLED_COLUMNS,"Code : %d",rebootReason );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Code : %d",rebootReason );
    userIO->updateLine( 1,line );
-   snprintf( line,MAX_OLED_COLUMNS,"%s",config->getAppRebootReason( rebootReason ).c_str() );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"%s",config->getAppRebootReason( rebootReason ).c_str() );
    userIO->updateLine( 3,line );
+
+   delay( 2000 );
+   userIO->clear();
 
    // If we fast booted then drop to AP mode again
 
@@ -369,28 +415,32 @@ void setup( void )
       newConfiguration();
    }
 
-   delay( 2000 );
-   userIO->clear();
+   return rebootStr;
+}
 
-   // Is registry available, if not then we need to enter configuration
-   // mode, i.e. networking with AP only. The user must resolve issues
-   // via the webserver hopefully.  We need to initialise to get registry
-   // working here.
+// ---------------------------------------------------------------------
+// Start networking
+// We try to connect to WiFi and we wait for 60s (default, may be configured
+// via WIFI_CONNECT_TIMEOUT).  If failed to connect then we reboot, with
+// the reboot reason set to BOOT_NO_WIFI.
+//
+// After 3 failed attempts to connect then drop to AP mode to setup a new
+// WiFi network.
+//
+// If we connected to WiFi but failed to acquire NTP then we reboot with
+// the code set to BOOT_NO_NTP.  We may send an email to that effect.
+//
+// So we only exit this function effectively if we're connected to WiFi
+// and have valid NTP set.  The networking module will also have started:
+//
+//    - webserver
+//    - email
+//    - emonCMS sending task
+//    - async UDP
 
-   config->initialise();
-   if ( ! config->isRegistryAvailable() )
-   {
-      config->setPersistentInt( k_rebootType,BOOT_NO_CONFIG );
-      newConfiguration();
-   }
-
-   // If this is a result of factory reset, then new configuration too,
-   // otherwise we can move on as normal
-
-   if ( config->isFactoryReset() )
-   {
-      newConfiguration();
-   }
+void startNetworking()
+{
+   char line[ MAX_DISPLAY_COLUMNS ];
 
    userIO->updateLine( 0,"Starting Networking..." );
    userIO->updateLine( 1,"SSID :-" );
@@ -414,7 +464,7 @@ void setup( void )
 
       config->setPersistentInt( k_noNetworkCounter,failedReboots );
 
-      snprintf( line,MAX_OLED_COLUMNS," Failure %u",failedReboots );
+      snprintf( line,MAX_DISPLAY_COLUMNS," Failure %u",failedReboots );
       userIO->updateLine( 4,line );
 
       // If we've had X failures to acquire WiFi, then revert to AP mode
@@ -460,26 +510,14 @@ void setup( void )
       delay( 5000 );
       ESP.restart();
    }
+}
 
-   // set we got to setup, i.e. past WiFi & NTP
+// ---------------------------------------------------------------------
+// did we boot with button down pressed, if so hold - allows webserver
+// to be used to re-configure the unit.  We don't exit this method.
 
-   config->setPersistentInt( k_rebootType,BOOT_IN_SETUP );
-
-   PW_MSG( "Version: %s",VERSION_STR );
-   PW_MSG( "Arduino Board: %s", ARDUINO_BOARD );
-   PW_MSG( "Arduino Variant: %s", ARDUINO_VARIANT );
-   PW_MSG( "Arduino Version: %s", ESP_ARDUINO_VERSION_STR);
-
-   // Instantiate the storage module, and initialise it.  If the SD card
-   // is not operational the storage module will not save data but at least
-   // the system will continue to operate.
-
-   storageModule = new Storage();
-   storageModule->initialise();
-
-   // did we boot with button down pressed, if so hold - allows webserver
-   // to be used to re-configure the unit
-
+void checkBootHold()
+{
    if ( hwConfig->TouchButton1 != -1 )
    {
       touch_value_t  touchVal = touchRead( hwConfig->TouchButton1 );
@@ -493,7 +531,16 @@ void setup( void )
          }
       }
   }
+}
 
+// ---------------------------------------------------------------------
+// Initialise measurement
+//
+// This sets up any configured sensors, thermocouples, modbus, power
+// meters, heat meters, heat pump & the measurement module itself
+
+void  initialiseMeasurement()
+{
    // Instantiate the temperature collecting module
 
    tempModule = new TemperatureModule;
@@ -556,9 +603,17 @@ void setup( void )
 
    measurement->initialise();
 
-   // intialise touch for boards if active
-   // Touch ISR will be activated when reading is lower than the touchThreshold
+   // Can release the sensor JSON data now as we're setup
 
+   releaseSensorJSON();
+}
+
+// ---------------------------------------------------------------------
+// intialise touch for boards if active
+// Touch ISR will be activated when reading is lower than the touchThreshold
+
+void setupTouch()
+{
    if ( hwConfig->TouchButton1 != -1 )
    {
       touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,touchThreshold );
@@ -568,12 +623,27 @@ void setup( void )
    {
       touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,touchThreshold );
    }
+}
+
+// ---------------------------------------------------------------------
+// send any startup email if enabled
+
+void handleBootEmail( const String &rebootStr )
+{
+   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
+   {
+      PW_MSG( "Not sending boot email" );
+      return;
+   }
 
    // Send emails, attachments if available
 
    String emailMsg( "Initial boot up completed\nVersion : " VERSION_STR "\n\n" );
    emailMsg += networking->getIPAddress();
    emailMsg += "\n\n";
+
+   int32_t  rebootCount;
+   (void) config->getPersistentInt( k_rebootCounter,&rebootCount,0 );
 
    emailMsg += "Reboot count : ";
    emailMsg += String( rebootCount,DEC );
@@ -586,6 +656,19 @@ void setup( void )
    PW_MSG( "%s",emailMsg.c_str() );
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Startup",emailMsg );
+}
+
+// ---------------------------------------------------------------------
+// send any data logs during bootup (if enabled) and remove logs if the
+// mail sent successfully.
+
+void handleDataLogs()
+{
+   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
+   {
+      PW_MSG( "Not sending logging data (on boot) emails" );
+      return;
+   }
 
    // Send register scan logs, modbus log and lg registers read so far, removing after sending
 
@@ -639,7 +722,13 @@ void setup( void )
          }
       }
    }
+}
 
+// ---------------------------------------------------------------------
+// For debug purposes
+
+void  handleDebugTests()
+{
    if ( !testMallocBuffer )
    {
       int size = GET_REGISTRY_INT( HEAP_TEST_SIZE );
@@ -664,13 +753,151 @@ void setup( void )
          testFastReboot = true;
       }
    }
+}
 
-   // Can release the sensor JSON data now as we're setup
-   releaseSensorJSON();
+// ---------------------------------------------------------------------
+// Create/initialise all modules prior to main loop
+
+void setup( void )
+{
+   char line[ MAX_DISPLAY_COLUMNS ];
+
+   setupSerial();
+
+   // Initialise our configuration, this will create SPIFFS if neeeded but not
+   // the registry, then select the hardware.
+
+   config = Config::instance( true );
+   selectHardware();
+
+   // prepare the display for output
+
+   userIO = new UserIO();
+   userIO->initialise();
+
+   // handle reboot reason - display info & may drop to AP mode if too many fast boot cycles
+
+   String rebootReason = handleBootReason();
+
+   // Is registry available, if not then we need to enter configuration
+   // mode, i.e. networking with AP only. The user must resolve issues
+   // via the webserver hopefully.  We need to initialise to get registry
+   // working here.
+
+   config->initialise();
+   if ( ! config->isRegistryAvailable() )
+   {
+      config->setPersistentInt( k_rebootType,BOOT_NO_CONFIG );
+      newConfiguration();
+   }
+
+   // If this is a result of factory reset, then new configuration too,
+   // otherwise we can move on as normal and start networking.
+
+   if ( config->isFactoryReset() )
+   {
+      newConfiguration();
+   }
+
+   startNetworking();
+
+   // set reboot type that we got to setup, i.e. past WiFi & NTP etc
+
+   config->setPersistentInt( k_rebootType,BOOT_IN_SETUP );
+
+   PW_MSG( "Version: %s",VERSION_STR );
+   PW_MSG( "Arduino Board: %s", ARDUINO_BOARD );
+   PW_MSG( "Arduino Variant: %s", ARDUINO_VARIANT );
+   PW_MSG( "Arduino Version: %s", ESP_ARDUINO_VERSION_STR);
+
+   // Instantiate the storage module, and initialise it.  If the SD card
+   // is not operational the storage module will not save data but at least
+   // the system will continue to operate.
+
+   storageModule = new Storage();
+   storageModule->initialise();
+
+   // check whether we need to stop the boot (key press) - this function
+   // may not return.
+
+   checkBootHold();
+
+   // Now initialise all sensors etc, then touch sensors.
+
+   initialiseMeasurement();
+   setupTouch();
+
+   // Perhaps send startup email, and data logs
+
+   handleBootEmail( rebootReason );
+   handleDataLogs();
+
+   // Any debug tests
+
+   handleDebugTests();
 
    // And we now set the reboot marker as hopefully next is a power cycle
 
    config->setPersistentInt( k_rebootType,POWER_CYCLE );
+}
+
+// ---------------------------------------------------------------------
+// handleAnyOTAUpdate
+//
+// If OTA update has occurred, if so then we go for a hard reset
+// which takes ~ 250ms for the watchdog to kick in, so we delay
+// initially to let the webserver service the GET response, and
+// then delay after the reset which will cycle the chip
+
+void handleAnyOTAUpdate()
+{
+   if ( networking->hasUpdated() )
+   {
+      config->setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
+
+      delay( 2500 );
+      hwReset();
+
+      delay( 5000 );
+      PW_ERROR( "HW Reset Failed" );
+   }
+}
+
+// ---------------------------------------------------------------------
+// checkNetworking
+//
+// If we're connected then all ok.  Otherwise if we've been disconnected
+// for > 90s then need to restart - return false;
+
+bool isNetworkOk()
+{
+   static uint32_t networkLost = 0;
+   bool networkOk = true;
+
+   // Have we lost network connection ?  Check if connection dropped for
+   // too long...
+
+   if ( networkLost )
+   {
+      if ( networking->isConnected() )
+      {
+         PW_MSG( "Regained network" );
+         networkLost = 0;
+      }
+      else if ( millis() - networkLost > NETWORK_ALLOWED_DISCONNECTED_MS )
+      {
+         PW_ERROR( "Lost network, need to reboot" );
+         config->setPersistentInt( k_rebootType,LOST_WIFI );
+         networkOk = false;
+      }
+   }
+   else if ( networking && !networking->isConnected() )
+   {
+      PW_WARN( "Lost network" );
+      networkLost = millis();
+   }
+
+   return networkOk;
 }
 
 // ---------------------------------------------------------------------
@@ -681,7 +908,6 @@ void setup( void )
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
-   static uint32_t networkLost = 0;
    static bool     didDailyUpdate = false;
 
    bool  restartRequired = false;
@@ -703,44 +929,11 @@ void loop(void)
       restartRequired = true;
    }
 
-   if ( networking->hasUpdated() )
-   {
-      // OTA update has occurred, if so then we go for a hard reset
-      // which takes ~ 250ms for the watchdog to kick in, so we delay
-      // initially to let the webserver service the GET response, and
-      // then delay after the reset which will cycle the chip
+   // Check if we've updated, we'll reset if OTA has occurred
+   handleAnyOTAUpdate();
 
-      config->setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
-
-      delay( 2500 );
-      hwReset();
-
-      delay( 5000 );
-      PW_ERROR( "HW Reset Failed" );
-   }
-
-   // Have we lost network connection ?  Check if connection dropped for
-   // too long...
-
-   if ( networkLost )
-   {
-      if ( networking->isConnected() )
-      {
-         PW_MSG( "Regained network" );
-         networkLost = 0;
-      }
-      else if ( millis() - networkLost > NETWORK_ALLOWED_DISCONNECTED_MS )
-      {
-         PW_ERROR( "Lost network, need to reboot" );
-         config->setPersistentInt( k_rebootType,LOST_WIFI );
-         restartRequired = true;
-      }
-   }
-   else if ( networking && !networking->isConnected() )
-   {
-      PW_WARN( "Lost network" );
-      networkLost = millis();
-   }
+   // Check network is alive
+   restartRequired |= !isNetworkOk();
 
    // If we've been up for 24 days then reboot - just to sure we
    // don't have millis() (32 bits) causing issues.
@@ -763,23 +956,9 @@ void loop(void)
       }
    }
 
-   // process button presses
+   // Handle any button presses
 
-   if ( wasButton1Pressed )
-   {
-      START_TIMING( "Handle Touch1" );
-      handleTouch1();
-      wasButton2Pressed = false;
-      END_TIMING;
-   }
-
-   if ( wasButton2Pressed )
-   {
-      START_TIMING( "Handle Touch2" );
-      handleTouch2();
-      wasButton1Pressed = false;
-      END_TIMING;
-   }
+   processButtons();
 
    // take measurement, if we performed a daily update in sample then
    // set local daily update flag and reset LG event log if LG present.
