@@ -76,8 +76,8 @@ HardwareConfig ExternalBoard =
 };
 
 
-// Monitor use the integrated ESP32/OLED module and also have modbus
-// transceiver module available.
+// Monitor uses the integrated ESP32/OLED module and also have modbus
+// transceiver module available and PWM support.
 
 HardwareConfig MonitorBoard =
 {
@@ -97,21 +97,22 @@ HardwareConfig MonitorBoard =
    false          // has SD card
 };
 
-// Monitor use the integrated ESP32/OLED module and also have modbus
-// transceiver module available.
+// The waveshare 43B LCD panel.  Uses hardware serial for modbus.  Only
+// opto isoloated digital IO so no 1-wire support or PWM.  Touch will be
+// via lvgl graphics buttons.
 
 HardwareConfig WaveshareLCD =
 {
    -1,            // OneWireGPIO
-   -1,             // ModBusSerial
+   1,             // ModBusSerial
    9600,          // ModBusBaudRate
    SERIAL_8N1,    // ModBusSerialFormat
-   -1,             // ModBusRxGPIO
-   -1,             // ModBusTxGPIO
+   43,            // ModBusRxGPIO
+   44,            // ModBusTxGPIO
    50,            // ModBusMsgDelay
    -1,            // ModBus485EnGPIO
-   -1,             // OLEDClkGPIO
-   -1,             // OLEDDataGPIO
+   -1,            // OLEDClkGPIO
+   -1,            // OLEDDataGPIO
    -1,            // TouchButton1 (esp32 touch 2)
    -1,            // TouchButton2
    -1,            // PWM GPIO

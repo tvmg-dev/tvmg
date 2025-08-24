@@ -231,12 +231,12 @@ void  handleTouch2()
 
 void modbusPreTransmission()
 {
-  digitalWrite( hwConfig->ModBus485EnGPIO,1 );
+   digitalWrite( hwConfig->ModBus485EnGPIO,1 );
 }
 
 void modbusPostTransmission()
 {
-  digitalWrite( hwConfig->ModBus485EnGPIO,0 );
+   digitalWrite( hwConfig->ModBus485EnGPIO,0 );
 }
 
 void  configureModBus()
@@ -288,12 +288,18 @@ void  configureModBus()
          PW_MSG( "Starting MODBUS port %u",hwConfig->ModBusSerial );
          PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
 
-         // setup the MAX3485 device, need to set the device enable high for transmit to slaves
+         // If enabled setup the MAX3485 device, need to set the device enable high for transmit to slaves
          // and low for receive.  The ModbusMaster has callbacks to facilitate that.
+         // The waveshare LCD doesn't have enable/disable for the bus and uses the logic level of the
+         // transmit pin to enable tx or rx mode of the SP3485EN using bias resistors to pull AB signals
+         // to vcc/gnd if in rx mode.
 
-         pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
-         modbusMaster->preTransmission( modbusPreTransmission );
-         modbusMaster->postTransmission( modbusPostTransmission );
+         if ( hwConfig->ModBus485EnGPIO != -1 )
+         {
+            pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
+            modbusMaster->preTransmission( modbusPreTransmission );
+            modbusMaster->postTransmission( modbusPostTransmission );
+         }
 
          serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
          modbusMaster->begin( 1, *serial );
