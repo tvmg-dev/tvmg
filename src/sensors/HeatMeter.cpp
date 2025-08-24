@@ -1,8 +1,8 @@
 #include <cJSON.h>
 
-#include "config.h"
-#include "UserIO.h"
-#include "hwconfig.h"
+#include "src/config/Config.h"
+#include "src/userio/UserIO.h"
+#include "src/config/hwconfig.h"
 
 #include "HeatMeter.h"
 

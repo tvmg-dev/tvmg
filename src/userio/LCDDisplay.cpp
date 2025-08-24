@@ -1,7 +1,6 @@
 #if PW_LCD
 
-#include "hwconfig.h"
-#include "utils.h"
+#include "src/core/utils.h"
 
 #include "LCDDisplay.h"
 

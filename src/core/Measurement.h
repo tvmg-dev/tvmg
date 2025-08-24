@@ -4,10 +4,10 @@
 #include <time.h>
 
 #include "utils.h"
-#include "TemperatureModule.h"
-#include "PowerModule.h"
-#include "LGHeatPump.h"
-#include "HeatMeter.h"
+#include "src/sensors/TemperatureModule.h"
+#include "src/sensors/PowerModule.h"
+#include "src/sensors/LGHeatPump.h"
+#include "src/sensors/HeatMeter.h"
 
 class Storage;
 

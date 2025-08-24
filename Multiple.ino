@@ -4,19 +4,23 @@
 
 #include <time.h>
 
-#include "utils.h"
-#include "hwconfig.h"
-#include "TemperatureModule.h"
-#include "PowerModule.h"
-#include "ModbusTCP.h"
-#include "HeatMeter.h"
-#include "UserIO.h"
-#include "Measurement.h"
-#include "Config.h"
-#include "Storage.h"
-#include "Networking.h"
-#include "WebServer.h"
-#include "LGHeatPump.h"
+#include "src/core/utils.h"
+#include "src/core/Measurement.h"
+#include "src/core/Storage.h"
+
+#include "src/config/Config.h"
+#include "src/config/hwconfig.h"
+
+#include "src/sensors/TemperatureModule.h"
+#include "src/sensors/PowerModule.h"
+#include "src/sensors/HeatMeter.h"
+
+#include "src/userio/UserIO.h"
+
+#include "src/network/Networking.h"
+#include "src/network/WebServer.h"
+#include "src/sensors/LGHeatPump.h"
+#include "src/network/ModbusTCP.h"
 
 // ---------------------------------------------------------------------
 

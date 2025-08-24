@@ -3,7 +3,7 @@
 
 #include <SPIFFS.h>
 
-#include "utils.h"
+#include "src/core/utils.h"
 #include "hwconfig.h"
 
 #define VERSION_STR        "v25.08.03d"

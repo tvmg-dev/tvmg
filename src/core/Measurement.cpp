@@ -1,12 +1,9 @@
-#include "utils.h"
-#include "config.h"
+
+#include "src/config/config.h"
 
 #include "Measurement.h"
 #include "Storage.h"
-#include "TemperatureModule.h"
-#include "PowerModule.h"
-#include "PowerModule.h"
-#include "Networking.h"
+#include "src/network/Networking.h"
 
 Measurement::Sample::Sample()
 {

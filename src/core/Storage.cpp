@@ -2,12 +2,12 @@
 #include <FS.h>
 
 #include "Storage.h"
-#include "Networking.h"
-#include "Config.h"
-#include "UserIO.h"
+#include "src/network/Networking.h"
+#include "src/config/Config.h"
+#include "src/userio/UserIO.h"
 
-#include "TemperatureModule.h"
-#include "PowerModule.h"
+#include "src/sensors/TemperatureModule.h"
+#include "src/sensors/PowerModule.h"
 
 #define WRITE_TEST_FILE "/test.dat"
 

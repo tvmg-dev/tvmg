@@ -1,14 +1,14 @@
 #ifndef USERIO_H
 #define USERIO_H
 
-#include "utils.h"
+#include "src/core/utils.h"
 
 #include "Display.h"
 
-#include "Measurement.h"
-#include "Networking.h"
-#include "LGHeatPump.h"
-#include "HeatMeter.h"
+#include "src/core/Measurement.h"
+#include "src/network/Networking.h"
+#include "src/sensors/LGHeatPump.h"
+#include "src/sensors/HeatMeter.h"
 
 class ModbusMaster;
 

@@ -2,8 +2,8 @@
 
 #include <U8g2lib.h>
 
-#include "hwconfig.h"
-#include "utils.h"
+#include "src/config/hwconfig.h"
+#include "src/core/utils.h"
 
 #include "OledDisplay.h"
 

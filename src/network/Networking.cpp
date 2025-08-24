@@ -6,14 +6,15 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
-#include "utils.h"
-#include "config.h"
+#include "src/core/utils.h"
+#include "src/core/Measurement.h"
+
+#include "src/config/Config.h"
+
+#include "src/userio/UserIO.h"
 
 #include "Networking.h"
-#include "Measurement.h"
-
 #include "WebServer.h"
-#include "UserIO.h"
 
 extern UserIO  *userIO;
 

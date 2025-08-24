@@ -3,7 +3,7 @@
 
 #include <ModbusMaster.h>
 
-#include "utils.h"
+#include "src/core/utils.h"
 
 #define POWER_SENSOR_NAME "POWER"
 

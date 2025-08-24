@@ -7,9 +7,9 @@
 
 #include "LGHeatPump.h"
 
-#include "hwconfig.h"
-#include "config.h"
-#include "UserIO.h"
+#include "src/config/hwconfig.h"
+#include "src/config/Config.h"
+#include "src/userio/UserIO.h"
 
 // Some statics for quick bodge on register sampling
 

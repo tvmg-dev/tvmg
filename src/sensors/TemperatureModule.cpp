@@ -4,10 +4,10 @@
 
 #include <mutex>
 
-#include "utils.h"
-#include "Config.h"
-#include "hwconfig.h"
-#include "Networking.h"
+#include "src/core/utils.h"
+#include "src/config/Config.h"
+#include "src/config/hwconfig.h"
+#include "src/network/Networking.h"
 
 #include "TemperatureModule.h"
 

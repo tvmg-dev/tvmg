@@ -4,18 +4,19 @@
 
 #include <time.h>
 
+#include "src/core/utils.h"
+#include "src/core/Storage.h"
+
+#include "src/config/Config.h"
+#include "src/config/hwconfig.h"
+
 #if PW_LCD
    #include "LcdDisplay.h"
 #else
    #include "OledDisplay.h"
 #endif
 
-#include "Config.h"
-#include "hwconfig.h"
-#include "utils.h"
-
 #include "UserIO.h"
-#include "Storage.h"
 
 extern Storage *storageModule;
 

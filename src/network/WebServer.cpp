@@ -20,10 +20,10 @@
 #include "html/ok_html.h"
 #include "html/failed_html.h"
 
-#include "Config.h"
-#include "utils.h"
+#include "src/config/Config.h"
+#include "src/core/utils.h"
 
-#include "UserIO.h"
+#include "src/userio/UserIO.h"
 #include "Networking.h"
 
 // this will be executing on the second CPU core, so probably hazards with

@@ -9,10 +9,10 @@
 #include <FS.h>
 
 #include "utils.h"
-#include "Config.h"
+#include "src/config/Config.h"
 
-#include "Networking.h"
-#include "LGHeatPump.h"
+#include "src/network/Networking.h"
+#include "src/sensors/LGHeatPump.h"
 
 //----------------------------------------------------------------------
 
