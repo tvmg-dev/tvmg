@@ -374,7 +374,7 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
 
 void  Storage::updateEmon( const Measurement::Sample &sample )
 {
-   static   float k_errorTemp = 60.0f;
+   static   float k_errorTemp = 75.0f;
    char     line[ 128 ];
    String   thermometerStr, powerStr,lgStr;
 
