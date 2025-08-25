@@ -324,6 +324,10 @@ void  configureModBus()
             pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
             modbusMaster->preTransmission( modbusPreTransmission );
             modbusMaster->postTransmission( modbusPostTransmission );
+
+            /* Pull the enable low to set to listening mode */
+
+            modbusPostTransmission();
          }
 
          serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
