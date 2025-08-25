@@ -1,3 +1,6 @@
+v25.08.05 - Set master modbus to slave mode during boot
+v25.08.04 - Change temp from 60 to 75 deg for detecting DS18B20 error
+v25.08.03 - fix brace matching in json file, initial support for Waveshare LCD,file hierarchy changes
 v25.08.02 - Fix modbus stats percentage calculation in daily email update
 v25.08.01 - Defensive changes to prevent invalid bad data sent to emon (modbus read error, bad DS18B20 data)
 v25.02.01 - LG 1000 event log limit resets on daily basis. 24 day reboot reason added
