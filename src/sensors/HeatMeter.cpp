@@ -6,12 +6,14 @@
 
 #include "HeatMeter.h"
 
+#define HM_MIN_SAMPLING_PERIOD_MS 15000
+
 HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
                : m_tempModule( tempModule ),
                  m_isOk( false ),
                  m_sensors(),
                  m_numLocalSensors( 0 ),
-                 m_millisLastAquisition( 0 )
+                 m_millisLastAquisition( -HM_MIN_SAMPLING_PERIOD_MS )
 {
    PW_DEBUG( "HeatMeterModule::HeatMeterModule()" );
    PW_MSG( "Heat Meter Module Startup" );
@@ -76,9 +78,20 @@ void  HeatMeterModule::initialise()
 
 HeatMeterSensor  *HeatMeterModule::readNextSensor( uint8_t index )
 {
-   if ( index < m_numLocalSensors && m_sensors[ index ] )
+   if ( index < m_numLocalSensors )
    {
-      m_sensors[ index ]->takeMeasurement();
+      // Only really sample data every X ms
+
+      if ( millis() - m_millisLastAquisition > HM_MIN_SAMPLING_PERIOD_MS && !index )
+      {
+         for ( int i = 0; i < m_numLocalSensors; i++ )
+         {
+            m_sensors[ i ]->takeMeasurement();
+         }
+
+         m_millisLastAquisition = millis();
+      }
+
       return( m_sensors[ index ]->getHeatMeterSensor() );
    }
 

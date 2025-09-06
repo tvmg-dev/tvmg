@@ -346,6 +346,8 @@ bool TemperatureModule::getTemperatures()
 
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
+      m_sensors[ i ].m_sensor.m_temp = TEMPERATURE_INVALID;    // initially invalidate the temperature
+
       if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
       {
          m_sensors[ i ].m_sensor.m_temp = m_dallasController->getTempC( m_sensors[ i ].m_address );

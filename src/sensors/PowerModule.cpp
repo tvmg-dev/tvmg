@@ -7,10 +7,13 @@
 #include "src/config/hwconfig.h"
 #include "src/config/Config.h"
 
+#define POWER_MIN_SAMPLING_PERIOD_MS 15000
+
 PowerModule::PowerModule( ModbusMaster *modbus )
            : m_modbus( modbus ),
              m_sensors(),
              m_numLocalSensors( 0 ),
+             m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS ),
              m_fakeMeasurements( false )
 {
    PW_DEBUG( "PowerModule::PowerModule()" );
@@ -87,7 +90,18 @@ PowerSensor  *PowerModule::readNextSensor( uint8_t index )
 {
    if ( index < m_numLocalSensors )
    {
-      getPower( index );
+      // Only really sample data every X ms
+
+      if ( millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS && !index )
+      {
+         for ( int i = 0; i < m_numLocalSensors; i++ )
+         {
+            (void) getPower( i );
+         }
+
+         m_millisLastAquisition = millis();
+      }
+
       return( &m_sensors[ index ].m_sensor );
    }
 
