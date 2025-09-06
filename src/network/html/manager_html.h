@@ -200,19 +200,22 @@ const char manager_html[] PROGMEM = R"rawliteral(
      </fieldset>
 
      <div id="spacer_5"></div>
-     <fieldset><legend>Reboot</legend>
+     <fieldset><legend>Options</legend>
       <div id="spacer_5"></div>
-      <form method="POST" action="/reboot" target="self_page">
         <table><tr><td id="first_td_th">
         <p>Soft Reboot the device</p>
         </td><td>
-        <input type="submit" id="submit" value="Reboot">
-        </td></tr></table>
-      </form>
+         <form method="POST" action="/reboot" target="self_page">
+         <input type="submit" id="submit" value="Reboot">
+         </form>
+        </td></tr>
+         <tr>
+         <td colspan="2"> <label><input id="ssaver" onchange="checkbox(this)"
+               checked="checked" type="checkbox"> Display screen saver (usually active 5 minutes after boot)</label><br>
+         </td></tr>
+        </table>
       <div id="spacer_5"></div>
      </fieldset>
-
-     <label><input id="ssaver" type="checkbox" onchange="checkbox(this)" checked> Screen saver</label>
 
      <div id="spacer_5"></div>
      <fieldset><legend>Reset Board</legend>
