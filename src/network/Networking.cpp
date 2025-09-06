@@ -555,7 +555,15 @@ void Networking::initialise()
    // And now for the emoncms client...
 
    s_emoncmsClient = new WiFiClientSecure;
-   s_emoncmsClient->setCACert( m_emonCert.c_str() );
+   if ( GET_REGISTRY_INT( EMON_INSECURE ) == 1 )
+   {
+      PW_WARN( "Setting WiFi client to insecure mode" );
+      s_emoncmsClient->setInsecure();
+   }
+   else
+   {
+      s_emoncmsClient->setCACert( m_emonCert.c_str() );
+   }
 
    // Start our configuration/download server
 
