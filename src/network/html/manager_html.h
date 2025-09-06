@@ -97,6 +97,15 @@ const char manager_html[] PROGMEM = R"rawliteral(
       return false;
     }
    }
+   function checkbox(element){
+    var xhr = new XMLHttpRequest();
+    if (element.checked) {
+      xhr.open("GET","/checkbox?item="+element.id+"&state=1",true);
+    } else {
+      xhr.open("GET","/checkbox?item="+element.id+"&state=0",true);
+    }
+    xhr.send();
+   }
   </script>
  </head>
  <body>
@@ -202,6 +211,8 @@ const char manager_html[] PROGMEM = R"rawliteral(
       </form>
       <div id="spacer_5"></div>
      </fieldset>
+
+     <label><input id="ssaver" type="checkbox" onchange="checkbox(this)" checked> Screen saver</label>
 
      <div id="spacer_5"></div>
      <fieldset><legend>Reset Board</legend>

@@ -325,7 +325,7 @@ void  configureModBus()
             modbusMaster->preTransmission( modbusPreTransmission );
             modbusMaster->postTransmission( modbusPostTransmission );
 
-            /* Pull the enable low to set to listening mode */
+            // Pull the enable low to set to listening mode
 
             modbusPostTransmission();
          }
@@ -913,6 +913,7 @@ void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
    static bool     didDailyUpdate = false;
+   static bool     didSetScreenSaver = false;
 
    bool  restartRequired = false;
 
@@ -1005,6 +1006,18 @@ void loop(void)
    }
    END_TIMING;
 
+   // If we're 5 minutes into the boot cycle then turn the screen saver on
+   // unless explicitly set in the config
+
+   if ( !didSetScreenSaver && currentMillis > (5 * 60 * 1000) )
+   {
+      didSetScreenSaver = true;
+      if ( GET_REGISTRY_INT( USERIO_SCREENSAVER ) == -1 )
+      {
+         SET_REGISTRY( USERIO_SCREENSAVER,1 );
+      }
+   }
+
    // our target MS is our original millis at entry of this loop, plus
    // our sampling delay
 
@@ -1035,4 +1048,5 @@ void loop(void)
    {
       assert( 0 );
    }
+
 }

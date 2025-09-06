@@ -10,6 +10,7 @@ public:
    ~LcdDisplay();
    void  initialise() override;
    void  show( DisplayLine lines[] ) override;
+   void  updateScreensaver() override;
 };
 
 #endif

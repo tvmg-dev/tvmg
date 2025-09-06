@@ -13,6 +13,7 @@ public:
    virtual ~Display() {};
    virtual void  initialise() = 0;
    virtual void  show( DisplayLine lines[] ) = 0;
+   virtual void  updateScreensaver() = 0;
 };
 
 #endif

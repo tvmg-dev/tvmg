@@ -12,9 +12,13 @@ public:
    ~OledDisplay();
    void  initialise() override;
    void  show( DisplayLine lines[] ) override;
+   void  updateScreensaver() override;
+
 
 private:
    U8G2_SSD1306_128X64_NONAME_F_HW_I2C *m_oled;
+   int m_saverX;
+   int m_saverY;
 };
 
 #endif

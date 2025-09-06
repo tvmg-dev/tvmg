@@ -28,5 +28,9 @@ void LcdDisplay::show( DisplayLine lines[] )
    }
 }
 
+void  LcdDisplay::updateScreensaver()
+{
+}
+
 #endif
 

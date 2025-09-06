@@ -198,7 +198,7 @@ void  TemperatureModule::initialise()
 
       if( m_isOk )
       {
-         /* Find the device address at bus index values */
+         // Find the device address at bus index values
 
          for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
          {

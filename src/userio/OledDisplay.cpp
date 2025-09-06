@@ -7,10 +7,12 @@
 
 #include "OledDisplay.h"
 
-OledDisplay::OledDisplay() : Display()
+OledDisplay::OledDisplay() : Display(),
+             m_oled( nullptr ),
+             m_saverX( 0 ),
+             m_saverY( 0 )
 {
    m_oled = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C( U8G2_R0,U8X8_PIN_NONE,hwConfig->OLEDClkGPIO,hwConfig->OLEDDataGPIO );
-
 }
 
 OledDisplay::~OledDisplay()
@@ -41,6 +43,15 @@ void OledDisplay::show( DisplayLine lines[] )
       m_oled->drawStr( 0,row * 10, lines[ row ] );
    }
 
+   m_oled->sendBuffer();
+}
+
+void OledDisplay::updateScreensaver()
+{
+   m_saverX = (m_saverX + 1) % MAX_DISPLAY_COLUMNS;
+   m_saverY = (m_saverY + 1) % MAX_DISPLAY_ROWS;
+   m_oled->clearBuffer();
+   m_oled->drawStr( m_saverX * 5,m_saverY * 10,"O" );
    m_oled->sendBuffer();
 }
 

@@ -366,6 +366,12 @@ void  UserIO::showLGStatus()
 
 void  UserIO::show( ScreenType type )
 {
+   if ( GET_REGISTRY_INT( USERIO_SCREENSAVER ) == 1 )
+   {
+      m_display->updateScreensaver();
+      return;
+   }
+
    // clear lines
    for ( int i = 0; i < 6; i++ )
    {

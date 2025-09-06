@@ -777,6 +777,31 @@ void WebServer::setupAsyncServer()
       ESP.restart();
    });
 
+   m_webServer->on("/checkbox", HTTP_GET, [](AsyncWebServerRequest *request)
+   {
+      if(!request->authenticate(http_username, http_password))
+      {
+         return request->requestAuthentication();
+      }
+
+      if (request->hasParam("item") && request->hasParam("state"))
+      {
+         String msg = request->getParam("item")->value();
+         msg = request->getParam("state")->value();
+
+         if ( msg == "1" )
+         {
+            SET_REGISTRY( USERIO_SCREENSAVER,1 );
+         }
+         else
+         {
+            SET_REGISTRY( USERIO_SCREENSAVER,0 );
+         }
+      }
+
+      request->send( 200,"text/plain","OK" );
+   });
+
    m_webServer->on(m_hiddenPage.c_str(), HTTP_GET, [](AsyncWebServerRequest *request)
    {
       if(!request->authenticate(http_username, http_password))
