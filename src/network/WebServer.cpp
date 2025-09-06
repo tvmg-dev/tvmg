@@ -45,7 +45,7 @@ const char* http_password = "admin";
 bool   showAllFiles = false;
 static char hiddenExtensions[][ 5 ] = { ".pub",".hid",DEFAULT_EXTENSION };
 
-String allowedExtensionsForEdit = "txt, dat, def";
+String allowedExtensionsForEdit = "txt, dat, def, pub";
 
 String filesDropdownOptions = "";
 String textareaContent = "";
