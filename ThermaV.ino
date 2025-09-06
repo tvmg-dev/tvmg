@@ -972,22 +972,19 @@ void loop(void)
 
    START_TIMING( "takeSample" );
    measurement->takeSample();
-   if ( storageModule )
+   if ( !didDailyUpdate && measurement->didDailyUpdate() )
    {
-      if ( !didDailyUpdate && storageModule->didDailyUpdate() )
+      PW_DEBUG( "DailyUpdate : true" );
+      didDailyUpdate = true;
+      if ( lgThermaV )
       {
-         PW_DEBUG( "DailyUpdate : true" );
-         didDailyUpdate = true;
-         if ( lgThermaV )
-         {
-            lgThermaV->resetEventLog();
-         }
+         lgThermaV->resetEventLog();
       }
-      else if ( didDailyUpdate && !storageModule->didDailyUpdate() )
-      {
-         PW_DEBUG( "DailyUpdate : false" );
-         didDailyUpdate = false;
-      }
+   }
+   else if ( didDailyUpdate && !measurement->didDailyUpdate() )
+   {
+      PW_DEBUG( "DailyUpdate : false" );
+      didDailyUpdate = false;
    }
    END_TIMING;
 

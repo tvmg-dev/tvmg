@@ -33,10 +33,13 @@ public:
    void     initialise();
    void     takeSample();
    const Sample   &getLastSample();
+   bool  didDailyUpdate();
 
 private:
-   void  updateEmon( const Measurement::Sample &sample );
    void  saveLastSample();
+   bool  shouldSendDailyUpdate();
+   void  updateEmon();
+   void  sendUpdate();
 
    TemperatureModule *m_tempModule;
    PowerModule       *m_powerModule;
@@ -47,6 +50,14 @@ private:
    Sample            m_lastSample;
    Sample            m_newSample;
    uint32_t          m_millisLastAquisition;
+
+   uint8_t     m_dailyUpdateHour;
+   bool        m_dailyUpdated;
+   uint32_t    m_dailyModbusSent;
+   uint32_t    m_dailyModbusFailed;
+   uint32_t    m_dailyEmonSent;
+   uint32_t    m_dailyEmonFailed;
+
 };
 
 #endif

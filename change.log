@@ -1,3 +1,7 @@
+v25.09.02 - Display screen saver (due to some OLED's appearing to fade)
+            Fix File upload return to home page, new checkbox for display screen saver
+            Heat Meter and Power Meter measurements at 15s intervals
+            Internal structural changes, improved separation of concerns
 v25.09.01 - Rebuild due to upgrade/downgrade Arduino CLI and esp32.
             Now back to Arduino 2.3.4 and esp32 3.1.0
 v25.08.05 - Set master modbus to slave mode during boot

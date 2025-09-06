@@ -11,8 +11,6 @@
 
 #define WRITE_TEST_FILE "/test.dat"
 
-#define INVALID_UPDATE_HOUR  25
-
 // Delete files that are 40 days old as determined by their filenames
 
 #define  DELETE_OLDER_THAN_SECONDS     (40 * 24 * 60 * 60)
@@ -20,23 +18,10 @@
 Storage::Storage()
        : m_currentFileName(),
          m_networking( nullptr ),
-         m_dailyUpdated( false ),
-         m_dailyUpdateHour( INVALID_UPDATE_HOUR ),
-         m_dailyModbusSent( 0 ),
-         m_dailyModbusFailed( 0 ),
-         m_dailyEmonSent( 0 ),
-         m_dailyEmonFailed( 0 ),
          m_storageOk( false )
 {
    PW_DEBUG( "Storage::Storage()" );
    PW_MSG( "Storage Module Startup" );
-
-   int updateHour = GET_REGISTRY_INT( DAILY_EMAIL_HOUR );
-   if ( updateHour >=0 && updateHour <= 23 )
-   {
-      m_dailyUpdateHour = updateHour;
-      PW_DEBUG( "Setting update hour to %u",m_dailyUpdateHour );
-   }
 
    m_currentFileName[ 0 ] = 0;
 }
@@ -204,7 +189,7 @@ void  Storage::setNetworking( Networking *network )
    }
 }
 
-void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
+void  Storage::storeSample( const Measurement::Sample &sample )
 {
    // we won't store if the card isn't ok,or no card at all
 
@@ -372,139 +357,6 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
    }
 }
 
-void  Storage::storeSample( const Measurement::Sample &sample )
-{
-   // save sample to storage if we have it
-
-   saveSampleToBackingStore( sample );
-
-   // perform daily update mails if needed
-
-   if ( m_dailyUpdateHour == INVALID_UPDATE_HOUR )
-   {
-      return;
-   }
-
-   struct tm timeInfo;
-   localtime_r( &sample.m_sampleTime,&timeInfo );
-
-   // if the dailyUpdate has been sent and the time is no longer in the
-   // hour, then reset the update flag for next time
-
-   if ( m_dailyUpdated && timeInfo.tm_hour != m_dailyUpdateHour )
-   {
-      PW_DEBUG( "Resetting daily update flag" );
-      m_dailyUpdated = false;
-   }
-   else if ( timeInfo.tm_hour == m_dailyUpdateHour && !m_dailyUpdated && m_networking )
-   {
-      char     line[ 128 ];
-      String   thermometerStr,powerStr,lgStr,commsStr;
-
-      PW_MSG( "Sending daily update" );
-
-      int i = 0;
-      TemperatureModule::takeMutex();
-      while ( sample.m_tempSensors[ i ] )
-      {
-         const TempSensor  *sensor = sample.m_tempSensors[ i ];
-
-         PW_DEBUG( "TS %p %s %f %d",sensor,sensor->m_name,sensor->m_temp,sensor->m_emonFeedId );
-         if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
-         {
-            snprintf( line,sizeof(line),"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
-            thermometerStr += line;
-         }
-
-         i++;
-      }
-      TemperatureModule::releaseMutex();
-
-      i = 0;
-      const PowerSensor *sensor;
-      while( ( sensor = sample.m_powerSensors[ i++ ] ) )
-      {
-         if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
-         {
-            snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
-            powerStr += line;
-         }
-      }
-
-      // modbus, then emon
-
-      uint32_t   sends,fails;
-      float_t    percentSent = 100;
-
-      getModbusStats( &sends,&fails );
-
-      sends -= m_dailyModbusSent;
-      fails -= m_dailyModbusFailed;
-
-      m_dailyModbusSent += sends;
-      m_dailyModbusFailed += fails;
-
-      if ( sends )
-      {
-         if ( fails )
-         {
-            percentSent = (100.0 * ( sends - fails )) / sends;
-         }
-
-         snprintf( line,sizeof(line),"\nModbus Requests: %u, Failed: %u - (%.1f %% Ok)\n",sends,fails,percentSent );
-         commsStr += line;
-      }
-
-      Networking::Status state = m_networking->getStatus();
-
-      state.emonSent -= m_dailyEmonSent;
-      state.emonFails -= m_dailyEmonFailed;
-
-      m_dailyEmonSent += state.emonSent;
-      m_dailyEmonFailed += state.emonFails;
-
-      if ( state.emonSent )
-      {
-         percentSent = 100;
-         if ( state.emonFails )
-         {
-            percentSent = (100.0 * state.emonSent) / (state.emonFails + state.emonSent);
-         }
-
-         snprintf( line,sizeof(line),"EmonCMS Sent: %u, Failed: %u - (%.1f %% Ok)\n",state.emonSent,state.emonFails,percentSent );
-
-         commsStr += line;
-      }
-
-      m_dailyUpdated = true;
-      String updateStr;
-
-      char subject[ 64 ];
-
-      snprintf( subject,sizeof(subject),"Daily Update : %s [%s]",m_networking->getLocalMDNSName().c_str(),m_networking->getIPAddress().c_str() );
-      snprintf( line,sizeof(line),"Version : %s\n\n",VERSION_STR );
-
-      updateStr += line;
-      updateStr += thermometerStr;
-      updateStr += powerStr;
-      updateStr += commsStr;
-      updateStr += "\n\n";
-
-      // Send LG data if we have it, otherwise simple email
-      if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
-      {
-         if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG,true ) )
-         {
-            Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
-         }
-      }
-      else
-      {
-         m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
-      }
-   }
-}
-
 char  *Storage::getCurrentFileName()
 {
    return m_currentFileName;
@@ -530,7 +382,3 @@ void  Storage::getStatus( char *line )
    }
 }
 
-bool  Storage::didDailyUpdate()
-{
-   return m_dailyUpdated;
-}

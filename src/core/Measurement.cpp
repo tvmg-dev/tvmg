@@ -5,6 +5,8 @@
 #include "Storage.h"
 #include "src/network/Networking.h"
 
+#define INVALID_UPDATE_HOUR  25
+
 Measurement::Sample::Sample()
 {
    m_sampleTime = 0;
@@ -86,10 +88,23 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
              m_storageModule( storage ),
              m_networking( networking ),
              m_lastSample(),
-             m_millisLastAquisition( 0 )
+             m_millisLastAquisition( 0 ),
+             m_dailyUpdated( false ),
+             m_dailyUpdateHour( INVALID_UPDATE_HOUR ),
+             m_dailyModbusSent( 0 ),
+             m_dailyModbusFailed( 0 ),
+             m_dailyEmonSent( 0 ),
+             m_dailyEmonFailed( 0 )
 {
    PW_DEBUG( "Measurement::Measurement()" );
    PW_MSG( "Measurement Module Startup" );
+
+   int updateHour = GET_REGISTRY_INT( DAILY_EMAIL_HOUR );
+   if ( updateHour >=0 && updateHour <= 23 )
+   {
+      m_dailyUpdateHour = updateHour;
+      PW_DEBUG( "Setting update hour to %u",m_dailyUpdateHour );
+   }
 }
 
 Measurement::~Measurement()
@@ -174,27 +189,28 @@ void  Measurement::takeSample( void )
 
    m_lastSample = m_newSample;
 
-   // We only store data at the sample period, we may be taking measurements
+   // We only process data at the sample period, we may be taking measurements
    // more often than that.
 
    if ( start - m_millisLastAquisition >= SAMPLING_PERIOD_MS )
    {
       m_millisLastAquisition = start;
 
-      saveLastSample();
-      updateEmon( m_lastSample );
+      if ( m_storageModule )
+      {
+         m_storageModule->storeSample( m_lastSample );
+      }
+
+      updateEmon();
+
+      if ( shouldSendDailyUpdate() )
+      {
+         sendUpdate();
+      }
    }
    else
    {
       PW_DEBUG( "Measured, but not saved" );
-   }
-}
-
-void  Measurement::saveLastSample( void )
-{
-   if ( m_storageModule )
-   {
-      m_storageModule->storeSample( m_lastSample );
    }
 }
 
@@ -203,7 +219,7 @@ const Measurement::Sample &Measurement::getLastSample( void )
    return m_lastSample;
 }
 
-void  Measurement::updateEmon( const Measurement::Sample &sample )
+void  Measurement::updateEmon()
 {
    static   float k_errorTemp = 75.0f;
    char     line[ 128 ];
@@ -225,7 +241,7 @@ void  Measurement::updateEmon( const Measurement::Sample &sample )
    // when master monitor has not retrieved sensible values
 
    TemperatureModule::takeMutex();
-   while ( (tsensor = sample.m_tempSensors[ i++ ] ) )
+   while ( (tsensor = m_lastSample.m_tempSensors[ i++ ] ) )
    {
       if ( tsensor->m_emonFeedId != 0 && tsensor->m_temp > TEMPERATURE_INVALID &&
                         tsensor->m_temp < k_errorTemp )
@@ -237,7 +253,7 @@ void  Measurement::updateEmon( const Measurement::Sample &sample )
 
    i = 0;
    const PowerSensor *sensor;
-   while( ( sensor = sample.m_powerSensors[ i++ ] ) )
+   while( ( sensor = m_lastSample.m_powerSensors[ i++ ] ) )
    {
       if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
       {
@@ -247,7 +263,7 @@ void  Measurement::updateEmon( const Measurement::Sample &sample )
 
    i = 0;
    const LGRegister *lgReg;
-   while( ( lgReg = sample.m_lgRegisters[ i++ ] ) )
+   while( ( lgReg = m_lastSample.m_lgRegisters[ i++ ] ) )
    {
       if ( lgReg->m_emonFeedId != 0 && m_networking )
       {
@@ -257,7 +273,7 @@ void  Measurement::updateEmon( const Measurement::Sample &sample )
 
    i = 0;
    const HeatMeterSensor *hmSensor;
-   while( ( hmSensor = sample.m_heatMeterSensors[ i++ ] ) )
+   while( ( hmSensor = m_lastSample.m_heatMeterSensors[ i++ ] ) )
    {
       if ( hmSensor->m_emonPowerId && hmSensor->m_emonFlowId )
       {
@@ -278,4 +294,141 @@ void  Measurement::updateEmon( const Measurement::Sample &sample )
          m_networking->sendToEmonCMS( hmSensor->m_emonPowerId,power );
       }
    }
+}
+
+bool Measurement::shouldSendDailyUpdate()
+{
+   if ( m_dailyUpdateHour != INVALID_UPDATE_HOUR )
+   {
+      struct tm timeInfo;
+      localtime_r( &m_lastSample.m_sampleTime,&timeInfo );
+
+      // if the dailyUpdate has been sent and the time is no longer in the
+      // hour, then reset the update flag for next time
+
+      if ( m_dailyUpdated && timeInfo.tm_hour != m_dailyUpdateHour )
+      {
+         PW_DEBUG( "Resetting daily update flag" );
+         m_dailyUpdated = false;
+      }
+      else if ( timeInfo.tm_hour == m_dailyUpdateHour && !m_dailyUpdated && m_networking )
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+void  Measurement::sendUpdate()
+{
+   char     line[ 128 ];
+   String   thermometerStr,powerStr,lgStr,commsStr;
+
+   PW_MSG( "Sending daily update" );
+
+   int i = 0;
+   TemperatureModule::takeMutex();
+   while ( m_lastSample.m_tempSensors[ i ] )
+   {
+      const TempSensor  *sensor = m_lastSample.m_tempSensors[ i ];
+
+      PW_DEBUG( "TS %p %s %f %d",sensor,sensor->m_name,sensor->m_temp,sensor->m_emonFeedId );
+      if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
+      {
+         snprintf( line,sizeof(line),"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
+         thermometerStr += line;
+      }
+
+      i++;
+   }
+   TemperatureModule::releaseMutex();
+
+   i = 0;
+   const PowerSensor *sensor;
+   while( ( sensor = m_lastSample.m_powerSensors[ i++ ] ) )
+   {
+      if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
+      {
+         snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
+         powerStr += line;
+      }
+   }
+
+   // modbus, then emon stats
+
+   uint32_t   sends,fails;
+   float_t    percentSent = 100;
+
+   getModbusStats( &sends,&fails );
+
+   sends -= m_dailyModbusSent;
+   fails -= m_dailyModbusFailed;
+
+   m_dailyModbusSent += sends;
+   m_dailyModbusFailed += fails;
+
+   if ( sends )
+   {
+      if ( fails )
+      {
+         percentSent = (100.0 * ( sends - fails )) / sends;
+      }
+
+      snprintf( line,sizeof(line),"\nModbus Requests: %u, Failed: %u - (%.1f %% Ok)\n",sends,fails,percentSent );
+      commsStr += line;
+   }
+
+   Networking::Status state = m_networking->getStatus();
+
+   state.emonSent -= m_dailyEmonSent;
+   state.emonFails -= m_dailyEmonFailed;
+
+   m_dailyEmonSent += state.emonSent;
+   m_dailyEmonFailed += state.emonFails;
+
+   if ( state.emonSent )
+   {
+      percentSent = 100;
+      if ( state.emonFails )
+      {
+         percentSent = (100.0 * state.emonSent) / (state.emonFails + state.emonSent);
+      }
+
+      snprintf( line,sizeof(line),"EmonCMS Sent: %u, Failed: %u - (%.1f %% Ok)\n",state.emonSent,state.emonFails,percentSent );
+
+      commsStr += line;
+   }
+
+   m_dailyUpdated = true;
+   String updateStr;
+
+   char subject[ 64 ];
+
+   snprintf( subject,sizeof(subject),"Daily Update : %s [%s]",m_networking->getLocalMDNSName().c_str(),m_networking->getIPAddress().c_str() );
+   snprintf( line,sizeof(line),"Version : %s\n\n",VERSION_STR );
+
+   updateStr += line;
+   updateStr += thermometerStr;
+   updateStr += powerStr;
+   updateStr += commsStr;
+   updateStr += "\n\n";
+
+   // Send LG data if we have it, otherwise simple email
+   if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
+   {
+      if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG,true ) )
+      {
+         Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
+      }
+   }
+   else
+   {
+      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
+   }
+}
+
+bool  Measurement::didDailyUpdate()
+{
+   return m_dailyUpdated;
 }
