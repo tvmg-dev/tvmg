@@ -372,89 +372,8 @@ void  Storage::saveSampleToBackingStore( const Measurement::Sample &sample )
    }
 }
 
-void  Storage::updateEmon( const Measurement::Sample &sample )
-{
-   static   float k_errorTemp = 75.0f;
-   char     line[ 128 ];
-   String   thermometerStr, powerStr,lgStr;
-
-   // Can't update if no network
-
-   if ( ! m_networking )
-   {
-      return;
-   }
-
-   // send any temperatures, power, heat pump and heat meter data
-
-   int i = 0;
-   const TempSensor  *tsensor;
-
-   // temps have to be > invalid and < error temp - seen the DS's return +128
-   // when master monitor has not retrieved sensible values
-
-   TemperatureModule::takeMutex();
-   while ( (tsensor = sample.m_tempSensors[ i++ ] ) )
-   {
-      if ( tsensor->m_emonFeedId != 0 && tsensor->m_temp > TEMPERATURE_INVALID &&
-                        tsensor->m_temp < k_errorTemp )
-      {
-         m_networking->sendToEmonCMS( tsensor->m_emonFeedId,tsensor->m_temp );
-      }
-   }
-   TemperatureModule::releaseMutex();
-
-   i = 0;
-   const PowerSensor *sensor;
-   while( ( sensor = sample.m_powerSensors[ i++ ] ) )
-   {
-      if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
-      {
-         m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_power );
-      }
-   }
-
-   i = 0;
-   const LGRegister *lgReg;
-   while( ( lgReg = sample.m_lgRegisters[ i++ ] ) )
-   {
-      if ( lgReg->m_emonFeedId != 0 && m_networking )
-      {
-         m_networking->sendToEmonCMS( lgReg->m_emonFeedId,lgReg->m_value );
-      }
-   }
-
-   i = 0;
-   const HeatMeterSensor *hmSensor;
-   while( ( hmSensor = sample.m_heatMeterSensors[ i++ ] ) )
-   {
-      if ( hmSensor->m_emonPowerId && hmSensor->m_emonFlowId )
-      {
-         float_t flowRate, power;
-
-         if ( hmSensor->m_power == HM_POWER_ERROR )
-         {
-            flowRate = 0;
-            power = -1;
-         }
-         else
-         {
-            flowRate = hmSensor->m_flowRate;
-            power = hmSensor->m_power;
-         }
-
-         m_networking->sendToEmonCMS( hmSensor->m_emonFlowId,flowRate );
-         m_networking->sendToEmonCMS( hmSensor->m_emonPowerId,power );
-      }
-   }
-}
-
 void  Storage::storeSample( const Measurement::Sample &sample )
 {
-   // First send data to emon
-
-   updateEmon( sample );
-
    // save sample to storage if we have it
 
    saveSampleToBackingStore( sample );

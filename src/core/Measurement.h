@@ -10,6 +10,7 @@
 #include "src/sensors/HeatMeter.h"
 
 class Storage;
+class Networking;
 
 class Measurement
 {
@@ -27,13 +28,14 @@ public:
    };
 
    Measurement( TemperatureModule *tempModule, PowerModule *powerModule,LGHeatPump *heatPump,
-                                    HeatMeterModule *hmModule,Storage *storage );
+                                    HeatMeterModule *hmModule,Storage *storage,Networking *networking );
    ~Measurement();
    void     initialise();
    void     takeSample();
    const Sample   &getLastSample();
 
 private:
+   void  updateEmon( const Measurement::Sample &sample );
    void  saveLastSample();
 
    TemperatureModule *m_tempModule;
@@ -41,6 +43,7 @@ private:
    LGHeatPump        *m_heatPump;
    HeatMeterModule   *m_heatMeterModule;
    Storage           *m_storageModule;
+   Networking        *m_networking;
    Sample            m_lastSample;
    Sample            m_newSample;
    uint32_t          m_millisLastAquisition;

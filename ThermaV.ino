@@ -592,7 +592,7 @@ void  initialiseMeasurement()
    // Instantiate the measurement module, but don't initialise it just yet,
    // userIO needs access to data
 
-   measurement = new Measurement( tempModule,powerModule,lgThermaV,heatMeterModule,storageModule );
+   measurement = new Measurement( tempModule,powerModule,lgThermaV,heatMeterModule,storageModule,networking );
    userIO->setMeasurement( measurement );
 
    // let's tell storage we have networking available
