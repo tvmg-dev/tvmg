@@ -113,21 +113,19 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <h2>ThermaV Monitor</h2>
      <div id="spacer_5"></div>
      <fieldset><legend>Firmware Update</legend>
-       <table><tbody>
-       <tr>
+       <table><tbody><tr>
         <td colspan="2">Current Version : %VERSION%</td>
-        <td colspan="2">%UPTIME%</td>
-       </tr>
-       <tr>
-        <td width="25%%">%IPADDR%</td>
-        <td width="25%%">%WIFI%</td>
-        <td width="25%%">%MODBUS%</td>
-        <td width="25%%">%EMON%</td>
-       </tr>
+        <td colspan="2">%UPTIME%</td></tr>
+        <tr>
+         <td width="25%%">%IPADDR%</td>
+         <td width="25%%">%WIFI%</td>
+         <td width="25%%">%MODBUS%</td>
+         <td width="25%%">%EMON%</td>
+        </tr>
        </tbody></table>
       <div id="spacer_5"></div>
       <form method="POST" action="/update" enctype="multipart/form-data">
-       <table><tr><td id="first_td_th">
+       <table><tr><td id="tdth1">
        <input type="file" id="update" name="update">
        </td><td>
        <input type="submit" id="submit" value="Update!" onclick="return validateFormUpdate()">
@@ -151,7 +149,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <fieldset><legend>File upload</legend>
       <div id="spacer_5"></div>
       <form method="POST" action="/upload" enctype="multipart/form-data">
-       <table><tr><td id="first_td_th">
+       <table><tr><td id="tdth2">
        <input type="file" id="upload_data" name="upload_data">
        </td><td>
        <input type="submit" id="submit" value="File upload!" onclick="return validateFormUpload()">
@@ -164,7 +162,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <fieldset><legend>Edit file</legend>
       <div id="spacer_5"></div>
       <form method="GET" action="/edit">
-       <table><tr><td id="first_td_th">
+       <table><tr><td id="tdth3">
        %EDIT_FILES%
        </td><td>
        <input type="submit" id="submit" value="Edit" onclick="return validateFileEdit()">
@@ -177,7 +175,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <fieldset><legend>Delete file</legend>
        <div id="spacer_5"></div>
        <form method="GET" action="/delete">
-        <table><tr><td id="first_td_th">
+        <table><tr><td id="tdth4">
         %DELETE_FILES%
         </td><td>
         <input type="submit" id="submit" value="Delete" onclick="return validateFileDelete()">
@@ -190,7 +188,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <fieldset><legend>Download file</legend>
       <div id="spacer_5"></div>
       <form method="GET" action="/download">
-        <table><tr><td id="first_td_th">
+        <table><tr><td id="tdth5">
         %DOWNLOAD_FILES%
         </td><td>
         <input type="submit" id="download" value="Download" onclick="return validateFileDownload()">
@@ -202,7 +200,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <div id="spacer_5"></div>
      <fieldset><legend>Options</legend>
       <div id="spacer_5"></div>
-        <table><tr><td id="first_td_th">
+        <table><tr><td id="tdth16">
         <p>Soft Reboot the device</p>
         </td><td>
          <form method="POST" action="/reboot" target="self_page">
@@ -221,7 +219,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <fieldset><legend>Reset Board</legend>
       <div id="spacer_5"></div>
       <form method="POST" action="/reset" target="self_page">
-        <table><tr><td id="first_td_th">
+        <table><tr><td id="tdth7">
         <p id="reset_notice">Pressing the 'Reset' button will reset the board ! <br>
         (This will need additional confirmation) </p>
         </td><td>

@@ -69,7 +69,7 @@ const char debugSection[] = R"raw(
 <fieldset><legend>Debug Section</legend>
  <div id="spacer_5"></div>
  <form method="POST" action="/debug" target="self_page">
-   <table><tr><td id="first_td_th">
+   <table><tr><td>
    <p>Debug</p>
    <p>Debug2</p>
    <p>Debug3</p>
@@ -196,7 +196,7 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
   {
     if(file.isDirectory())
     {
-      listenFiles += "<tr><td id=\"first_td_th\">Library: ";
+      listenFiles += "<tr><td>Library: ";
       listenFiles += file.name();
 
       filesDropdownOptions += "<option value=\"";
@@ -216,7 +216,7 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
     {
       if ( showAllFiles || !isHiddenExtension( file.name() ) )
       {
-         listenFiles += "<tr><td id=\"first_td_th\">";
+         listenFiles += "<tr><td>";
          listenFiles += file.name();
 
          filesDropdownOptions += "<option value=\"";
@@ -644,7 +644,7 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/upload", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      request->send(200);
+      // don't send a response as we will send a redirect in the uploadFile method
    }, uploadFile);
 
    m_webServer->on("/edit", HTTP_GET, [this](AsyncWebServerRequest *request)
