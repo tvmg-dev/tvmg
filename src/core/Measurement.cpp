@@ -88,6 +88,7 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
              m_storageModule( storage ),
              m_networking( networking ),
              m_lastSample(),
+             m_newSample(),
              m_millisLastAquisition( 0 ),
              m_dailyUpdated( false ),
              m_dailyUpdateHour( INVALID_UPDATE_HOUR ),
@@ -120,81 +121,92 @@ void  Measurement::initialise( void )
 void  Measurement::takeSample( void )
 {
    PW_DEBUG( "Measurement::takeSample" );
-   uint     start;
-   float_t  hpKW = 1;
+   static uint sensorIndex = 0;
 
-   m_newSample = Sample();
+   uint     currentMS = millis();
+   uint8_t  i = 0;
 
-   start = millis();
-   time( &m_newSample.m_sampleTime );
-
-   // Get all temperature sensor data, then power etc
-
-   uint8_t i = 0;
-
-   TempSensor *tempSensor;
-
-   TemperatureModule::takeMutex();
-   while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
+   // get the current sample time
+   if ( !sensorIndex )
    {
-      m_newSample.m_tempSensors[ i ] = tempSensor;
-
-      PW_MSG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
-      i++;
+      time( &m_newSample.m_sampleTime );
    }
-   TemperatureModule::releaseMutex();
 
-   i = 0;
-   PowerSensor *powerSensor;
-   while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) )
+   // we get temps, power, LG and heat meter - but only 1 type per invocation so we're not
+   // performing max processing in one call
+   if ( sensorIndex == 0 )
    {
-      m_newSample.m_powerSensors[ i++ ] = powerSensor;
+      TempSensor *tempSensor;
 
-      PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
-
-      if ( powerSensor->m_id == HEAT_PUMP_ID )
+      TemperatureModule::takeMutex();
+      while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
       {
-         hpKW = powerSensor->m_power;
-         if ( m_heatPump )
+         m_newSample.m_tempSensors[ i ] = tempSensor;
+
+         PW_MSG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
+         i++;
+      }
+      TemperatureModule::releaseMutex();
+   }
+   else if ( sensorIndex == 1 )
+   {
+      i = 0;
+      PowerSensor *powerSensor;
+      while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) )
+      {
+         m_newSample.m_powerSensors[ i++ ] = powerSensor;
+
+         PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
+
+         if ( powerSensor->m_id == HEAT_PUMP_ID && m_heatPump )
          {
-            m_heatPump->setCurrentKW( hpKW );
+            m_heatPump->setCurrentKW( powerSensor->m_power );
+         }
+      }
+   }
+   else if ( sensorIndex == 2 )
+   {
+      if ( m_heatPump )
+      {
+         i = 0;
+         LGRegister *lgRegister;
+         while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
+         {
+            m_newSample.m_lgRegisters[ i++ ] = lgRegister;
+    //     PW_DEBUG( "LG: %s %.1f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
+         }
+         PW_MSG( "Retrieved %d LG registers",i );
+      }
+   }
+   else if ( sensorIndex == 3 )
+   {
+      if ( m_heatMeterModule )
+      {
+         i = 0;
+         HeatMeterSensor *heatMeterSensor;
+
+         while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i ) ) )
+         {
+            m_newSample.m_heatMeterSensors[ i++ ] = heatMeterSensor;
+
+            PW_MSG( "%s %.1f %.1f",heatMeterSensor->m_name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
          }
       }
    }
 
-   if ( m_heatPump )
-   {
-      i = 0;
-      LGRegister *lgRegister;
-      while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
-      {
-         m_newSample.m_lgRegisters[ i++ ] = lgRegister;
- //     PW_DEBUG( "LG: %s %.1f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
-      }
-      PW_DEBUG( "Retrieved %d LG registers",i );
-   }
-
-   if ( m_heatMeterModule )
-   {
-      i = 0;
-      HeatMeterSensor *heatMeterSensor;
-
-      while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i ) ) )
-      {
-         m_newSample.m_heatMeterSensors[ i++ ] = heatMeterSensor;
-
-         PW_DEBUG( "%s %.1f %.1f",heatMeterSensor->m_name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
-      }
-   }
-
-   m_lastSample = m_newSample;
-
    // We only process data at the sample period, we may be taking measurements
-   // more often than that.
+   // more often than that.  We will store the sample and update emon.  Also
+   // we will send a daily update if due.
+   //
+   // As we're currently measuring a sensor at 5s intervals and 'sampling' at 30s
+   // then we may have a sample being late by this 5s period, so use a 2s offset
+   // to try and avoid drift.
 
-   if ( start - m_millisLastAquisition >= SAMPLING_PERIOD_MS )
+   if ( currentMS - m_millisLastAquisition >= (SAMPLING_PERIOD_MS - 2000) )
    {
-      m_millisLastAquisition = start;
+      m_lastSample = m_newSample;
+
+      m_millisLastAquisition = currentMS;
 
       if ( m_storageModule )
       {
@@ -212,6 +224,8 @@ void  Measurement::takeSample( void )
    {
       PW_DEBUG( "Measured, but not saved" );
    }
+
+   sensorIndex = (sensorIndex + 1) % 4;
 }
 
 const Measurement::Sample &Measurement::getLastSample( void )

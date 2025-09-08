@@ -18,7 +18,7 @@ extern  int       scratchBufferSize;
 //----------------------------------------------------------------------
 // Usage info
 
-extern void  GetRunTimeInfo();
+extern void  getRunTimeInfo();
 extern uint32_t largestFreeInternalBlock();
 extern void  getModbusStats( uint32_t *requests,uint32_t *fails );
 

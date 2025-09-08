@@ -345,7 +345,7 @@ static void printMemCapsInfo(uint32_t caps, const char *caps_str)
 #define  MAX_TASKS   25
 TaskStatus_t taskStatusArray[ MAX_TASKS ];
 
-void GetRunTimeInfo()
+void getRunTimeInfo()
 {
     volatile UBaseType_t numTasks;
     unsigned long ulTotalRunTime, ulStatsAsPercentage;

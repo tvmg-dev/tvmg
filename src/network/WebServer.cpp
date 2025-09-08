@@ -789,6 +789,7 @@ void WebServer::setupAsyncServer()
          String msg = request->getParam("item")->value();
          msg = request->getParam("state")->value();
 
+         getRunTimeInfo();
          if ( msg == "1" )
          {
             SET_REGISTRY( USERIO_SCREENSAVER,1 );
@@ -811,7 +812,7 @@ void WebServer::setupAsyncServer()
 
       if ( Networking::takeNewMutex( 100 ) == 1 )
       {
-         GetRunTimeInfo();
+         getRunTimeInfo();
          Networking::releaseNewMutex();
 #if 1
          // cause task watchog
@@ -829,7 +830,7 @@ void WebServer::setupAsyncServer()
    {
       if ( Networking::takeNewMutex( 100 ) == 1 )
       {
-         GetRunTimeInfo();
+         getRunTimeInfo();
          Networking::releaseNewMutex();
       }
 

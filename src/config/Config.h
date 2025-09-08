@@ -6,7 +6,7 @@
 #include "src/core/utils.h"
 #include "hwconfig.h"
 
-#define VERSION_STR        "v25.09.02"
+#define VERSION_STR        "v25.09.03a"
 
 #define SAMPLING_PERIOD_MS 30000
 
