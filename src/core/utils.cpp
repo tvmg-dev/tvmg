@@ -389,11 +389,12 @@ void getRunTimeInfo()
             TaskStatus_t *task = &taskStatusArray[ t ];
 
             ulStatsAsPercentage = task->ulRunTimeCounter / ulTotalRunTime;
-            PW_DEBUG( "%s tt %d tt %d - stk %d",
+            PW_DEBUG( "%s tt %d tt %d - stk %d Core %d",
                               task->pcTaskName,
                               task->ulRunTimeCounter,
                               ulStatsAsPercentage,
-                              task->usStackHighWaterMark
+                              task->usStackHighWaterMark,
+                              task->xCoreID
                               );
          }
       }

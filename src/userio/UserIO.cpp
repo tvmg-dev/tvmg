@@ -19,16 +19,46 @@
 #include "UserIO.h"
 
 extern Storage *storageModule;
+extern bool userIOHoldScreen;    // in ThermaV.ino - touch pins for now
 
 static TaskHandle_t  threadHandle = NULL;
 
 void  updateThread( void *params )
 {
+   UserIO *userIO = static_cast<UserIO *>(params);
    int i = 0;
+   bool didSetScreenSaver = false;
+
    while( true )
    {
-      PW_MSG( "IO Update %d",i++ );
-      delay( 3000 );
+      // If we're 5 minutes into the boot cycle then turn the screen saver on
+      // unless explicitly set in the config
+
+      if ( !didSetScreenSaver && millis() > (5 * 60 * 1000) )
+      {
+         didSetScreenSaver = true;
+         if ( GET_REGISTRY_INT( USERIO_SCREENSAVER ) == -1 )
+         {
+            SET_REGISTRY( USERIO_SCREENSAVER,1 );
+         }
+      }
+
+      if ( userIO )
+      {
+         START_TIMING( "UserIO Show Screen" );
+         if ( userIOHoldScreen )
+         {
+            userIO->refresh();
+         }
+         else
+         {
+            userIO->update();
+            userIO->showNext();
+         }
+         END_TIMING;
+      }
+
+      delay( 5000 );
    }
 }
 
@@ -75,7 +105,7 @@ void  UserIO::initialise()
       updateThread,  // thread fn
       "UserIO",      // Name of the task
       (3 * 1024),    // Stack size in bytes
-      NULL,          // no input params
+      this,          // no input params
       0,             // Priority
       &threadHandle, // handle
       0 );           // Assign to core 0, core 1 used for main loop

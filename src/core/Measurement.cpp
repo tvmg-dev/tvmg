@@ -26,12 +26,12 @@ int Measurement::takeSampleMutex( int ms )
 
    if ( ok != pdTRUE )
    {
-      PW_WARN( "Failed to take nw mutex" );
+      PW_WARN( "Failed to take sample mutex" );
    }
    else
    {
       s_mutexAcquiredMillis = millis();
-      PW_DEBUG( "n/w mutex took %d ms",s_mutexAcquiredMillis - startMillis );
+      PW_DEBUG( "sample mutex took %d ms",s_mutexAcquiredMillis - startMillis );
    }
 
    return( ok == pdTRUE );
@@ -134,7 +134,9 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
              m_dailyModbusSent( 0 ),
              m_dailyModbusFailed( 0 ),
              m_dailyEmonSent( 0 ),
-             m_dailyEmonFailed( 0 )
+             m_dailyEmonFailed( 0 ),
+             m_dailySamples( 0 ),
+             m_dailySamplesFailed( 0 )
 {
    PW_DEBUG( "Measurement::Measurement()" );
    PW_MSG( "Measurement Module Startup" );
@@ -155,12 +157,26 @@ Measurement::~Measurement()
 void  Measurement::initialise( void )
 {
    PW_DEBUG( "Measurement::initialise" );
+
+   if ( !s_sampleMutex )
+   {
+      s_sampleMutex = xSemaphoreCreateRecursiveMutex();
+   }
 }
 
 void  Measurement::takeSample( void )
 {
    PW_DEBUG( "Measurement::takeSample" );
    static uint sensorIndex = 0;
+
+   if ( takeSampleMutex( 100 ) != 1 )
+   {
+      m_dailySamplesFailed++;
+      PW_ERROR( "Failed sample %d %d",m_dailySamples,m_dailySamplesFailed );
+      return;
+   }
+
+   m_dailySamples++;
 
    uint     currentMS = millis();
    uint8_t  i = 0;
@@ -265,6 +281,7 @@ void  Measurement::takeSample( void )
    }
 
    sensorIndex = (sensorIndex + 1) % 4;
+   releaseSampleMutex();
 }
 
 const Measurement::Sample &Measurement::getLastSample( void )
@@ -411,9 +428,14 @@ void  Measurement::sendUpdate()
    // modbus, then emon stats
 
    uint32_t   sends,fails;
-   float_t    percentSent = 100;
+   float_t    percentOk = 100;
 
    getModbusStats( &sends,&fails );
+
+   // m_dailyModbusSent is total 'daily' send value, e.g. Monday 1000, Tuesday 1200, today 800
+   // the m_dailyModbusSent would be 2200 when this hits today, the stats from modbus are totals
+   // so would be 3000.  We therefore sent today 3000 - 2200 = 800 which is used for the daily
+   // stats and we set the new m_dailyModbusSent to 3000 ready for tomorrow.
 
    sends -= m_dailyModbusSent;
    fails -= m_dailyModbusFailed;
@@ -425,10 +447,10 @@ void  Measurement::sendUpdate()
    {
       if ( fails )
       {
-         percentSent = (100.0 * ( sends - fails )) / sends;
+         percentOk = (100.0 * ( sends - fails )) / sends;
       }
 
-      snprintf( line,sizeof(line),"\nModbus Requests: %u, Failed: %u - (%.1f %% Ok)\n",sends,fails,percentSent );
+      snprintf( line,sizeof(line),"\nModbus Requests: %u, Failed: %u - (%.1f %% Ok)\n",sends,fails,percentOk );
       commsStr += line;
    }
 
@@ -442,14 +464,25 @@ void  Measurement::sendUpdate()
 
    if ( state.emonSent )
    {
-      percentSent = 100;
+      percentOk = 100;
       if ( state.emonFails )
       {
-         percentSent = (100.0 * state.emonSent) / (state.emonFails + state.emonSent);
+         percentOk = (100.0 * state.emonSent) / (state.emonFails + state.emonSent);
       }
 
-      snprintf( line,sizeof(line),"EmonCMS Sent: %u, Failed: %u - (%.1f %% Ok)\n",state.emonSent,state.emonFails,percentSent );
+      snprintf( line,sizeof(line),"EmonCMS Sent: %u, Failed: %u - (%.1f %% Ok)\n",state.emonSent,state.emonFails,percentOk );
+      commsStr += line;
+   }
 
+   if( m_dailySamples )
+   {
+      percentOk = 100;
+      if ( m_dailySamplesFailed )
+      {
+         percentOk = (100.0 * m_dailySamples) / (m_dailySamples + m_dailySamplesFailed);
+      }
+
+      snprintf( line,sizeof(line),"Samples: %u, Failed: %u - (%.1f %% Ok)\n",m_dailySamples,m_dailySamplesFailed,percentOk );
       commsStr += line;
    }
 

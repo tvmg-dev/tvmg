@@ -61,6 +61,8 @@ private:
    uint32_t    m_dailyModbusFailed;
    uint32_t    m_dailyEmonSent;
    uint32_t    m_dailyEmonFailed;
+   uint32_t    m_dailySamples;
+   uint32_t    m_dailySamplesFailed;
 
    static SemaphoreHandle_t   s_sampleMutex;
    static uint32_t            s_mutexAcquiredMillis;
