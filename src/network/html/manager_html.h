@@ -203,14 +203,15 @@ const char manager_html[] PROGMEM = R"rawliteral(
         <table><tr><td id="tdth16">
         <p>Soft Reboot the device</p>
         </td><td>
-         <form method="POST" action="/reboot" target="self_page">
+         <form method="POST" action="/reboot" target="_self">
          <input type="submit" id="submit" value="Reboot">
          </form>
         </td></tr>
          <tr>
          <td colspan="2"> <label><input id="ssaver" onchange="checkbox(this)"
-               checked="checked" type="checkbox"> Display screen saver (usually active 5 minutes after boot)</label><br>
+               type="checkbox" checked> Display screen saver (usually active 5 minutes after boot)</label><br>
          </td></tr>
+         %DEBUG_SECTION%
         </table>
       <div id="spacer_5"></div>
      </fieldset>
@@ -218,7 +219,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <div id="spacer_5"></div>
      <fieldset><legend>Reset Board</legend>
       <div id="spacer_5"></div>
-      <form method="POST" action="/reset" target="self_page">
+      <form method="POST" action="/reset" target="_self">
         <table><tr><td id="tdth7">
         <p id="reset_notice">Pressing the 'Reset' button will reset the board ! <br>
         (This will need additional confirmation) </p>
@@ -228,8 +229,6 @@ const char manager_html[] PROGMEM = R"rawliteral(
       </form>
       <div id="spacer_5"></div>
      </fieldset>
-
-     %DEBUG_SECTION%
 
      <div id="spacer_10"></div>
      <iframe style="display:none" name="self_page"></iframe>

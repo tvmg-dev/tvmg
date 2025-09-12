@@ -407,6 +407,23 @@ bool  isDebugEnabled()
    return( debugLevelEnabled == isTrue );
 }
 
+// Is called via the webserver on checkbox selection - can only happen if there
+// is a defined UDP port, so we can enable disable accordingly.
+
+void setUdpDebugState( DebugState state )
+{
+   std::lock_guard<std::mutex> lock(loggingMutex);
+
+   if ( state == DEBUG_ON )
+   {
+      logToUDP = isTrue;
+   }
+   else
+   {
+      logToUDP = isFalse;
+   }
+}
+
 void msgLog( LOGGING_LEVEL level,const char *format,... )
 {
    // 1st check to see if we have configured yet, use the serialLoggingEnabled

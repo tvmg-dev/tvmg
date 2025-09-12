@@ -31,7 +31,7 @@
 
 static fs::SPIFFSFS *s_spiffs = nullptr;
 
-// Need static here for web page template processing accee
+// Need static here for web page template processing access
 
 static Networking *s_networking = nullptr;
 
@@ -59,30 +59,9 @@ const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
 
 //----------------------------------------------------------------------
-// Additional section for debug purposes, usually not defined
+// Additional section for debug purposes
 
-// #define  MANAGER_DEBUG_SECTION
-
-#ifdef MANAGER_DEBUG_SECTION
-const char debugSection[] = R"raw(
-<div id="spacer_5"></div>
-<fieldset><legend>Debug Section</legend>
- <div id="spacer_5"></div>
- <form method="POST" action="/debug" target="self_page">
-   <table><tr><td>
-   <p>Debug</p>
-   <p>Debug2</p>
-   <p>Debug3</p>
-   </td><td>
-   <input type="submit" id="submit" value="Debug">
-   </td></tr></table>
- </form>
- <div id="spacer_5"></div>
-</fieldset>
-)raw";
-#else
-const char debugSection[] = "";
-#endif
+String debugSection;
 
 //----------------------------------------------------------------------
 
@@ -452,12 +431,12 @@ String processor(const String& var)
     return "";
   }
 
-  if(var == "DEBUG_SECTION")
-  {
-     return String( debugSection );
-  }
+   if(var == "DEBUG_SECTION")
+   {
+      return debugSection;
+   }
 
-  return String( "N/A" );
+   return String( "N/A" );
 }
 
 void notFound(AsyncWebServerRequest *request)
@@ -506,9 +485,44 @@ WebServer::~WebServer()
    PW_DEBUG( "~WebServer()" );
 }
 
+const char *initalUdpCheckbox  = R"raw(
+<tr><td colspan="2"> <label><input id="udpdebug" onchange="checkbox(this)"
+ type="checkbox" checked> UDP Debug Active</label><br>
+</td></tr>
+)raw";
+
+const char *runtimeInfoButton  = R"raw(
+<tr><td><p>Generate Runtime Info (see logs)</p></td>
+<td><form method="POST" action="/runtimeinfo" target="_self">
+<input type="submit" id="submit" value="RunTime Info">
+</form></td></tr>)raw";
+
+
 void WebServer::initialise()
 {
    PW_DEBUG( "WebServer::initialise" );
+
+   /* Show the debug section, we can add lines here as required */
+
+   if ( GET_REGISTRY_INT( WEBPAGE_DEBUG_SECTION ) == 1 )
+   {
+      // If the UDP port is defined in config + UDP is enabled then check box on
+      // If UDP port is defined and UDP is disabled then check box is off
+      // If no UDP port then can't have UDP enabled
+
+      if ( GET_REGISTRY_INT( LOG_TO_UDP_PORT ) > 0 )
+      {
+         String udpCheckbox = initalUdpCheckbox;
+         if ( GET_REGISTRY_INT( UDP_LOGGING_ENABLE ) > 0 )
+         {
+            udpCheckbox.replace( "checked","" );
+         }
+
+         debugSection += udpCheckbox;
+      }
+
+      debugSection += String( runtimeInfoButton );
+   }
 
    setupAsyncServer();
 }
@@ -777,7 +791,7 @@ void WebServer::setupAsyncServer()
       ESP.restart();
    });
 
-   m_webServer->on("/checkbox", HTTP_GET, [](AsyncWebServerRequest *request)
+   m_webServer->on("/checkbox", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
       if(!request->authenticate(http_username, http_password))
       {
@@ -786,18 +800,7 @@ void WebServer::setupAsyncServer()
 
       if (request->hasParam("item") && request->hasParam("state"))
       {
-         String msg = request->getParam("item")->value();
-         msg = request->getParam("state")->value();
-
-         getRunTimeInfo();
-         if ( msg == "1" )
-         {
-            SET_REGISTRY( USERIO_SCREENSAVER,1 );
-         }
-         else
-         {
-            SET_REGISTRY( USERIO_SCREENSAVER,0 );
-         }
+         handleCheckbox( request->getParam("item")->value(), request->getParam("state")->value() );
       }
 
       request->send( 200,"text/plain","OK" );
@@ -837,6 +840,12 @@ void WebServer::setupAsyncServer()
       request->redirect("/manager");
    });
 
+   m_webServer->on("/runtimeinfo", HTTP_POST, [](AsyncWebServerRequest *request)
+   {
+      getRunTimeInfo();
+      request->send(204);
+   });
+
    // if we reboot then we also clear down the factor reset marker if it exists
 
    m_webServer->on("/reboot", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -855,4 +864,26 @@ void WebServer::setupAsyncServer()
    m_webServer->begin();
 }
 
+void  WebServer::handleCheckbox( const String &item,const String &state )
+{
+   bool active = (state == "1" );
+
+   PW_MSG( "Checkbox item %s state (%s)",item.c_str(),state.c_str() );
+
+   if ( item == "ssaver" )
+   {
+      if ( active )
+      {
+         SET_REGISTRY( USERIO_SCREENSAVER,1 );
+      }
+      else
+      {
+         SET_REGISTRY( USERIO_SCREENSAVER,0 );
+      }
+   }
+   else if ( item == "udpdebug" )
+   {
+      setUdpDebugState( (active ? DEBUG_ON : DEBUG_OFF ) );
+   }
+}
 

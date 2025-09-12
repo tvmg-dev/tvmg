@@ -461,10 +461,10 @@ void  Measurement::sendUpdate()
       percentOk = 100;
       if ( state.emonFails )
       {
-         percentOk = (100.0 * state.emonSent) / (state.emonFails + state.emonSent);
+         percentOk = (100.0 *  (state.emonSent - state.emonFails)) / state.emonSent;
       }
 
-      snprintf( line,sizeof(line),"EmonCMS Sent: %u, Failed: %u - (%.1f %% Ok)\n",state.emonSent,state.emonFails,percentOk );
+      snprintf( line,sizeof(line),"EmonCMS Submitted: %u, Failed: %u - (%.1f %% Ok)\n",state.emonSent,state.emonFails,percentOk );
       commsStr += line;
    }
 
@@ -473,10 +473,10 @@ void  Measurement::sendUpdate()
       percentOk = 100;
       if ( m_dailySamplesFailed )
       {
-         percentOk = (100.0 * m_dailySamples) / (m_dailySamples + m_dailySamplesFailed);
+         percentOk = (100.0 * (m_dailySamples - m_dailySamplesFailed)) / m_dailySamples;
       }
 
-      snprintf( line,sizeof(line),"Samples: %u, Failed: %u - (%.1f %% Ok)\n",m_dailySamples,m_dailySamplesFailed,percentOk );
+      snprintf( line,sizeof(line),"Sampled: %u, Failed: %u - (%.1f %% Ok)\n",m_dailySamples,m_dailySamplesFailed,percentOk );
       commsStr += line;
    }
 

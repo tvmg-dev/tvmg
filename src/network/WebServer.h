@@ -14,6 +14,7 @@ public:
 
 private:
    void setupAsyncServer();
+   void handleCheckbox( const String &item,const String &state );
 
    AsyncWebServer *m_webServer;
    Networking     *m_networking;

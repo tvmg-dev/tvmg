@@ -24,8 +24,11 @@ extern void  getModbusStats( uint32_t *requests,uint32_t *fails );
 
 //----------------------------------------------------------------------
 
+enum DebugState { DEBUG_ON, DEBUG_OFF };
+
 extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
+extern void  setUdpDebugState( DebugState state );
 
 //----------------------------------------------------------------------
 // Reading cJSON fields etc
