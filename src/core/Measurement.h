@@ -2,6 +2,7 @@
 #define MEASUREMENT_H
 
 #include <time.h>
+#include <freertos/semphr.h>
 
 #include "utils.h"
 #include "src/sensors/TemperatureModule.h"
@@ -35,6 +36,9 @@ public:
    const Sample   &getLastSample();
    bool  didDailyUpdate();
 
+   static int   takeSampleMutex( int ms );
+   static void  releaseSampleMutex();
+
 private:
    void  saveLastSample();
    bool  shouldSendDailyUpdate();
@@ -58,6 +62,8 @@ private:
    uint32_t    m_dailyEmonSent;
    uint32_t    m_dailyEmonFailed;
 
+   static SemaphoreHandle_t   s_sampleMutex;
+   static uint32_t            s_mutexAcquiredMillis;
 };
 
 #endif

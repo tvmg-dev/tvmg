@@ -542,7 +542,7 @@ void WebServer::setupAsyncServer()
       response->addHeader("Connection", "close");
       request->send(response);
 
-      Networking::releaseNewMutex();
+      Networking::releaseNetworkMutex();
    },
    [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
    {
@@ -552,7 +552,7 @@ void WebServer::setupAsyncServer()
          updatePos = 0;
          buffs = 0;
 
-         if ( Networking::takeNewMutex( 10000 ) == 1 )
+         if ( Networking::takeNetworkMutex( 10000 ) == 1 )
          {
             PW_DEBUG( "server - update with %s",filename.c_str() );
 
@@ -565,7 +565,7 @@ void WebServer::setupAsyncServer()
          {
             m_networking->setUpdateProgress( -1,filename,false );
 
-            Networking::releaseNewMutex();
+            Networking::releaseNetworkMutex();
 
             return request->send(400, "text/plain", "OTA could not begin");
          }
@@ -810,10 +810,10 @@ void WebServer::setupAsyncServer()
          return request->requestAuthentication();
       }
 
-      if ( Networking::takeNewMutex( 100 ) == 1 )
+      if ( Networking::takeNetworkMutex( 100 ) == 1 )
       {
          getRunTimeInfo();
-         Networking::releaseNewMutex();
+         Networking::releaseNetworkMutex();
 #if 1
          // cause task watchog
          uint32_t start = millis();
@@ -828,10 +828,10 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/debug", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      if ( Networking::takeNewMutex( 100 ) == 1 )
+      if ( Networking::takeNetworkMutex( 100 ) == 1 )
       {
          getRunTimeInfo();
-         Networking::releaseNewMutex();
+         Networking::releaseNetworkMutex();
       }
 
       request->redirect("/manager");

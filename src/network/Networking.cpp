@@ -77,10 +77,10 @@ void  backgroundThread( void *params )
                // releasing the web-client in sendToEmonCMS().  If we can't get
                // the mutex (e.g. OTA download occuring) then we simply don't send.
 
-               if ( Networking::takeNewMutex( EMON_ACQUIRE_MUTEX_MS ) == 1 )
+               if ( Networking::takeNetworkMutex( EMON_ACQUIRE_MUTEX_MS ) == 1 )
                {
                   sendToEmonCMS( data->emonFeedId,data->value );
-                  Networking::releaseNewMutex();
+                  Networking::releaseNetworkMutex();
                }
             }
             else
@@ -246,7 +246,7 @@ void  Emailer::initialise()
 
 bool Emailer::sendEmail( const char *recipient,const char *subject,const String &msg )
 {
-   if ( m_sender && Networking::takeNewMutex( EMAIL_ACQUIRE_MUTEX_MS ) == 1 )
+   if ( m_sender && Networking::takeNetworkMutex( EMAIL_ACQUIRE_MUTEX_MS ) == 1 )
    {
       // Release the web-client before we go onto send the message
 
@@ -270,7 +270,7 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
          PW_WARN( "Failed to send email %s, %s", resp.code.c_str(),resp.desc.c_str() );
       }
 
-      Networking::releaseNewMutex();
+      Networking::releaseNetworkMutex();
 
       return resp.status;
    }
@@ -290,7 +290,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       PW_MSG( "  attachment %s",fileName );
    }
 
-   if ( m_sender && Networking::takeNewMutex( EMAIL_ACQUIRE_MUTEX_MS ) == 1 )
+   if ( m_sender && Networking::takeNetworkMutex( EMAIL_ACQUIRE_MUTEX_MS ) == 1 )
    {
       // Release the web-client before we go onto send the message
 
@@ -321,7 +321,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
          if ( ! SD.exists( fileName ) )
          {
             PW_WARN( "%s doesn't exist, not sending email",fileName );
-            Networking::releaseNewMutex();
+            Networking::releaseNetworkMutex();
 
             return false;
          }
@@ -344,7 +344,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
          PW_WARN( "Failed to send email %s, %s", resp.code.c_str(),resp.desc.c_str() );
       }
 
-      Networking::releaseNewMutex();
+      Networking::releaseNetworkMutex();
 
       return resp.status;
    }
@@ -358,7 +358,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
 
 AsyncUDP *Networking::s_udp = nullptr;
 uint32_t Networking::s_mutexAcquiredMillis;
-SemaphoreHandle_t Networking::s_newMutex = NULL;
+SemaphoreHandle_t Networking::s_networkMutex = NULL;
 
 Networking::Networking()
           : m_emailer( nullptr ),
@@ -372,9 +372,9 @@ Networking::Networking()
    PW_DEBUG( "Networking::Networking()" );
    PW_MSG( "Networking Startup" );
 
-   if ( !s_newMutex )
+   if ( !s_networkMutex )
    {
-      s_newMutex = xSemaphoreCreateRecursiveMutex();
+      s_networkMutex = xSemaphoreCreateRecursiveMutex();
    }
 
    // set status to defaults, not connected etc.
@@ -595,7 +595,7 @@ void Networking::initialise()
          NULL,                // no input params
          0,                   // Priority
          &backgroundHandle,   // handle
-         1 );                 // Assign to core 0, core 1 used for main loop
+         1 );                 // Assign to core 1, core 1 used for main loop
    }
 }
 
@@ -849,9 +849,9 @@ void  Networking::setUserIO( UserIO *userIO )
    m_userIO = userIO;
 }
 
-int Networking::takeNewMutex( int ms )
+int Networking::takeNetworkMutex( int ms )
 {
-   if ( ! s_newMutex )
+   if ( ! s_networkMutex )
    {
       PW_WARN( "No nw mutex" );
       return -1;
@@ -861,7 +861,7 @@ int Networking::takeNewMutex( int ms )
 
    PW_DEBUG( "Take n/w mutex" );
    startMillis = millis();
-   int ok = xSemaphoreTakeRecursive( s_newMutex,ms * portTICK_PERIOD_MS);
+   int ok = xSemaphoreTakeRecursive( s_networkMutex,ms * portTICK_PERIOD_MS);
 
    if ( ok != pdTRUE )
    {
@@ -876,12 +876,12 @@ int Networking::takeNewMutex( int ms )
    return( ok == pdTRUE );
 }
 
-void  Networking::releaseNewMutex()
+void  Networking::releaseNetworkMutex()
 {
-   if ( s_newMutex )
+   if ( s_networkMutex )
    {
       PW_DEBUG( "n/w mutex held for %d",millis() - s_mutexAcquiredMillis );
-      xSemaphoreGiveRecursive( s_newMutex );
+      xSemaphoreGiveRecursive( s_networkMutex );
    }
 }
 

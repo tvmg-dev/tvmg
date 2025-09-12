@@ -927,7 +927,7 @@ void loop(void)
    // Take the networking mutex, it's a recursive mutex so if we take
    // again in this task, e.g. to send an email then no problem.
 
-   if ( Networking::takeNewMutex( NETWORK_ALLOWED_BUSY_MS ) != 1 )
+   if ( Networking::takeNetworkMutex( NETWORK_ALLOWED_BUSY_MS ) != 1 )
    {
       PW_ERROR( "Timeout on network mutex, rebooting..." );
       config->setPersistentInt( k_rebootType,LOOP_MUTEX );
@@ -1034,7 +1034,7 @@ void loop(void)
 
    // Now we release the mutex and delay for next cycle
 
-   Networking::releaseNewMutex();
+   Networking::releaseNetworkMutex();
 
    PW_DEBUG( "Loop Delay %u",deltaMillis );
 

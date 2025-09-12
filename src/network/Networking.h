@@ -3,7 +3,6 @@
 
 #include <String.h>
 #include <AsyncUDP.h>
-#include <mutex>
 
 class WebServer;
 class Emailer;
@@ -52,8 +51,8 @@ public:
    static void  releaseWebClient();
    WebServer   *getWebServer();
 
-   static int   takeNewMutex( int ms );
-   static void  releaseNewMutex();
+   static int   takeNetworkMutex( int ms );
+   static void  releaseNetworkMutex();
 
    static   AsyncUDP    *getUDP();
 
@@ -67,7 +66,7 @@ private:
    bool              m_hasUpdated;
 
    static AsyncUDP            *s_udp;
-   static SemaphoreHandle_t   s_newMutex;
+   static SemaphoreHandle_t   s_networkMutex;
    static uint32_t            s_mutexAcquiredMillis;
 };
 

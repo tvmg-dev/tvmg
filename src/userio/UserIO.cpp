@@ -20,6 +20,18 @@
 
 extern Storage *storageModule;
 
+static TaskHandle_t  threadHandle = NULL;
+
+void  updateThread( void *params )
+{
+   int i = 0;
+   while( true )
+   {
+      PW_MSG( "IO Update %d",i++ );
+      delay( 3000 );
+   }
+}
+
 UserIO::UserIO()
       : m_display( nullptr ),
         m_currentScreen( NONE ),
@@ -58,6 +70,15 @@ void  UserIO::initialise()
    PW_DEBUG( "UserIO::initialise" );
 
    m_display->initialise();
+
+   xTaskCreatePinnedToCore(
+      updateThread,  // thread fn
+      "UserIO",      // Name of the task
+      (3 * 1024),    // Stack size in bytes
+      NULL,          // no input params
+      0,             // Priority
+      &threadHandle, // handle
+      0 );           // Assign to core 0, core 1 used for main loop
 }
 
 void  UserIO::setMeasurement( Measurement *measurement )

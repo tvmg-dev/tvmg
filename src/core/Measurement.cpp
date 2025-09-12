@@ -7,6 +7,45 @@
 
 #define INVALID_UPDATE_HOUR  25
 
+SemaphoreHandle_t Measurement::s_sampleMutex = nullptr;
+uint32_t Measurement::s_mutexAcquiredMillis;
+
+int Measurement::takeSampleMutex( int ms )
+{
+   if ( ! s_sampleMutex )
+   {
+      PW_WARN( "No sample mutex" );
+      return -1;
+   }
+
+   uint32_t startMillis;
+
+   PW_DEBUG( "Take sample mutex" );
+   startMillis = millis();
+   int ok = xSemaphoreTakeRecursive( s_sampleMutex,ms * portTICK_PERIOD_MS);
+
+   if ( ok != pdTRUE )
+   {
+      PW_WARN( "Failed to take nw mutex" );
+   }
+   else
+   {
+      s_mutexAcquiredMillis = millis();
+      PW_DEBUG( "n/w mutex took %d ms",s_mutexAcquiredMillis - startMillis );
+   }
+
+   return( ok == pdTRUE );
+}
+
+void  Measurement::releaseSampleMutex()
+{
+   if ( s_sampleMutex )
+   {
+      PW_DEBUG( "sample mutex held for %d",millis() - s_mutexAcquiredMillis );
+      xSemaphoreGiveRecursive( s_sampleMutex );
+   }
+}
+
 Measurement::Sample::Sample()
 {
    m_sampleTime = 0;
