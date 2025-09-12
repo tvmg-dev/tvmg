@@ -193,7 +193,6 @@ void  Measurement::takeSample( void )
    {
       TempSensor *tempSensor;
 
-      TemperatureModule::takeMutex();
       while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
       {
          m_newSample.m_tempSensors[ i ] = tempSensor;
@@ -201,8 +200,7 @@ void  Measurement::takeSample( void )
          PW_MSG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
          i++;
       }
-      TemperatureModule::releaseMutex();
-   }
+  }
    else if ( sensorIndex == 1 )
    {
       i = 0;
@@ -310,7 +308,6 @@ void  Measurement::updateEmon()
    // temps have to be > invalid and < error temp - seen the DS's return +128
    // when master monitor has not retrieved sensible values
 
-   TemperatureModule::takeMutex();
    while ( (tsensor = m_lastSample.m_tempSensors[ i++ ] ) )
    {
       if ( tsensor->m_emonFeedId != 0 && tsensor->m_temp > TEMPERATURE_INVALID &&
@@ -319,7 +316,6 @@ void  Measurement::updateEmon()
          m_networking->sendToEmonCMS( tsensor->m_emonFeedId,tsensor->m_temp );
       }
    }
-   TemperatureModule::releaseMutex();
 
    i = 0;
    const PowerSensor *sensor;
@@ -398,7 +394,6 @@ void  Measurement::sendUpdate()
    PW_MSG( "Sending daily update" );
 
    int i = 0;
-   TemperatureModule::takeMutex();
    while ( m_lastSample.m_tempSensors[ i ] )
    {
       const TempSensor  *sensor = m_lastSample.m_tempSensors[ i ];
@@ -412,7 +407,6 @@ void  Measurement::sendUpdate()
 
       i++;
    }
-   TemperatureModule::releaseMutex();
 
    i = 0;
    const PowerSensor *sensor;
@@ -517,4 +511,49 @@ void  Measurement::sendUpdate()
 bool  Measurement::didDailyUpdate()
 {
    return m_dailyUpdated;
+}
+
+bool Measurement::getTemperature( uint8_t id,float *temp )
+{
+   bool found = false;
+   int   i = 0;
+
+   // This is not thread safe, the caller should ensure that the sample
+   // mutex is held prior to calling
+
+   if ( temp )
+   {
+      while ( m_lastSample.m_tempSensors[ i ] )
+      {
+         const TempSensor  *sensor = m_lastSample.m_tempSensors[ i ];
+
+         if ( sensor && sensor->m_id == id )
+         {
+            *temp = sensor->m_temp;
+            found = true;
+            break;
+         }
+         i++;
+      }
+   }
+
+   return found;
+}
+
+bool Measurement::isTemperatureDataAvailable()
+{
+   // if we have at least 1 sensor then we have temperatures available
+   return( m_tempModule->readNextSensor( 0 ) != nullptr );
+}
+
+bool Measurement::isPowerDataAvailable()
+{
+   // if we have at least 1 sensor then we have power data available
+   return( m_powerModule->readNextSensor( 0 ) != nullptr );
+}
+
+bool Measurement::isHeatMeterDataAvailable()
+{
+   // if we have at least 1 sensor then we have heat meter data available
+   return( m_heatMeterModule->readNextSensor( 0 ) != nullptr );
 }

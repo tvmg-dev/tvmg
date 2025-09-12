@@ -276,7 +276,6 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       // Output header line if a new file
 
-      TemperatureModule::takeMutex();
       for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
       {
          const TempSensor  *sensor;
@@ -295,7 +294,6 @@ void  Storage::storeSample( const Measurement::Sample &sample )
          snprintf( line,128,",%.1f",sensor->m_temp );
          dataString += line;
       }
-      TemperatureModule::releaseMutex();
 
       for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
       {

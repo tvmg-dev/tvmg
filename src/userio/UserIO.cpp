@@ -52,7 +52,6 @@ void  updateThread( void *params )
          }
          else
          {
-            userIO->update();
             userIO->showNext();
          }
          END_TIMING;
@@ -104,7 +103,7 @@ void  UserIO::initialise()
    xTaskCreatePinnedToCore(
       updateThread,  // thread fn
       "UserIO",      // Name of the task
-      (3 * 1024),    // Stack size in bytes
+      (5 * 1024),    // Stack size in bytes
       this,          // no input params
       0,             // Priority
       &threadHandle, // handle
@@ -270,94 +269,61 @@ void  UserIO::showEnergy()
    show( m_currentLines );
 }
 
-TempSensor *UserIO::findTempSensor( uint8_t id )
-{
-   TempSensor *sensor = nullptr;
-
-   int i = 0;
-   while ( m_sample.m_tempSensors[ i ] )
-   {
-      if ( m_sample.m_tempSensors[ i ]->m_id == id )
-      {
-         sensor = m_sample.m_tempSensors[ i ];
-         break;
-      }
-      i++;
-   }
-
-   return( sensor );
-}
-
 void  UserIO::showTemps()
 {
+   static int k_waitMutexMS = 100;
+
    char  line[ MAX_DISPLAY_COLUMNS ];
 
-   TempSensor *hpFlow = findTempSensor( HEAT_PUMP_FLOW );
-   TempSensor *hpReturn = findTempSensor( HEAT_PUMP_RETURN );
-
-   TempSensor *HeatingFlow = findTempSensor( HEATING_FLOW );
-   TempSensor *HeatingReturn = findTempSensor( HEATING_RETURN );
-
-   TempSensor *outside = findTempSensor( OUTSIDE );
-
-   if ( hpFlow && hpReturn )
+   if ( m_measurement && m_measurement->takeSampleMutex( k_waitMutexMS ) == 1 )
    {
-      TemperatureModule::takeMutex();
-      snprintf( line,MAX_DISPLAY_COLUMNS,"HP: %3.1f %3.1f (%3.1f)",hpFlow->m_temp,hpReturn->m_temp,hpFlow->m_temp - hpReturn->m_temp );
-      TemperatureModule::releaseMutex();
-      storeLine( 0,line );
+      float flowT,returnT;
+
+      if ( m_measurement->getTemperature( HEAT_PUMP_FLOW,&flowT ) &&
+                     m_measurement->getTemperature( HEAT_PUMP_RETURN,&returnT ) )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"HP: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
+         storeLine( 0,line );
+      }
+
+      if ( m_measurement->getTemperature( HEATING_FLOW,&flowT ) &&
+                     m_measurement->getTemperature( HEATING_RETURN,&returnT ) )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
+         storeLine( 1,line );
+      }
+
+      if ( m_measurement->getTemperature( OUTSIDE,&flowT ) )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"OS: %3.1f",flowT );
+         storeLine( 2,line );
+      }
+
+      if ( m_measurement->getTemperature( LOFT_FLOW,&flowT ) &&
+                     m_measurement->getTemperature( LOFT_RETURN,&returnT ) )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"2: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
+         storeLine( 3,line );
+      }
+
+      if ( m_measurement->getTemperature( FIRST_FLOW,&flowT ) &&
+                     m_measurement->getTemperature( FIRST_RETURN,&returnT ) )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"1: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
+         storeLine( 4,line );
+      }
+
+      if ( m_measurement->getTemperature( GND_FLOW,&flowT ) &&
+                     m_measurement->getTemperature( GND_RETURN,&returnT ) )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"0: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
+         storeLine( 5,line );
+      }
+
+      show( m_currentLines );
+
+      m_measurement->releaseSampleMutex();
    }
-
-   if ( HeatingFlow && HeatingReturn )
-   {
-      TemperatureModule::takeMutex();
-      snprintf( line,MAX_DISPLAY_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",HeatingFlow->m_temp,HeatingReturn->m_temp,HeatingFlow->m_temp - HeatingReturn->m_temp );
-      TemperatureModule::releaseMutex();
-      storeLine( 1,line );
-   }
-
-   if ( outside )
-   {
-      TemperatureModule::takeMutex();
-      snprintf( line,MAX_DISPLAY_COLUMNS,"OS: %3.1f",outside->m_temp );
-      TemperatureModule::releaseMutex();
-      storeLine( 2,line );
-   }
-
-   TempSensor *loftFlow = findTempSensor( LOFT_FLOW );
-   TempSensor *loftReturn = findTempSensor( LOFT_RETURN );
-
-   if ( loftFlow && loftReturn )
-   {
-      TemperatureModule::takeMutex();
-      snprintf( line,MAX_DISPLAY_COLUMNS,"2 : %3.1f %3.1f (%3.1f)",loftFlow->m_temp,loftReturn->m_temp,loftFlow->m_temp - loftReturn->m_temp );
-      TemperatureModule::releaseMutex();
-      storeLine( 3,line );
-   }
-
-   TempSensor *firstFlow = findTempSensor( FIRST_FLOW );
-   TempSensor *firstReturn = findTempSensor( FIRST_RETURN );
-
-   if ( firstFlow && firstReturn )
-   {
-      TemperatureModule::takeMutex();
-      snprintf( line,MAX_DISPLAY_COLUMNS,"1 : %3.1f %3.1f (%3.1f)",firstFlow->m_temp,firstReturn->m_temp,firstFlow->m_temp - firstReturn->m_temp );
-      TemperatureModule::releaseMutex();
-      storeLine( 4,line );
-   }
-
-   TempSensor *groundFlow = findTempSensor( GND_FLOW );
-   TempSensor *groundReturn = findTempSensor( GND_RETURN );
-
-   if ( groundFlow && groundReturn )
-   {
-      TemperatureModule::takeMutex();
-      snprintf( line,MAX_DISPLAY_COLUMNS,"0 : %3.1f %3.1f (%3.1f)",groundFlow->m_temp,groundReturn->m_temp,groundFlow->m_temp - groundReturn->m_temp );
-      TemperatureModule::releaseMutex();
-      storeLine( 5,line );
-   }
-
-   show( m_currentLines );
 }
 
 void  UserIO::showHeatMeter()
@@ -417,6 +383,10 @@ void  UserIO::showLGStatus()
 
 void  UserIO::show( ScreenType type )
 {
+   m_currentScreen = type;
+
+   // If we're in screensaver mode then simply update that
+
    if ( GET_REGISTRY_INT( USERIO_SCREENSAVER ) == 1 )
    {
       m_display->updateScreensaver();
@@ -452,6 +422,9 @@ void  UserIO::show( ScreenType type )
       case LG_STATUS:
          showLGStatus();
          break;
+      case OTA_UPDATE:
+         // Do nothing, networking is updating directly
+         break;
       default :
          PW_WARN( "Unknown display type" );
    }
@@ -459,7 +432,13 @@ void  UserIO::show( ScreenType type )
 
 bool  UserIO::setNextScreen()
 {
-   bool  retVal = true;
+   bool  retVal = false;
+
+   // if OTA update then we don't make any changes
+   if ( m_currentScreen == OTA_UPDATE )
+   {
+      return true;
+   }
 
    // advance the current screen
    switch( m_currentScreen )
@@ -468,6 +447,9 @@ bool  UserIO::setNextScreen()
          m_currentScreen = STORAGE_STATUS;
          break;
       case STORAGE_STATUS:
+         m_currentScreen = COMMS_STATUS;
+         break;
+      case COMMS_STATUS:
          m_currentScreen = ENERGY;
          break;
       case ENERGY:
@@ -477,9 +459,6 @@ bool  UserIO::setNextScreen()
          m_currentScreen = HEAT_METERS;
          break;
       case HEAT_METERS:
-         m_currentScreen = COMMS_STATUS;
-         break;
-      case COMMS_STATUS:
          m_currentScreen = LG_STATUS;
          break;
       case LG_STATUS:
@@ -488,32 +467,47 @@ bool  UserIO::setNextScreen()
          break;
    }
 
-   // Now check if possible
+   // Now check if possible, first check for non-measurement related screens
    switch ( m_currentScreen )
    {
-      case TEMPERATURES:
-         retVal = isTemperatureDataAvailable();
-         break;
-      case ENERGY:
-         retVal = isPowerDataAvailable();
-         break;
-      case COMMS_STATUS:
-         if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) != 1 && !m_modbus )
-         {
-            retVal = false;
-         }
-         break;
-      case LG_STATUS:
-         if ( !m_heatPump )
-         {
-            retVal = false;
-         }
-         break;
-      case HEAT_METERS:
-         retVal = isHeatMeterDataAvailable();
+      case NETWORK_STATUS:
+      case STORAGE_STATUS:
+         retVal = true;
          break;
       default:
-         break;
+         retVal = false;
+   }
+
+   // Check we need to find measurement info
+   if ( !retVal && m_measurement )
+   {
+      m_sample = m_measurement->getLastSample();
+      switch ( m_currentScreen )
+      {
+         case TEMPERATURES:
+            retVal = m_measurement->isTemperatureDataAvailable();
+            break;
+         case ENERGY:
+            retVal = m_measurement->isPowerDataAvailable();
+            break;
+         case COMMS_STATUS:
+            if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) == 1 || m_modbus )
+            {
+               retVal = true;
+            }
+            break;
+         case LG_STATUS:
+            if ( m_heatPump )
+            {
+               retVal = true;
+            }
+            break;
+         case HEAT_METERS:
+            retVal = m_measurement->isHeatMeterDataAvailable();
+            break;
+         default:
+            break;
+      }
    }
 
    return (retVal);
@@ -521,6 +515,13 @@ bool  UserIO::setNextScreen()
 
 void  UserIO::showNext()
 {
+   // Don't update if we're updating or not have a measurement yet
+
+   if ( m_currentScreen == OTA_UPDATE  || ! m_measurement )
+   {
+      return;
+   }
+
    while ( ! setNextScreen() )
    {
       PW_DEBUG( "Try screen %d",m_currentScreen );
@@ -531,48 +532,4 @@ void  UserIO::showNext()
 void  UserIO::refresh()
 {
    show( m_currentScreen );
-}
-
-void  UserIO::update()
-{
-   if ( m_measurement )
-   {
-      m_sample = m_measurement->getLastSample();
-   }
-}
-
-bool  UserIO::isTemperatureDataAvailable()
-{
-   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
-   {
-      if ( m_sample.m_tempSensors[ i ] )
-      {
-         return true;
-      }
-   }
-
-   return false;
-}
-
-bool  UserIO::isPowerDataAvailable()
-{
-   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
-   {
-      if ( m_sample.m_powerSensors[ i ] )
-      {
-         return true;
-      }
-   }
-
-   return false;
-}
-
-bool  UserIO::isHeatMeterDataAvailable()
-{
-   if ( m_heatMeter && m_heatMeter->isMeterAvailable() )
-   {
-      return true;
-   }
-
-   return false;
 }

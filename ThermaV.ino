@@ -171,6 +171,11 @@ void  handleTouch1()
    userIO->clear();
    userIO->updateLine( 1, "BT-1 pressed" );
 
+   if ( Measurement::takeSampleMutex( 1000 ) != 1 )
+   {
+      return;
+   }
+
    String   msgString;
    char     message[ 128 ];
 
@@ -186,19 +191,19 @@ void  handleTouch1()
 
    msgString = message;
 
-   TemperatureModule::takeMutex();
-   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
-      if ( s_sample.m_tempSensors[ i ] )
+      for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
       {
-         const TempSensor  *sensor = s_sample.m_tempSensors[ i ];
+         if ( s_sample.m_tempSensors[ i ] )
+         {
+            const TempSensor  *sensor = s_sample.m_tempSensors[ i ];
 
-         snprintf( message,sizeof(message),"%30s,%.1f\n",sensor->m_name,sensor->m_temp );
+            snprintf( message,sizeof(message),"%30s,%.1f\n",sensor->m_name,sensor->m_temp );
 
-         msgString += message;
+            msgString += message;
+         }
       }
    }
-   TemperatureModule::releaseMutex();
 
    int i = 0;
    const PowerSensor *sensor;
@@ -207,12 +212,16 @@ void  handleTouch1()
       snprintf( message,sizeof(message),"%30s,%.1f\n",sensor->m_name,sensor->m_power,sensor->m_energy );
       msgString += message;
    }
+
+   Measurement::releaseSampleMutex();
+
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
 
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName() );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG,true );
+
 }
 
 void  handleTouch2()

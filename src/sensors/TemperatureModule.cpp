@@ -2,9 +2,9 @@
 #include <WiFi.h>
 #include "AsyncUDP.h"
 
-#include <mutex>
-
 #include "src/core/utils.h"
+#include "src/core/Measurement.h"
+
 #include "src/config/Config.h"
 #include "src/config/hwconfig.h"
 #include "src/network/Networking.h"
@@ -15,8 +15,6 @@
 #define TEMPERATURE_MIN_SAMPLING_PERIOD_MS   15000
 
 extern Networking *networking;
-
-std::mutex  tempSensorMutex;
 
 char  s_udpPacket[ 1024 ];
 
@@ -269,6 +267,7 @@ TempSensor  *TemperatureModule::readNextSensor( uint8_t index )
 void TemperatureModule::addUDPListener()
 {
    uint16_t  listenPort = GET_REGISTRY_INT( LISTEN_UDP_PORT );
+   static int k_waitMuxexMs = 2000;  // wait up to 2s to get the sample mutex
 
    PW_MSG( "Adding UDP listener %d",listenPort );
    if( listenPort != -1 && m_udp && m_udp->listen( listenPort ) ) {
@@ -296,8 +295,15 @@ void TemperatureModule::addUDPListener()
                      if ( tempSensor->m_isValid && tempSensor->m_sensor.m_isRemote && tempSensor->m_sensor.m_id == id )
                      {
                         PW_MSG( "UDP: Assign remote temp ID %d %.1f",id,value );
-                        std::lock_guard<std::mutex> lock(tempSensorMutex);
-                        tempSensor->m_sensor.m_temp = value;
+                        if ( Measurement::takeSampleMutex( k_waitMuxexMs ) == 1 )
+                        {
+                           tempSensor->m_sensor.m_temp = value;
+                           Measurement::releaseSampleMutex();
+                        }
+                        else
+                        {
+                           PW_ERROR( "UDP: Failed to get sample mutex in %d ms",k_waitMuxexMs );
+                        }
                      }
                   }
                }
@@ -468,15 +474,3 @@ void  TemperatureModule::localBroadcastData()
 
    cJSON_Delete( root );
 }
-
-void TemperatureModule::takeMutex()
-{
-   tempSensorMutex.lock();
-}
-
-void TemperatureModule::releaseMutex()
-{
-   tempSensorMutex.unlock();
-}
-
-

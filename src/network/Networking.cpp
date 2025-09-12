@@ -787,17 +787,27 @@ void  Networking::setUpdateProgress( int size,const String &filename,bool finish
 
          delay( 2000 );
       }
-
-      return;
    }
-
-   if ( finished )
+   else if ( finished )
    {
       m_hasUpdated = true;
       if ( m_userIO )
       {
          m_userIO->updateLine( 5,"Completed" );
+         delay( 2000 );
       }
+   }
+
+   // restart UserIO updating if failed or finished update, may not do anything
+   // if finished as will reboot
+
+   if ( size == -1 || finished )
+   {
+      if ( m_userIO )
+      {
+         m_userIO->show( UserIO::NETWORK_STATUS );
+      }
+
       return;
    }
 
@@ -814,6 +824,9 @@ void  Networking::setUpdateProgress( int size,const String &filename,bool finish
    {
       PW_MSG( "OTA update with %s",filename.c_str() );
 
+      // set userIO to OTA_UPDATE, so the display is updated by calls to this method
+
+      m_userIO->show( UserIO::OTA_UPDATE );
       m_userIO->clear();
       m_userIO->updateLine( 1,"Updating :" );
 

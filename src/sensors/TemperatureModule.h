@@ -2,7 +2,6 @@
 #define TEMPERATURE_MODULE_H
 
 #include <Arduino.h>
-#include <mutex>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -51,8 +50,6 @@ public:
    void  initialise();
    TempSensor  *readNextSensor( uint8_t index );
    float_t     getTemperature( uint8_t tempId );
-   static void takeMutex();
-   static void releaseMutex();
 
 private:
    typedef struct {

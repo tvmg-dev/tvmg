@@ -7,8 +7,10 @@
 
 #include "src/core/Measurement.h"
 #include "src/network/Networking.h"
-#include "src/sensors/LGHeatPump.h"
 #include "src/sensors/HeatMeter.h"
+#include "src/sensors/LGHeatPump.h"
+#include "src/sensors/PowerModule.h"
+#include "src/sensors/TemperatureModule.h"
 
 class ModbusMaster;
 
@@ -18,11 +20,12 @@ public:
    enum  ScreenType {
       NETWORK_STATUS,
       STORAGE_STATUS,
+      COMMS_STATUS,
       ENERGY,
       TEMPERATURES,
       HEAT_METERS,
-      COMMS_STATUS,
       LG_STATUS,
+      OTA_UPDATE,
       NONE
    };
 
@@ -40,7 +43,6 @@ public:
    void  showNext();
    void  show( ScreenType type );
    void  refresh();
-   void  update();
    void  storeLine( uint8_t lineNum,char *line );
 
 private:
@@ -53,11 +55,6 @@ private:
    void  showHeatMeter();
    void  showCommsStatus();
    void  showLGStatus();
-
-   TempSensor *findTempSensor( uint8_t id );
-   bool  isTemperatureDataAvailable();
-   bool  isPowerDataAvailable();
-   bool  isHeatMeterDataAvailable();
 
    Display              *m_display;
    ScreenType           m_currentScreen;

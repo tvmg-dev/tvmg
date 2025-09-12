@@ -35,6 +35,11 @@ public:
    void     takeSample();
    const Sample   &getLastSample();
    bool  didDailyUpdate();
+   bool  isTemperatureDataAvailable();
+   bool  isPowerDataAvailable();
+   bool  isHeatMeterDataAvailable();
+
+   bool getTemperature( uint8_t id,float *temp );
 
    static int   takeSampleMutex( int ms );
    static void  releaseSampleMutex();
