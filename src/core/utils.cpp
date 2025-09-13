@@ -424,6 +424,20 @@ void setUdpDebugState( DebugState state )
    }
 }
 
+DebugState getUdpDebugState()
+{
+   std::lock_guard<std::mutex> lock(loggingMutex);
+
+   DebugState state = DEBUG_OFF;
+
+   if ( logToUDP == isTrue )
+   {
+      state = DEBUG_ON;
+   }
+
+   return state;
+}
+
 void msgLog( LOGGING_LEVEL level,const char *format,... )
 {
    // 1st check to see if we have configured yet, use the serialLoggingEnabled
@@ -489,10 +503,15 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
          }
       }
 
-      if ( GET_REGISTRY_INT( LOG_TO_UDP_PORT ) > 0 )
+      int32_t port = GET_REGISTRY_INT( LOG_TO_UDP_PORT );
+      if ( port > 0 )
+      {
+         UDPDebugPort = static_cast<uint16_t>(port);
+      }
+
+      if ( GET_REGISTRY_INT( UDP_LOGGING_ENABLE ) > 0 )
       {
          logToUDP = isTrue;
-         UDPDebugPort = GET_REGISTRY_INT( LOG_TO_UDP_PORT );
       }
    }
 

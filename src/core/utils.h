@@ -29,6 +29,7 @@ enum DebugState { DEBUG_ON, DEBUG_OFF };
 extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
 extern void  setUdpDebugState( DebugState state );
+extern DebugState getUdpDebugState();
 
 //----------------------------------------------------------------------
 // Reading cJSON fields etc

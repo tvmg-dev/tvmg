@@ -207,11 +207,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
          <input type="submit" id="submit" value="Reboot">
          </form>
         </td></tr>
-         <tr>
-         <td colspan="2"> <label><input id="ssaver" onchange="checkbox(this)"
-               type="checkbox" checked> Display screen saver (usually active 5 minutes after boot)</label><br>
-         </td></tr>
-         %DEBUG_SECTION%
+         %OPTIONS_SECTION%
         </table>
       <div id="spacer_5"></div>
      </fieldset>

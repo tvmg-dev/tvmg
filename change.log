@@ -1,3 +1,4 @@
+v25.09.04 - Ensure manager webpage is in sync with current settings
 v25.09.03 - Fix file upload, now returns to manager screen
             Fix statistics send in daily email (% calc. error)
             Only measure one sensor per sample period, record sample stats

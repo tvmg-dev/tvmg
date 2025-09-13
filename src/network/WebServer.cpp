@@ -59,9 +59,9 @@ const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
 
 //----------------------------------------------------------------------
-// Additional section for debug purposes
+// Additional section for options purposes
 
-String debugSection;
+String optionsSection;
 
 //----------------------------------------------------------------------
 
@@ -431,9 +431,9 @@ String processor(const String& var)
     return "";
   }
 
-   if(var == "DEBUG_SECTION")
+   if(var == "OPTIONS_SECTION")
    {
-      return debugSection;
+      return optionsSection;
    }
 
    return String( "N/A" );
@@ -485,11 +485,15 @@ WebServer::~WebServer()
    PW_DEBUG( "~WebServer()" );
 }
 
+const char *initialSSaverCheckbox = R"raw(
+<tr><td colspan="2"> <label><input id="ssaver" onchange="checkbox(this)"
+type="checkbox" checked> Display screen saver (usually activates 5 minutes after boot)</label><br>
+</td></tr>)raw";
+
 const char *initalUdpCheckbox  = R"raw(
 <tr><td colspan="2"> <label><input id="udpdebug" onchange="checkbox(this)"
- type="checkbox" checked> UDP Debug Active</label><br>
-</td></tr>
-)raw";
+type="checkbox" checked> UDP Debug Active</label><br>
+</td></tr>)raw";
 
 const char *runtimeInfoButton  = R"raw(
 <tr><td><p>Generate Runtime Info (see logs)</p></td>
@@ -497,32 +501,44 @@ const char *runtimeInfoButton  = R"raw(
 <input type="submit" id="submit" value="RunTime Info">
 </form></td></tr>)raw";
 
+// Generate the options settings.  We need to generate this as any manager
+// page refresh/reload will perform a GET for the page so we need to ensure
+// the page reflects setting when reloaded.
+
+void WebServer::generateOptionsSection()
+{
+//   PW_MSG( "gsc entry: %s",optionsSection.c_str() );
+   optionsSection = initialSSaverCheckbox;
+
+   // Has the screen saver been disabled ?
+
+   int32_t ssaverState = GET_REGISTRY_INT( USERIO_SCREENSAVER );
+   if ( ssaverState == 0 )
+   {
+      optionsSection.replace( "checked","" );
+   }
+
+   // Show the debug section, we can add lines here as required
+
+   if ( GET_REGISTRY_INT( WEBPAGE_DEBUG_SECTION ) == 1 )
+   {
+      String udpCheckbox = initalUdpCheckbox;
+      if ( getUdpDebugState() == DEBUG_OFF )
+      {
+         udpCheckbox.replace( "checked","" );
+      }
+      optionsSection += udpCheckbox;
+
+      optionsSection += String( runtimeInfoButton );
+   }
+//   PW_MSG( "gsc exit: %s",optionsSection.c_str() );
+}
 
 void WebServer::initialise()
 {
    PW_DEBUG( "WebServer::initialise" );
 
-   /* Show the debug section, we can add lines here as required */
-
-   if ( GET_REGISTRY_INT( WEBPAGE_DEBUG_SECTION ) == 1 )
-   {
-      // If the UDP port is defined in config + UDP is enabled then check box on
-      // If UDP port is defined and UDP is disabled then check box is off
-      // If no UDP port then can't have UDP enabled
-
-      if ( GET_REGISTRY_INT( LOG_TO_UDP_PORT ) > 0 )
-      {
-         String udpCheckbox = initalUdpCheckbox;
-         if ( GET_REGISTRY_INT( UDP_LOGGING_ENABLE ) > 0 )
-         {
-            udpCheckbox.replace( "checked","" );
-         }
-
-         debugSection += udpCheckbox;
-      }
-
-      debugSection += String( runtimeInfoButton );
-   }
+   generateOptionsSection();
 
    setupAsyncServer();
 }
@@ -885,5 +901,7 @@ void  WebServer::handleCheckbox( const String &item,const String &state )
    {
       setUdpDebugState( (active ? DEBUG_ON : DEBUG_OFF ) );
    }
+
+   generateOptionsSection();
 }
 

@@ -13,6 +13,7 @@ public:
    void initialise();
 
 private:
+   void generateOptionsSection();
    void setupAsyncServer();
    void handleCheckbox( const String &item,const String &state );
 
