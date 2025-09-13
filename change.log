@@ -1,3 +1,10 @@
+v25.09.03 - Fix file upload, now returns to manager screen
+            Fix statistics send in daily email (% calc. error)
+            Only measure one sensor per sample period, record sample stats
+            Oled display processing moved to separate thread
+            Replaced temperature sensor mutex with sample mutex
+            Debug section added to webserver for development diagnostics
+            Reduced memory footprint of config to reclaim ~2kB
 v25.09.02 - Display screen saver (due to some OLED's appearing to fade)
             Fix File upload return to home page, new checkbox for display screen saver
             Heat Meter and Power Meter measurements at 15s intervals
