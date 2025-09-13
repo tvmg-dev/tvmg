@@ -6,13 +6,13 @@
 #include "src/core/utils.h"
 #include "hwconfig.h"
 
-#define VERSION_STR        "v25.09.03d"
+#define VERSION_STR        "v25.09.03"
 
 #define SAMPLING_PERIOD_MS 30000
 
 #define MAX_REGISTRY_ENTRIES 32
-#define MAX_KEY_LENGTH       64
-#define MAX_VALUE_LENGTH     64
+#define MAX_KEY_LENGTH       32
+#define MAX_VALUE_LENGTH     48
 
 #define DEBUG_LOG          "/debug.log"
 
