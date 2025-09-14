@@ -404,20 +404,20 @@ void getRunTimeInfo()
 
 //----------------------------------------------------------------------
 
-// A struct to hold the sensor's name and a unique identifier
-struct SensorInfo {
-    uint8_t unique_id;
-    String name;
-};
-
 // A map to store the sensor data, using a combined key for uniqueness.
 // We'll use a 16-bit integer for the key, as it's a good size for combining enums and a uint8_t.
-static std::map<uint16_t, String> sensorMap;
+static std::map<uint32_t, String> sensorMap;
 
 // Function to generate a unique key from sensor type and id
-static uint16_t generateKey( SensorType type, uint8_t id )
+static uint32_t generateKey( SensorType type, uint32_t id )
 {
-   return (static_cast<uint16_t>(type) << 8) | id;
+   if ( id > 0xFFFFFF )
+   {
+      PW_ERROR( "Invalid id - truncating" );
+      id &= 0xFFFFFF;
+   }
+
+   return (static_cast<uint32_t>(type) << 24) | id;
 }
 
 static const char *sensorTypeName( SensorType type )
@@ -438,9 +438,9 @@ static const char *sensorTypeName( SensorType type )
 }
 
 // Sets the name for a sensor, identified by its type and ID
-void setSensorName( SensorType type, uint8_t id, const String &name )
+void setSensorName( SensorType type, uint32_t id, const String &name )
 {
-   uint16_t key = generateKey(type, id);
+   uint32_t key = generateKey(type, id);
 
    auto it = sensorMap.find( key );
    if ( it != sensorMap.end() )
@@ -448,16 +448,14 @@ void setSensorName( SensorType type, uint8_t id, const String &name )
       PW_ERROR( "sensor map: Id %d already exists for %s",id,sensorTypeName(type) );
       return;
    }
-   else
-   {
-     sensorMap[key] = name;
-   }
+
+   sensorMap[ key ] = name;
 }
 
 // Retrieves the name of a sensor
-const String &getSensorName(SensorType type, uint8_t id)
+const String &getSensorName(SensorType type, uint32_t id)
 {
-   uint16_t key = generateKey(type, id);
+   uint32_t key = generateKey(type, id);
 
    auto it = sensorMap.find( key );
    if (it != sensorMap.end())
@@ -468,6 +466,36 @@ const String &getSensorName(SensorType type, uint8_t id)
    static const String emptyString = "";
    return emptyString;
 }
+
+void debugSensorNameMap()
+{
+   const SensorType allTypes[] = {THERM, POWER, HEATMETER, HEATPUMP};
+
+   for (SensorType type : allTypes)
+   {
+      bool typeHeaderPrinted = false;
+
+      // Loop through the entire map to find entries of the current type
+      for ( const auto& pair : sensorMap )
+      {
+         // Extract the type from the unique key
+         SensorType entryType = static_cast<SensorType>(pair.first >> 24);
+         uint32_t id = pair.first & 0xFFFFFF;
+
+         if (entryType == type)
+         {
+            if (!typeHeaderPrinted)
+            {
+               PW_MSG( "Sensor Type : %s", sensorTypeName( type ) );
+               typeHeaderPrinted = true;
+            }
+
+            PW_MSG( "  Id : %3d - Name : %s",id,pair.second.c_str() );
+         }
+      }
+   }
+}
+
 //----------------------------------------------------------------------
 
 bool  isDebugEnabled()

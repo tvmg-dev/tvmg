@@ -50,6 +50,8 @@ PowerModule::PowerModule( ModbusMaster *modbus )
             pwrSensor->m_sensor.m_energy = ENERGY_INVALID;
             pwrSensor->m_isValid = true;
 
+            setSensorName( POWER,pwrSensor->m_sensor.m_id,pwrSensor->m_name );
+
             PW_DEBUG( "Power: name %s address %u",pwrSensor->m_name,pwrSensor->m_address );
             PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_sensor.m_id,pwrSensor->m_sensor.m_emonFeedId );
             m_numLocalSensors++;

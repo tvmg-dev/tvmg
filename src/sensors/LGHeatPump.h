@@ -82,6 +82,7 @@ enum ModbusType {
 
 typedef struct {
    char        m_name[ MAX_HPREG_NAME + 1 ];    // Friendly name
+   uint8_t     m_id;                            // simple id
    ModbusType  m_type;                          // coil etc,
    uint16_t    m_address;                       // address on modbus
    uint32_t    m_emonFeedId;                    // for emon

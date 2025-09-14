@@ -85,6 +85,8 @@ TemperatureModule::TemperatureModule()
             tempSensor->m_sensor.m_name = tempSensor->m_name;
             tempSensor->m_isValid = true;
 
+            setSensorName( THERM,tempSensor->m_sensor.m_id,tempSensor->m_name );
+
             if ( cJSON_GetObjectItem( sensor,"remote" ) )
             {
                tempSensor->m_sensor.m_temp = TEMPERATURE_INVALID;

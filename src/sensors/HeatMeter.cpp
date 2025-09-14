@@ -45,6 +45,8 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
 
             float_t shc = getFloatFromcJSON( sensor,"shc",4.2 );
 
+            setSensorName( HEATMETER,id,name );
+
             PW_DEBUG( "Found UPS3 : %s",name.c_str() );
 
             m_sensors[ m_numLocalSensors ] = new HeatMeter( new GrundfosUPS3( gpio,mode.c_str() ),m_tempModule,

@@ -27,8 +27,9 @@ extern void  getModbusStats( uint32_t *requests,uint32_t *fails );
 
 enum SensorType { THERM,POWER,HEATMETER,HEATPUMP };
 
-extern void setSensorName( SensorType type, uint8_t id, const String &name );
-extern const String &getSensorName( SensorType type, uint8_t id );
+extern void setSensorName( SensorType type, uint32_t id, const String &name );
+extern const String &getSensorName( SensorType type, uint32_t id );
+extern void debugSensorNameMap();
 
 //----------------------------------------------------------------------
 
