@@ -53,7 +53,6 @@ public:
 private:
    typedef struct {
       TempSensor     m_sensor;                        // sensor essentials
-      char           m_name[ MAX_TEMP_NAME + 1 ];     // Friendly name
       DeviceAddress  m_address;                       // 64 bit address, array of 8 uint8_t
       uint8_t        m_busIndex;                      // index of the sensor on OneWire bus
       float_t        m_calibrationOffset;             // calibration offset
