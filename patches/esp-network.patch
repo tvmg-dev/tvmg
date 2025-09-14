@@ -1,0 +1,12 @@
+# Reducing arduino_events stack size from 4 kiB to 2.5 kiB
+--- arduino/NetworkEvents.cpp	2025-09-14 09:45:34.188621000 +0100
++++ libraries/Network/src/NetworkEvents.cpp	2025-09-14 09:45:39.637753700 +0100
+@@ -62,7 +62,7 @@
+         static_cast<NetworkEvents *>(self)->_checkForEvent();
+       },
+       "arduino_events",  // label
+-      4096,              // event task's stack size
++      2560,              // event task's stack size
+       this, ESP_TASKD_EVENT_PRIO - 1, &_arduino_event_task_handle, ARDUINO_EVENT_RUNNING_CORE
+     );
+     if (!_arduino_event_task_handle) {

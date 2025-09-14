@@ -346,7 +346,7 @@ uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uin
 {
    ModBusRequest  request;
 
-   PW_DEBUG( "modbus: %u sent, %u failed",_u32TotalTransactions,_u32FailedTransactions  );
+   PW_DEBUG( "MB: %u sent, %u failed",_u32TotalTransactions,_u32FailedTransactions  );
 
    PW_DEBUG( "MB: getData %d %d %d",transactionType,u16ReadAddress,u16ReadQty );
 

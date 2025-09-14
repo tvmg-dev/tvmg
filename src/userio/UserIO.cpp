@@ -103,7 +103,7 @@ void  UserIO::initialise()
    xTaskCreatePinnedToCore(
       updateThread,  // thread fn
       "UserIO",      // Name of the task
-      (5 * 1024),    // Stack size in bytes
+      (4 * 1024),    // Stack size in bytes
       this,          // no input params
       0,             // Priority
       &threadHandle, // handle

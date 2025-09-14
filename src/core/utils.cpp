@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <AsyncUDP.h>
 #include <mutex>
+#include <map>
 
 #include <cJSON.h>
 
@@ -400,6 +401,73 @@ void getRunTimeInfo()
       }
    }
 }
+
+//----------------------------------------------------------------------
+
+// A struct to hold the sensor's name and a unique identifier
+struct SensorInfo {
+    uint8_t unique_id;
+    String name;
+};
+
+// A map to store the sensor data, using a combined key for uniqueness.
+// We'll use a 16-bit integer for the key, as it's a good size for combining enums and a uint8_t.
+static std::map<uint16_t, String> sensorMap;
+
+// Function to generate a unique key from sensor type and id
+static uint16_t generateKey( SensorType type, uint8_t id )
+{
+   return (static_cast<uint16_t>(type) << 8) | id;
+}
+
+static const char *sensorTypeName( SensorType type )
+{
+   switch (type)
+   {
+      case THERM:
+         return "Thermometer";
+      case POWER:
+         return "Power";
+      case HEATMETER:
+         return "HeatMeter";
+      case HEATPUMP:
+         return "HeatPump";
+      default:
+         return "Unknown";
+   }
+}
+
+// Sets the name for a sensor, identified by its type and ID
+void setSensorName( SensorType type, uint8_t id, const String &name )
+{
+   uint16_t key = generateKey(type, id);
+
+   auto it = sensorMap.find( key );
+   if ( it != sensorMap.end() )
+   {
+      PW_ERROR( "sensor map: Id %d already exists for %s",id,sensorTypeName(type) );
+      return;
+   }
+   else
+   {
+     sensorMap[key] = name;
+   }
+}
+
+// Retrieves the name of a sensor
+const String &getSensorName(SensorType type, uint8_t id)
+{
+   uint16_t key = generateKey(type, id);
+
+   auto it = sensorMap.find( key );
+   if (it != sensorMap.end())
+   {
+      return it->second;
+   }
+
+   static const String emptyString = "";
+   return emptyString;
+}
 //----------------------------------------------------------------------
 
 bool  isDebugEnabled()
@@ -527,6 +595,18 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       return;
    }
 
+   // we should really take the network mutex here for UDP, beware of deadly
+   // embrace, i.e. we can't in the one core lock network & logging and
+   // the other core lock logging, then network.
+   // this could introduce significant hold off's in UDP enabled runtime
+   // as some activity when networking lock is held can be several seconds
+   // So for now - we don't take the NW mutex and hope UDP broadcast on 1
+   // core doesn't affect IP activity on the other...
+
+   //std::lock_guard<std::mutex> lock(networkingMutex);
+
+   std::lock_guard<std::mutex> lock(loggingMutex);
+
    String  debugString;
 
    if ( logTimestamps == isTrue || !logTimestamps )
@@ -584,18 +664,6 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    {
       debugString += "HPMOD: ";
    }
-
-   // we should really take the network mutex here for UDP, beware of deadly
-   // embrace, i.e. we can't in the one core lock network & logging and
-   // the other core lock logging, then network.
-   // this could introduce significant hold off's in UDP enabled runtime
-   // as some activity when networking lock is held can be several seconds
-   // So for now - we don't take the NW mutex and hope UDP broadcast on 1
-   // core doesn't affect IP activity on the other...
-
-   //std::lock_guard<std::mutex> lock(networkingMutex);
-
-   std::lock_guard<std::mutex> lock(loggingMutex);
 
    va_list args;
    va_start( args,format );
