@@ -38,12 +38,12 @@ public:
    void  setHeatMeter( HeatMeterModule *heatMeter );
    void  setModBus( ModbusMaster *modbus );
 
-   void  updateLine( uint8_t lineNum,char *line,bool isForLog = true );
+   void  updateLine( uint8_t lineNum,const char *line,bool isForLog = true );
    void  clear();
    void  showNext();
    void  show( ScreenType type );
    void  refresh();
-   void  storeLine( uint8_t lineNum,char *line );
+   void  storeLine( uint8_t lineNum,const char *line );
 
 private:
    void  show( DisplayLine lines[] );

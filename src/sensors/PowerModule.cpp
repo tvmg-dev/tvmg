@@ -22,7 +22,6 @@ PowerModule::PowerModule( ModbusMaster *modbus )
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
       m_sensors[ i ].m_isValid = false;
-      m_sensors[ i ].m_sensor.m_name = nullptr;
       m_sensors[ i ].m_sensor.m_power = POWER_INVALID;
       m_sensors[ i ].m_sensor.m_energy = ENERGY_INVALID;
    }
@@ -37,22 +36,23 @@ PowerModule::PowerModule( ModbusMaster *modbus )
          if ( strcmpcJSON( sensor,"type",POWER_SENSOR_NAME ) == 0 )
          {
             PrivateSensor *pwrSensor;
+            char name[ MAX_POWER_NAME + 1 ];
 
             pwrSensor = &m_sensors[ m_numLocalSensors ];
 
-            strncpy( pwrSensor->m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_POWER_NAME );
+            strncpy( name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_POWER_NAME );
             pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numLocalSensors );
             pwrSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
             pwrSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
 
-            pwrSensor->m_sensor.m_name = pwrSensor->m_name;
             pwrSensor->m_sensor.m_power = POWER_INVALID;
             pwrSensor->m_sensor.m_energy = ENERGY_INVALID;
             pwrSensor->m_isValid = true;
 
-            setSensorName( POWER,pwrSensor->m_sensor.m_id,pwrSensor->m_name );
+            // Add name to sensor name map
+            setSensorName( POWER,pwrSensor->m_sensor.m_id,name );
 
-            PW_DEBUG( "Power: name %s address %u",pwrSensor->m_name,pwrSensor->m_address );
+            PW_DEBUG( "Power: name %s address %u",name,pwrSensor->m_address );
             PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_sensor.m_id,pwrSensor->m_sensor.m_emonFeedId );
             m_numLocalSensors++;
          }
@@ -147,6 +147,8 @@ bool PowerModule::getPower( uint8_t index )
 
    if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_modbus )
    {
+      const char *name = getSensorName( POWER,m_sensors[ index ].m_sensor.m_id ).c_str();
+
       // force a short delay if necessary
       if ( hwConfig->ModBusMsgDelay > -1 )
       {
@@ -160,7 +162,7 @@ bool PowerModule::getPower( uint8_t index )
 
       if ( modbusResult != ModbusMaster::ku8MBSuccess )
       {
-         PW_WARN( "Failed to obtain power info for %s",m_sensors[ index ].m_name );
+         PW_WARN( "Failed to obtain power info for %s",name );
          m_sensors[ index ].m_sensor.m_energy = ENERGY_INVALID;
          m_sensors[ index ].m_sensor.m_power = POWER_INVALID;
       }
@@ -183,7 +185,7 @@ bool PowerModule::getPower( uint8_t index )
          float hz = m_modbus->getResponseBuffer( 7 ) / 10.0;
          float pf = m_modbus->getResponseBuffer( 8 ) / 100.00;
 
-         PW_DEBUG( "%s : %.0f W : %.0f Whr",m_sensors [ index ].m_name,power,energy );
+         PW_DEBUG( "%s : %.0f W : %.0f Whr",name,power,energy );
 
          m_sensors[ index ].m_sensor.m_energy = energy;
          m_sensors[ index ].m_sensor.m_power = power;

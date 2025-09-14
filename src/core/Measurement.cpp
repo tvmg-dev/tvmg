@@ -196,9 +196,9 @@ void  Measurement::takeSample( void )
       while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
       {
          m_newSample.m_tempSensors[ i ] = tempSensor;
+         const char *name = getSensorName( THERM,tempSensor->m_id ).c_str();
 
-         PW_MSG( "%s [%u] feed %u temp %.2f",getSensorName( THERM,tempSensor->m_id ).c_str(),
-                                 tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
+         PW_MSG( "%s [%u] feed %u temp %.2f",name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
          i++;
       }
   }
@@ -209,8 +209,9 @@ void  Measurement::takeSample( void )
       while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) )
       {
          m_newSample.m_powerSensors[ i++ ] = powerSensor;
+         const char *name = getSensorName( POWER,powerSensor->m_id ).c_str();
 
-         PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",powerSensor->m_name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
+         PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
 
          if ( powerSensor->m_id == HEAT_PUMP_ID && m_heatPump )
          {
@@ -398,13 +399,12 @@ void  Measurement::sendUpdate()
    while ( m_lastSample.m_tempSensors[ i ] )
    {
       const TempSensor  *sensor = m_lastSample.m_tempSensors[ i ];
+      const char *name = getSensorName( THERM,sensor->m_id ).c_str();
 
-      PW_DEBUG( "TS %p %s %f %d",sensor,getSensorName( THERM,sensor->m_id ).c_str(),
-                                                            sensor->m_temp,sensor->m_emonFeedId );
+      PW_DEBUG( "TS %p %s %f %d",sensor,name,sensor->m_temp,sensor->m_emonFeedId );
       if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
       {
-         snprintf( line,sizeof(line),"%-30s : %4.1f\n",getSensorName( THERM,sensor->m_id ).c_str(),
-                                                            sensor->m_temp );
+         snprintf( line,sizeof(line),"%-30s : %4.1f\n",name,sensor->m_temp );
          thermometerStr += line;
       }
 
@@ -415,9 +415,12 @@ void  Measurement::sendUpdate()
    const PowerSensor *sensor;
    while( ( sensor = m_lastSample.m_powerSensors[ i++ ] ) )
    {
+      const char *name = getSensorName( POWER,sensor->m_id ).c_str();
+
+      PW_DEBUG( "PWR %p %s %f %d",sensor,name,sensor->m_power,sensor->m_emonFeedId );
       if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
       {
-         snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",sensor->m_name,sensor->m_power, sensor->m_energy / 1000.0 );
+         snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",name,sensor->m_power, sensor->m_energy / 1000.0 );
          powerStr += line;
       }
    }

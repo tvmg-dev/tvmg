@@ -23,7 +23,6 @@ typedef struct {
    uint32_t m_emonFeedId;  // Feed ID for emonCMS
    float_t  m_power;       // power
    float_t  m_energy;      // energy
-   char    *m_name;        // name (don't store the name here to keep the structure size to minimum
 } PowerSensor;
 
 class PowerModule
@@ -39,7 +38,6 @@ public:
 private:
    typedef struct {
       PowerSensor m_sensor;                     // sensor essentials
-      char     m_name[ MAX_POWER_NAME + 1 ];    // Friendly name
       uint8_t  m_address;                       // address on modbus
       bool     m_isValid;
    } PrivateSensor;

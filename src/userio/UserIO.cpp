@@ -115,7 +115,7 @@ void  UserIO::setMeasurement( Measurement *measurement )
    m_measurement = measurement;
 }
 
-void  UserIO::updateLine( uint8_t lineNum,char *line,bool isForLog )
+void  UserIO::updateLine( uint8_t lineNum,const char *line,bool isForLog )
 {
    if ( lineNum < MAX_DISPLAY_ROWS )
    {
@@ -129,7 +129,7 @@ void  UserIO::updateLine( uint8_t lineNum,char *line,bool isForLog )
    show( m_currentLines );
 }
 
-void  UserIO::storeLine( uint8_t lineNum,char *line )
+void  UserIO::storeLine( uint8_t lineNum,const char *line )
 {
    if ( lineNum < MAX_DISPLAY_ROWS )
    {
@@ -261,7 +261,8 @@ void  UserIO::showEnergy()
    int i = 0;
    while( ( sensor = m_sample.m_powerSensors[ i ] ) )
    {
-      storeLine( i * 2,sensor->m_name );
+      const char *name = getSensorName( POWER,sensor->m_id ).c_str();
+      storeLine( i * 2,name );
       snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f W %.0f kWh",sensor->m_power,sensor->m_energy / 1000.0 );
       storeLine( 1 + i * 2,line );
       i++;
