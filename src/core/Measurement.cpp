@@ -197,7 +197,8 @@ void  Measurement::takeSample( void )
       {
          m_newSample.m_tempSensors[ i ] = tempSensor;
 
-         PW_MSG( "%s [%u] feed %u temp %.2f",tempSensor->m_name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
+         PW_MSG( "%s [%u] feed %u temp %.2f",getSensorName( THERM,tempSensor->m_id ).c_str(),
+                                 tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
          i++;
       }
   }
@@ -398,10 +399,12 @@ void  Measurement::sendUpdate()
    {
       const TempSensor  *sensor = m_lastSample.m_tempSensors[ i ];
 
-      PW_DEBUG( "TS %p %s %f %d",sensor,sensor->m_name,sensor->m_temp,sensor->m_emonFeedId );
+      PW_DEBUG( "TS %p %s %f %d",sensor,getSensorName( THERM,sensor->m_id ).c_str(),
+                                                            sensor->m_temp,sensor->m_emonFeedId );
       if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
       {
-         snprintf( line,sizeof(line),"%-30s : %4.1f\n",sensor->m_name,sensor->m_temp );
+         snprintf( line,sizeof(line),"%-30s : %4.1f\n",getSensorName( THERM,sensor->m_id ).c_str(),
+                                                            sensor->m_temp );
          thermometerStr += line;
       }
 

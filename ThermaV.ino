@@ -198,7 +198,8 @@ void  handleTouch1()
          {
             const TempSensor  *sensor = s_sample.m_tempSensors[ i ];
 
-            snprintf( message,sizeof(message),"%30s,%.1f\n",sensor->m_name,sensor->m_temp );
+            snprintf( message,sizeof(message),"%30s,%.1f\n",getSensorName( THERM,sensor->m_id ).c_str(),
+                                          sensor->m_temp );
 
             msgString += message;
          }

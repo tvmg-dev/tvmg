@@ -39,7 +39,6 @@ typedef struct {
    uint32_t m_emonFeedId;  // Feed ID for emonCMS
    bool     m_isRemote;    // true if remote
    float_t  m_temp;        // temperature
-   char    *m_name;        // name (don't store the name here to keep the structure size to minimum)
 } TempSensor;
 
 class TemperatureModule

@@ -61,7 +61,6 @@ TemperatureModule::TemperatureModule()
       m_sensors[ i ].m_sensor.m_id = 255;
       m_sensors[ i ].m_sensor.m_emonFeedId = 0;
       m_sensors[ i ].m_sensor.m_temp = TEMPERATURE_INVALID;
-      m_sensors[ i ].m_sensor.m_name = nullptr;
    }
 
    cJSON *root = getAllSensorJSON();
@@ -82,7 +81,6 @@ TemperatureModule::TemperatureModule()
             tempSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
             tempSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
 
-            tempSensor->m_sensor.m_name = tempSensor->m_name;
             tempSensor->m_isValid = true;
 
             setSensorName( THERM,tempSensor->m_sensor.m_id,tempSensor->m_name );

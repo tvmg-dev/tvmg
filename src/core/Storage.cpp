@@ -288,7 +288,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
          if ( isNewFile )
          {
-            snprintf( line,128,",%s",sensor->m_name );
+            snprintf( line,128,",%s",getSensorName( THERM,sensor->m_id ).c_str() );
             hdrString += line;
          }
          snprintf( line,128,",%.1f",sensor->m_temp );
