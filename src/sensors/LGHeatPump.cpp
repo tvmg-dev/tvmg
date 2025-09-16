@@ -195,8 +195,9 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
                   if ( m_numRegisters < MAX_HP_REGISTERS  )
                   {
                      LGRegister *lgReg = &m_registers[ m_numRegisters ];
+                     char name[ MAX_HPREG_NAME + 1 ];
 
-                     strncpy( lgReg->m_name,getStringFromcJSON( reg,"name" ).c_str(),MAX_HPREG_NAME );
+                     strncpy( name,getStringFromcJSON( reg,"name" ).c_str(),MAX_HPREG_NAME );
                      lgReg->m_id = m_numRegisters + 1;
                      lgReg->m_address = getIntFromcJSON( reg,"addr",-1 );
                      lgReg->m_type = static_cast<ModbusType>( getIntFromcJSON( reg,"type",INPUTR ) );
@@ -210,10 +211,12 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 
                      m_registerMap[ parameter ] = m_numRegisters;
 
-                     setSensorName( HEATPUMP,lgReg->m_id,lgReg->m_name );
+                     // add to sensor name map
+
+                     setSensorName( HEATPUMP,lgReg->m_id,name );
 
                      PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
-                              lgReg->m_type,lgReg->m_address,lgReg->m_name,
+                              lgReg->m_type,lgReg->m_address,name,
                               lgReg->m_emonFeedId,lgReg->m_scalingFactor,parameter,m_numRegisters - 1 );
 
                      m_numRegisters++;
@@ -583,7 +586,7 @@ void  LGHeatPump::getLGData()
 
       for ( int i = 0; i < m_numRegisters; i++ )
       {
-         PW_HP_MODBUS( "%s %.1f",m_registers[ i ].m_name,m_registers[ i ].m_value );
+         PW_HP_MODBUS( "%s %.1f",getSensorName( HEATPUMP,m_registers[ i ].m_id ).c_str(),m_registers[ i ].m_value );
       }
 
       updateStatus();
@@ -820,9 +823,11 @@ bool  LGHeatPump::getStatus( uint32_t parameter,bool *state )
    else
    {
       uint8_t  index = it->second;
-      *state = m_registers[ index ].m_rawValue;
+      LGRegister *lgReg = &m_registers[ index ];
+
+      *state = lgReg->m_rawValue;
       registerOk = true;
-      PW_DEBUG( "HP: %s:%u",m_registers[ index ].m_name,*state );
+      PW_DEBUG( "HP: %s:%u",getSensorName( HEATPUMP,lgReg->m_id ).c_str(),*state );
    }
 
    return registerOk;
@@ -840,9 +845,11 @@ bool  LGHeatPump::getValue( uint32_t parameter,float_t *value )
    else
    {
       uint8_t  index = it->second;
-      *value = m_registers[ index ].m_value;
+      LGRegister *lgReg = &m_registers[ index ];
+
+      *value = lgReg->m_value;
       registerOk = true;
-      PW_DEBUG( "HP: %s:%.1f",m_registers[ index ].m_name,*value );
+      PW_DEBUG( "HP: %s:%.1f",getSensorName( HEATPUMP,lgReg->m_id ).c_str(),*value );
    }
 
    return registerOk;
@@ -860,8 +867,10 @@ int16_t  LGHeatPump::getRawValue( uint32_t parameter )
    else
    {
       uint8_t  index = it->second;
-      value = m_registers[ index ].m_rawValue;
-      PW_DEBUG( "HP-Raw: 0x%x:%s:%u",parameter,m_registers[ index ].m_name,value );
+      LGRegister *lgReg = &m_registers[ index ];
+
+      value = lgReg->m_rawValue;
+      PW_DEBUG( "HP-Raw: 0x%x:%s:%u",parameter,getSensorName( HEATPUMP,lgReg->m_id ).c_str(),value );
    }
 
    return value;
@@ -879,8 +888,10 @@ bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
    else
    {
       uint8_t  index = it->second;
-      m_registers[ index ].m_value = value;
-      PW_DEBUG( "HP: set %s:%.1f",m_registers[ index ].m_name,value );
+      LGRegister *lgReg = &m_registers[ index ];
+
+      lgReg->m_value = value;
+      PW_DEBUG( "HP: set %s:%.1f",getSensorName( HEATPUMP,lgReg->m_id ).c_str(),value );
    }
 
    return registerOk;
@@ -889,6 +900,13 @@ bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
 void  LGHeatPump::updateUserIO( UserIO *userIO )
 {
    char line[ MAX_DISPLAY_COLUMNS ];
+
+   if ( m_currentStatus.m_modbusError )
+   {
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Modbus Err" );
+      userIO->storeLine( 0,line );
+      return;
+   }
 
    float_t  flowRate,targetTemp;
    (void) getValue( FLOW_RATE,&flowRate );

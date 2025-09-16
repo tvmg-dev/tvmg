@@ -228,7 +228,7 @@ void  Measurement::takeSample( void )
          while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
          {
             m_newSample.m_lgRegisters[ i++ ] = lgRegister;
-    //     PW_DEBUG( "LG: %s %.1f",lgRegister->m_name,lgRegister->m_name,lgRegister->m_value );
+            PW_DEBUG( "LG: %s %.1f",getSensorName( HEATPUMP,lgRegister->m_id ).c_str(),lgRegister->m_value );
          }
          PW_MSG( "Retrieved %d LG registers",i );
       }

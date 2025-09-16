@@ -81,14 +81,13 @@ enum ModbusType {
 };
 
 typedef struct {
-   char        m_name[ MAX_HPREG_NAME + 1 ];    // Friendly name
-   uint8_t     m_id;                            // simple id
-   ModbusType  m_type;                          // coil etc,
-   uint16_t    m_address;                       // address on modbus
-   uint32_t    m_emonFeedId;                    // for emon
-   float_t     m_scalingFactor;                 // conversion factor
-   int16_t     m_rawValue;                      // treat all as signed values
-   float_t     m_value;                         // after scaling
+   uint8_t     m_id;             // simple id
+   ModbusType  m_type;           // coil etc,
+   uint16_t    m_address;        // address on modbus
+   uint32_t    m_emonFeedId;     // for emon
+   float_t     m_scalingFactor;  // conversion factor
+   int16_t     m_rawValue;       // treat all as signed values
+   float_t     m_value;          // after scaling
    bool        m_isValid;
 } LGRegister;
 
