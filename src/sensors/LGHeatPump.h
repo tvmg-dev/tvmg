@@ -131,6 +131,7 @@ public:
    bool  isAvailable();
    bool  isLogging();
    void  resetEventLog();
+   void  sample();
    LGRegister *readNextSensor( uint8_t index );
    void  setCurrentKW( float_t kw );
    void  updateUserIO( UserIO *userIO );

@@ -262,17 +262,24 @@ void  LGHeatPump::setCurrentKW( float_t kw )
    m_currentKW = kw;
 }
 
+void LGHeatPump::sample()
+{
+   if ( m_numRegisters && millis() - m_millisLastAquisition > LG_MIN_SAMPLING_PERIOD_MS )
+   {
+      START_TIMING( "LG Sample" );
+
+      getLGData();
+      m_millisLastAquisition = millis();
+
+      END_TIMING;
+   }
+}
+
 LGRegister *LGHeatPump::readNextSensor( uint8_t index )
 {
    if ( index >= m_numRegisters )
    {
       return nullptr;
-   }
-
-   if ( !index && millis() - m_millisLastAquisition > LG_MIN_SAMPLING_PERIOD_MS )
-   {
-      getLGData();
-      m_millisLastAquisition = millis();
    }
 
    // If we've had a modbus error don't send any registers
@@ -416,7 +423,6 @@ void  LGHeatPump::getLGData()
       return;
    }
 
-   START_TIMING( "LG Data Aquisition" );
    do
    {
       bool modbusFailed = false;
@@ -591,8 +597,6 @@ void  LGHeatPump::getLGData()
       updateStatus();
    }
    while( 0 );
-
-   END_TIMING;
 }
 
 bool  LGHeatPump::valueChanged( uint32_t parameter )

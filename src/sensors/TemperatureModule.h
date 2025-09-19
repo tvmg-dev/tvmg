@@ -2,6 +2,7 @@
 #define TEMPERATURE_MODULE_H
 
 #include <Arduino.h>
+#include <vector>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -46,18 +47,23 @@ public:
    TemperatureModule();
    ~TemperatureModule();
    void  initialise();
+   void  sample();
    TempSensor  *readNextSensor( uint8_t index );
    float_t     getTemperature( uint8_t tempId );
 
 private:
-   typedef struct {
-      TempSensor     m_sensor;                        // sensor essentials
-      DeviceAddress  m_address;                       // 64 bit address, array of 8 uint8_t
-      uint8_t        m_busIndex;                      // index of the sensor on OneWire bus
-      float_t        m_calibrationOffset;             // calibration offset
-      bool           m_isValid;                       // true if registered ok
-      char           m_addressStr[ 17 ];              // string for the address - 8 hex chars + null
-   } PrivateSensor;
+   class PrivateSensor {
+      public:
+         PrivateSensor();
+         PrivateSensor( const PrivateSensor &other );
+         PrivateSensor & operator=( const PrivateSensor &other );
+
+         TempSensor     m_public;                        // sensor essentials
+         DeviceAddress  m_address;                       // 64 bit address, array of 8 uint8_t
+         uint8_t        m_busIndex;                      // index of the sensor on OneWire bus
+         float_t        m_calibrationOffset;             // calibration offset
+         char           m_addressStr[ 17 ];              // string for the address - 8 hex chars + null
+   };
 
    bool  getTemperatures();
    void  getAddressString( DeviceAddress addr,char *addrString );
@@ -69,7 +75,7 @@ private:
    AsyncUDP          *m_udp;
 
    bool              m_isOk;
-   PrivateSensor     m_sensors[ MAX_TEMP_SENSORS ];
+   std::vector<PrivateSensor> m_sensors;
    uint8_t           m_numLocalSensors;
    uint8_t           m_numRemoteSensors;
    uint16_t          m_sendPort;

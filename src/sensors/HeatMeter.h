@@ -56,7 +56,8 @@ class HeatMeterModule
 public:
    HeatMeterModule( TemperatureModule *tempModule );
    ~HeatMeterModule();
-   void  initialise();
+   void initialise();
+   void sample();
    HeatMeterSensor  *readNextSensor( uint8_t index );
    void  updateUserIO( UserIO *userIO );
    bool  isMeterAvailable();

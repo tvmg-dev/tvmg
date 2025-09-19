@@ -178,8 +178,8 @@ void  Measurement::takeSample( void )
 
    m_dailySamples++;
 
-   uint     currentMS = millis();
-   uint8_t  i = 0;
+   uint32_t currentMS = millis();
+   uint8_t  i;
 
    // get the current sample time
    if ( !sensorIndex )
@@ -191,8 +191,10 @@ void  Measurement::takeSample( void )
    // performing max processing in one call
    if ( sensorIndex == 0 )
    {
+      i = 0;
       TempSensor *tempSensor;
 
+      m_tempModule->sample();
       while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
       {
          m_newSample.m_tempSensors[ i++ ] = tempSensor;
@@ -205,6 +207,8 @@ void  Measurement::takeSample( void )
    {
       i = 0;
       PowerSensor *powerSensor;
+
+      m_powerModule->sample();
       while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) )
       {
          m_newSample.m_powerSensors[ i++ ] = powerSensor;
@@ -224,6 +228,8 @@ void  Measurement::takeSample( void )
       {
          i = 0;
          LGRegister *lgRegister;
+
+         m_heatPump->sample();
          while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
          {
             m_newSample.m_lgRegisters[ i++ ] = lgRegister;
@@ -239,6 +245,7 @@ void  Measurement::takeSample( void )
          i = 0;
          HeatMeterSensor *heatMeterSensor;
 
+         m_heatMeterModule->sample();
          while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i ) ) )
          {
             m_newSample.m_heatMeterSensors[ i++ ] = heatMeterSensor;
@@ -401,7 +408,7 @@ void  Measurement::sendUpdate()
       const TempSensor  *sensor = m_lastSample.m_tempSensors[ i ];
       const char *name = getSensorName( THERM,sensor->m_id ).c_str();
 
-      PW_DEBUG( "TS %p %s %f %d",sensor,name,sensor->m_temp,sensor->m_emonFeedId );
+      PW_DEBUG( "TS %s %f %d",name,sensor->m_temp,sensor->m_emonFeedId );
       if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
       {
          snprintf( line,sizeof(line),"%-30s : %4.1f\n",name,sensor->m_temp );
@@ -417,7 +424,7 @@ void  Measurement::sendUpdate()
    {
       const char *name = getSensorName( POWER,sensor->m_id ).c_str();
 
-      PW_DEBUG( "PWR %p %s %f %d",sensor,name,sensor->m_power,sensor->m_emonFeedId );
+      PW_DEBUG( "PWR %s %f %d",name,sensor->m_power,sensor->m_emonFeedId );
       if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
       {
          snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",name,sensor->m_power, sensor->m_energy / 1000.0 );

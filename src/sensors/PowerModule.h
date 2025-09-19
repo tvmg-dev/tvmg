@@ -29,8 +29,9 @@ class PowerModule
 public:
    PowerModule( ModbusMaster *modbus );
    ~PowerModule();
-   void  initialise( void );
-   ModbusMaster   *getModbus();
+   void initialise();
+   ModbusMaster *getModbus();
+   void sample();
    PowerSensor *readNextSensor( uint8_t index );
    bool     getPower( uint8_t index );
 

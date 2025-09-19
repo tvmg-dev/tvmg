@@ -79,7 +79,7 @@ ModbusMaster *PowerModule::getModbus()
    return m_modbus;
 }
 
-void PowerModule::initialise( void )
+void PowerModule::initialise()
 {
    if ( !m_modbus )
    {
@@ -87,22 +87,27 @@ void PowerModule::initialise( void )
    }
 }
 
+void PowerModule::sample()
+{
+   if ( millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS && !index )
+   {
+      START_TIMING( "PowerModule Sample" );
+
+      for ( int i = 0; i < m_numLocalSensors; i++ )
+      {
+         (void) getPower( i );
+      }
+
+      m_millisLastAquisition = millis();
+
+      END_TIMING;
+   }
+}
+
 PowerSensor  *PowerModule::readNextSensor( uint8_t index )
 {
    if ( index < m_numLocalSensors )
    {
-      // Only really sample data every X ms
-
-      if ( millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS && !index )
-      {
-         for ( int i = 0; i < m_numLocalSensors; i++ )
-         {
-            (void) getPower( i );
-         }
-
-         m_millisLastAquisition = millis();
-      }
-
       return( &m_sensors[ index ].m_sensor );
    }
 

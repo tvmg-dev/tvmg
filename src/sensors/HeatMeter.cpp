@@ -71,27 +71,34 @@ HeatMeterModule::~HeatMeterModule()
    PW_DEBUG( "HeatMeterModule::~HeatMeterModule()" );
 }
 
-void  HeatMeterModule::initialise()
+void HeatMeterModule::initialise()
 {
    PW_DEBUG( "HeatMeterModule::initialise()" );
+}
+
+void HeatMeterModule::sample()
+{
+   // Only really sample data every X ms
+
+   if ( m_numLocalSensors && millis() - m_millisLastAquisition > HM_MIN_SAMPLING_PERIOD_MS )
+   {
+      START_TIMING( "HeatMeter Sample" );
+
+      for ( int i = 0; i < m_numLocalSensors; i++ )
+      {
+         m_sensors[ i ]->takeMeasurement();
+      }
+
+      m_millisLastAquisition = millis();
+
+      END_TIMING
+   }
 }
 
 HeatMeterSensor  *HeatMeterModule::readNextSensor( uint8_t index )
 {
    if ( index < m_numLocalSensors )
    {
-      // Only really sample data every X ms
-
-      if ( millis() - m_millisLastAquisition > HM_MIN_SAMPLING_PERIOD_MS && !index )
-      {
-         for ( int i = 0; i < m_numLocalSensors; i++ )
-         {
-            m_sensors[ i ]->takeMeasurement();
-         }
-
-         m_millisLastAquisition = millis();
-      }
-
       return( m_sensors[ index ]->getHeatMeterSensor() );
    }
 
