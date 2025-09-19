@@ -45,12 +45,10 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
 
             float_t shc = getFloatFromcJSON( sensor,"shc",4.2 );
 
-            setSensorName( HEATMETER,id,name );
-
             PW_DEBUG( "Found UPS3 : %s",name.c_str() );
 
             m_sensors[ m_numLocalSensors ] = new HeatMeter( new GrundfosUPS3( gpio,mode.c_str() ),m_tempModule,
-                                                      name.c_str(),id,emonFlowId,emonPowerId,flowTempId,returnTempId,shc );
+                                                      name,id,emonFlowId,emonPowerId,flowTempId,returnTempId,shc );
             m_sensors[ m_numLocalSensors ]->initialise();
 
             m_numLocalSensors++;
@@ -151,17 +149,15 @@ HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const Str
          : m_flowMeter( pump ),
            m_tempModule( tempModule ),
            m_sensor(),
-           m_name(),
            m_flowTempId( flowTempId ),
            m_returnTempId( returnTempId ),
            m_shc( shc )
 {
    PW_DEBUG( "HeatMeter::HeatMeter %d",id );
 
-   strncpy( m_name,name.c_str(),MAX_HM_NAME );
+   setSensorName( HEATMETER,id,name );
 
    m_sensor.m_id = id;
-   m_sensor.m_name = m_name;
    m_sensor.m_emonPowerId = emonPowerId;
    m_sensor.m_emonFlowId = emonFlowId;
    m_sensor.m_power = 0;
@@ -186,7 +182,8 @@ void  HeatMeter::takeMeasurement()
 {
    if ( m_flowMeter && m_tempModule )
    {
-      PW_MSG( "Sampling %s",m_name );
+      const char *name = getSensorName( HEATMETER,m_sensor.m_id ).c_str();
+      PW_MSG( "Sampling %s",name );
 
       m_flowMeter->sample();
       m_sensor.m_flowRate = m_flowMeter->getFlowRate();
@@ -203,7 +200,7 @@ void  HeatMeter::takeMeasurement()
          m_sensor.m_power = m_sensor.m_flowRate * m_shc * (m_sensor.m_flowTemp - m_sensor.m_returnTemp ) / 60.0;
          m_sensor.m_power *= 1000;
 
-         PW_DEBUG( "%s flow %.1f ret %.1f, %.1f l/min",m_name,m_sensor.m_flowTemp,m_sensor.m_returnTemp,m_sensor.m_flowRate );
+         PW_DEBUG( "%s flow %.1f ret %.1f, %.1f l/min",name,m_sensor.m_flowTemp,m_sensor.m_returnTemp,m_sensor.m_flowRate );
 
          if ( m_sensor.m_power < 0 )
          {
@@ -211,7 +208,7 @@ void  HeatMeter::takeMeasurement()
          }
       }
 
-      PW_MSG( "%s %.0f W %.1f l/min",m_name,m_sensor.m_power,m_sensor.m_flowRate );
+      PW_MSG( "%s %.0f W %.1f l/min",name,m_sensor.m_power,m_sensor.m_flowRate );
    }
 }
 

@@ -75,9 +75,7 @@ TemperatureModule::TemperatureModule()
          if ( strcmpcJSON( sensor,"type",TEMPERATURE_SENSOR_NAME ) == 0 )
          {
             PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
-            char name[ MAX_TEMP_NAME + 1 ];
-
-            strncpy( name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_TEMP_NAME );
+            String name = getStringFromcJSON( sensor,"name" );
 
             tempSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
             tempSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
@@ -93,7 +91,7 @@ TemperatureModule::TemperatureModule()
                tempSensor->m_sensor.m_isRemote = true;
                m_numRemoteSensors++;
 
-               PW_DEBUG( "Remote Therm: name %s",name );
+               PW_DEBUG( "Remote Therm: name %s",name.c_str() );
                PW_DEBUG( "Id %u, feed %u",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId );
             }
             else
@@ -116,7 +114,7 @@ TemperatureModule::TemperatureModule()
 
                m_numLocalSensors++;
 
-               PW_DEBUG( "Local Therm: name %s address %s",name,addr );
+               PW_DEBUG( "Local Therm: name %s address %s",name.c_str(),addr );
                PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId,tempSensor->m_calibrationOffset );
             }
          }

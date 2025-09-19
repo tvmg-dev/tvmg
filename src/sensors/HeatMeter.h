@@ -9,7 +9,6 @@
 #define HEATMETER_SENSOR_NAME "HEATMETER"
 
 #define MAX_HEAT_METERS 5
-#define MAX_HM_NAME     32
 
 #define  FLOW_RATE_ERROR   100
 #define  HM_POWER_ERROR    -1
@@ -22,7 +21,6 @@ class UserIO;
 
 typedef struct {
    uint8_t  m_id;          // should be unique ID
-   char    *m_name;        // name (don't store the name here to keep the structure size to minimum)
    uint32_t m_emonPowerId; // Feed ID for emonCMS power
    uint32_t m_emonFlowId;  // Feed ID for emonCMS flow rate
    float_t  m_power;       // power
@@ -48,7 +46,6 @@ private:
    GrundfosUPS3      *m_flowMeter;
    TemperatureModule *m_tempModule;
    HeatMeterSensor    m_sensor;
-   char        m_name[ MAX_HM_NAME + 1 ];
    uint8_t     m_flowTempId;
    uint8_t     m_returnTempId;
    float_t     m_shc;

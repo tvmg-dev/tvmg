@@ -195,11 +195,10 @@ void  Measurement::takeSample( void )
 
       while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
       {
-         m_newSample.m_tempSensors[ i ] = tempSensor;
+         m_newSample.m_tempSensors[ i++ ] = tempSensor;
          const char *name = getSensorName( THERM,tempSensor->m_id ).c_str();
 
          PW_MSG( "%s [%u] feed %u temp %.2f",name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
-         i++;
       }
   }
    else if ( sensorIndex == 1 )
@@ -243,8 +242,9 @@ void  Measurement::takeSample( void )
          while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i ) ) )
          {
             m_newSample.m_heatMeterSensors[ i++ ] = heatMeterSensor;
+            const char *name = getSensorName( HEATMETER,heatMeterSensor->m_id ).c_str();
 
-            PW_MSG( "%s %.1f %.1f",heatMeterSensor->m_name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
+            PW_MSG( "%s %.1f %.1f",name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
          }
       }
    }

@@ -1,3 +1,7 @@
+v25.09.05 - Memory improvements:
+               Stack size reductions (async_tcp, userIO, arduino_events)
+               Map sensor type + ID to name
+            Don't show LG data on OLED if sample has modbus error
 v25.09.04 - Ensure manager webpage is in sync with current settings
 v25.09.03 - Fix file upload, now returns to manager screen
             Fix statistics send in daily email (% calc. error)

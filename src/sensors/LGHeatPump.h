@@ -6,7 +6,6 @@
 
 #include "src/core/utils.h"
 
-#define MAX_HPREG_NAME        20
 #define MAX_HP_REGISTERS      50
 #define MAX_LGSOFTWARE_LENGTH 32
 

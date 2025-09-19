@@ -6,7 +6,6 @@
 
 #include "src/core/utils.h"
 
-#define MAX_MODBUSTCP_NAME 32
 #define MAX_REGISTERS      16
 
 #define MODBUSTCP_SENSOR_NAME "MODBUSTCP"
@@ -47,7 +46,6 @@ public:
 
 private:
    typedef struct {
-      char        m_name[ MAX_MODBUSTCP_NAME + 1 ];   // Friendly name
       IPAddress   m_tcpServerAddress;
       uint16_t    m_tcpServerPort;                    // TCP server port
       uint16_t    m_requestDelay;

@@ -860,18 +860,6 @@ void WebServer::setupAsyncServer()
    {
       getRunTimeInfo();
 
-      #if 0
-      setSensorName( HEATMETER,12,"pete" );
-      String str = getSensorName( HEATMETER,12 );
-      setSensorName( HEATMETER,12,"pete" );
-      str = getSensorName( HEATMETER,12 );
-      PW_MSG( "got name : %s",str.c_str() );
-      PW_MSG( "to debug map" );
-      debugSensorNameMap();
-      setSensorName( HEATMETER,1,"dyll" );
-      setSensorName( HEATPUMP,12,"belle" );
-      #endif
-
       debugSensorNameMap();
 
       request->send(204);

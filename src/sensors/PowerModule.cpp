@@ -36,11 +36,10 @@ PowerModule::PowerModule( ModbusMaster *modbus )
          if ( strcmpcJSON( sensor,"type",POWER_SENSOR_NAME ) == 0 )
          {
             PrivateSensor *pwrSensor;
-            char name[ MAX_POWER_NAME + 1 ];
+            String name = getStringFromcJSON( sensor,"name" );
 
             pwrSensor = &m_sensors[ m_numLocalSensors ];
 
-            strncpy( name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_POWER_NAME );
             pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numLocalSensors );
             pwrSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
             pwrSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
@@ -52,7 +51,7 @@ PowerModule::PowerModule( ModbusMaster *modbus )
             // Add name to sensor name map
             setSensorName( POWER,pwrSensor->m_sensor.m_id,name );
 
-            PW_DEBUG( "Power: name %s address %u",name,pwrSensor->m_address );
+            PW_DEBUG( "Power: name %s address %u",name.c_str(),pwrSensor->m_address );
             PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_sensor.m_id,pwrSensor->m_sensor.m_emonFeedId );
             m_numLocalSensors++;
          }

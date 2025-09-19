@@ -5,7 +5,6 @@ Emon updated their server certificate.
 The certificate chain is
 ISRG Root X1 -> E8 -> emoncms.org
 
-The emoncms.pub is the E8 Let's encrypt public certificate, valid from
-13/3/24 to 12/3/27.
+The emoncms.pub is the ISRG Root X1 cert (valid until 6/4/2035)
 
 

@@ -195,9 +195,8 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
                   if ( m_numRegisters < MAX_HP_REGISTERS  )
                   {
                      LGRegister *lgReg = &m_registers[ m_numRegisters ];
-                     char name[ MAX_HPREG_NAME + 1 ];
+                     String name = getStringFromcJSON( reg,"name" );
 
-                     strncpy( name,getStringFromcJSON( reg,"name" ).c_str(),MAX_HPREG_NAME );
                      lgReg->m_id = m_numRegisters + 1;
                      lgReg->m_address = getIntFromcJSON( reg,"addr",-1 );
                      lgReg->m_type = static_cast<ModbusType>( getIntFromcJSON( reg,"type",INPUTR ) );
@@ -216,7 +215,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
                      setSensorName( HEATPUMP,lgReg->m_id,name );
 
                      PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
-                              lgReg->m_type,lgReg->m_address,name,
+                              lgReg->m_type,lgReg->m_address,name.c_str(),
                               lgReg->m_emonFeedId,lgReg->m_scalingFactor,parameter,m_numRegisters - 1 );
 
                      m_numRegisters++;

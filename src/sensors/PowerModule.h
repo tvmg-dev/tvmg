@@ -8,7 +8,6 @@
 #define POWER_SENSOR_NAME "POWER"
 
 #define MAX_POWER_SENSORS  3
-#define MAX_POWER_NAME     32
 
 #define POWER_INVALID         -1
 #define ENERGY_INVALID        -1

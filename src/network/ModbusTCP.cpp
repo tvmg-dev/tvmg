@@ -41,13 +41,16 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
       {
          if ( strcmpcJSON( sensor,"type",MODBUSTCP_SENSOR_NAME ) == 0 )
          {
-            char  tcpServerAddress[ 64 ];
+            char tcpServerAddress[ 64 ];
+            String name;
 
             m_sensor.m_isValid = true;
 
-            strncpy( m_sensor.m_name,getStringFromcJSON( sensor,"name" ).c_str(),MAX_MODBUSTCP_NAME );
+            name = getStringFromcJSON( sensor,"name" );
 
             m_sensor.m_id = getIntFromcJSON( sensor,"id",1 );
+
+            setSensorName( MODBUSTCP,m_sensor.m_id,name );
 
             if ( ! m_sensor.m_tcpServerAddress.fromString( getStringFromcJSON( sensor,"tcpServerAddress" ) ) )
             {
@@ -55,10 +58,11 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
                m_sensor.m_isValid = false;
             }
 
+
             m_sensor.m_tcpServerPort = getIntFromcJSON( sensor,"tcpServerPort",MODBUS_TCP_DEFAULT_PORT );
             m_sensor.m_requestDelay = getIntFromcJSON( sensor,"tcpServerDelay",MODBUS_TC_DEFAULT_DELAY );
 
-            PW_MSG( "ModbusTCP : name %s, Server : %s, port %u",m_sensor.m_name,
+            PW_MSG( "ModbusTCP : name %s, Server : %s, port %u",name.c_str(),
                               m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort );
 
             break;
