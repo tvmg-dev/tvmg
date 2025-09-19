@@ -1,6 +1,7 @@
 #include <cJSON.h>
 #include <WiFi.h>
 #include "AsyncUDP.h"
+#include <mutex>
 
 #include "src/core/utils.h"
 #include "src/core/Measurement.h"
@@ -15,6 +16,8 @@
 #define TEMPERATURE_MIN_SAMPLING_PERIOD_MS   15000
 
 extern Networking *networking;
+
+static std::mutex copyMutex;
 
 char  s_udpPacket[ 1024 ];
 
@@ -54,13 +57,15 @@ TemperatureModule::PrivateSensor::PrivateSensor()
    m_addressStr[ 0 ] = '\0';
 }
 
+static uint32_t psc=0;
+
 TemperatureModule::PrivateSensor::PrivateSensor( const TemperatureModule::PrivateSensor &other )
              : m_public( other.m_public ),
                m_address(),
                m_busIndex( other.m_busIndex ),
                m_calibrationOffset( other.m_calibrationOffset )
 {
-   PW_DEBUG( "Temp PrivateSensor::(copy)" );
+   PW_DEBUG( "Temp PrivateSensor::(copy) %u",psc++ );
    for ( int i = 0; i < 8; i++ )
    {
       m_address[ i ] = other.m_address[ i ];
@@ -99,7 +104,6 @@ TemperatureModule::TemperatureModule()
            m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS ),
            m_fakeMeasurements( false )
 {
-   PW_DEBUG( "TemperatureModule::TemperatureModule()" );
    PW_MSG( "Temperature Module Startup" );
 
    cJSON *root = getAllSensorJSON();
@@ -187,7 +191,6 @@ void  TemperatureModule::initialise()
    }
    else
    {
-      PW_DEBUG( "TemperatureModule::initialise()" );
       PW_MSG( "Initialising temperature sensors" );
 
       m_oneWireController = new OneWire( hwConfig->OneWireGPIO );
@@ -298,15 +301,35 @@ void TemperatureModule::sample()
       getTemperatures();
       m_millisLastAquisition = millis();
 
+      // Now copy the public sensor data, take mutex to avoid invalidating
+      // data if readNextSensor occurs
+
+      std::lock_guard<std::mutex> lock( copyMutex );
+
+      for ( int i = 0; i < m_sensors.size(); i++ )
+      {
+         if ( m_samples.size() < i + 1 )
+         {
+            m_samples.push_back( m_sensors[ i ].m_public );
+         }
+         else
+         {
+            m_samples[ i ] = m_sensors[ i ].m_public;
+         }
+      }
+
       END_TIMING;
    }
 }
 
 TempSensor *TemperatureModule::readNextSensor( uint8_t index )
 {
-   if ( index < m_sensors.size() )
+   // Get the sample data, taking mutex to avoid race
+
+   std::lock_guard<std::mutex> lock( copyMutex );
+   if ( index < m_samples.size() )
    {
-      return( &m_sensors[ index ].m_public );
+      return( &m_samples[ index ] );
    }
 
    return( nullptr );

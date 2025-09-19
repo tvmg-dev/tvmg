@@ -76,11 +76,12 @@ private:
 
    bool              m_isOk;
    std::vector<PrivateSensor> m_sensors;
+   std::vector<TempSensor> m_samples;        // Data exposed via readNextSensor()
    uint8_t           m_numLocalSensors;
    uint8_t           m_numRemoteSensors;
    uint16_t          m_sendPort;
 
-   int32_t           m_millisLastAquisition;       // milliseconds since last acquisition
+   int32_t           m_millisLastAquisition; // milliseconds since last acquisition
    bool              m_fakeMeasurements;
 };
 
