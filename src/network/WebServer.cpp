@@ -19,6 +19,7 @@
 #include "html/manager_html.h"
 #include "html/ok_html.h"
 #include "html/failed_html.h"
+#include "html/reboot_html.h"
 
 #include "src/config/Config.h"
 #include "src/core/utils.h"
@@ -869,13 +870,13 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/reboot", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      request->send(200);
+      if(!request->authenticate(http_username, http_password))
+      {
+         return request->requestAuthentication();
+      }
 
-      Config::instance()->clearFactoryReset();
-      Config::instance()->setPersistentInt( k_rebootType,SERVER_REBOOT );
-
-      delay( 1500 );
-      ESP.restart();
+      request->send(200, "text/html", reboot_html);
+      setRebootRequired();
    });
 
    m_webServer->onNotFound(notFound);

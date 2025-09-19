@@ -868,11 +868,25 @@ void handleAnyOTAUpdate()
    {
       config->setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
 
-      delay( 2500 );
+      delay( 1500 );
       hwReset();
 
       delay( 5000 );
       PW_ERROR( "HW Reset Failed" );
+   }
+}
+
+// handle reboot request from server
+
+void handleRebootRequest()
+{
+   if ( isReootRequired() )
+   {
+      Config::instance()->clearFactoryReset();
+      Config::instance()->setPersistentInt( k_rebootType,SERVER_REBOOT );
+
+      delay( 500 );
+      ESP.restart();
    }
 }
 
@@ -944,6 +958,10 @@ void loop(void)
 
    // Check if we've updated, we'll reset if OTA has occurred
    handleAnyOTAUpdate();
+
+   // Check for reboot requested, doing this in the loop task to
+   // allow the webserver to respond
+   handleRebootRequest();
 
    // Check network is alive
    restartRequired |= !isNetworkOk();

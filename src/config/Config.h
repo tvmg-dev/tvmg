@@ -6,7 +6,7 @@
 #include "src/core/utils.h"
 #include "hwconfig.h"
 
-#define VERSION_STR        "v25.09.05"
+#define VERSION_STR        "v25.09.06a"
 
 #define SAMPLING_PERIOD_MS 30000
 
@@ -20,6 +20,8 @@ extern void    setRegistryEntry( char *key,char *value );
 extern int32_t getRegistryInt( char *key );
 extern char    *getRegistryString( char *key );
 extern void    hwReset();
+extern void    setRebootRequired();
+extern bool    isReootRequired();
 
 // for nvs data
 

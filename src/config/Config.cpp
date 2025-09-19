@@ -554,3 +554,15 @@ void hwReset()
 
    PW_DEBUG( "out hwReset" );
 }
+
+static bool s_isRebootRequired = false;
+void    setRebootRequired()
+{
+   s_isRebootRequired = true;
+}
+
+bool isReootRequired()
+{
+   return s_isRebootRequired;
+}
+
