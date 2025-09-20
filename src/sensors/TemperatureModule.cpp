@@ -39,54 +39,6 @@ error:
    return 17;
 }
 
-TemperatureModule::PrivateSensor::PrivateSensor()
-             : m_public(),
-               m_address(),
-               m_busIndex(),
-               m_calibrationOffset( 0.0 ),
-               m_addressStr()
-{
-   PW_DEBUG( "Temp PrivateSensor()" );
-   for ( int i = 0; i < 8; i++ )
-   {
-      m_address[ i ] = 0;
-   }
-   m_addressStr[ 0 ] = '\0';
-}
-
-TemperatureModule::PrivateSensor::PrivateSensor( const TemperatureModule::PrivateSensor &other )
-             : m_public( other.m_public ),
-               m_address(),
-               m_busIndex( other.m_busIndex ),
-               m_calibrationOffset( other.m_calibrationOffset )
-{
-   PW_DEBUG( "Temp PrivateSensor::(copy)" );
-   for ( int i = 0; i < 8; i++ )
-   {
-      m_address[ i ] = other.m_address[ i ];
-   }
-
-   strncpy( m_addressStr,other.m_addressStr,sizeof(m_addressStr) );
-}
-
-TemperatureModule::PrivateSensor & TemperatureModule::PrivateSensor::operator=(const TemperatureModule::PrivateSensor &other )
-{
-   if ( this != &other )
-   {
-      PW_DEBUG( "Temp PrivateSensor::operator=" );
-      m_public = other.m_public;
-      m_busIndex = other.m_busIndex;
-      m_calibrationOffset = other.m_calibrationOffset;
-
-      for ( int i = 0; i < 8; i++ )
-      {
-         m_address[ i ] = other.m_address[ i ];
-      }
-
-      strncpy( m_addressStr,other.m_addressStr,sizeof(m_addressStr) );
-   }
-}
-
 TemperatureModule::TemperatureModule()
          : m_oneWireController( nullptr ),
            m_dallasController( nullptr ),
@@ -102,6 +54,15 @@ TemperatureModule::TemperatureModule()
    PW_DEBUG( "TemperatureModule::TemperatureModule()" );
    PW_MSG( "Temperature Module Startup" );
 
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+   {
+      m_sensors[ i ].m_isValid = false;
+      m_sensors[ i ].m_busIndex = MAX_TEMP_SENSORS;
+      m_sensors[ i ].m_sensor.m_id = 255;
+      m_sensors[ i ].m_sensor.m_emonFeedId = 0;
+      m_sensors[ i ].m_sensor.m_temp = TEMPERATURE_INVALID;
+   }
+
    cJSON *root = getAllSensorJSON();
 
    if ( root && isSensorRequired( TEMPERATURE_SENSOR_NAME ) )
@@ -113,50 +74,49 @@ TemperatureModule::TemperatureModule()
       {
          if ( strcmpcJSON( sensor,"type",TEMPERATURE_SENSOR_NAME ) == 0 )
          {
-            PrivateSensor newSensor;
-
+            PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
             String name = getStringFromcJSON( sensor,"name" );
 
-            TempSensor publicSensor;
+            tempSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
+            tempSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
 
-            publicSensor.m_id = getIntFromcJSON( sensor,"id",sensorNum );
-            publicSensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
-            publicSensor.m_temp = TEMPERATURE_INVALID;
-            setSensorName( THERM,publicSensor.m_id,name );   // add name to the sensor map
+            tempSensor->m_isValid = true;
+
+            // Add the name to the sensor name map
+            setSensorName( THERM,tempSensor->m_sensor.m_id,name );
 
             if ( cJSON_GetObjectItem( sensor,"remote" ) )
             {
-               publicSensor.m_isRemote = true;
+               tempSensor->m_sensor.m_temp = TEMPERATURE_INVALID;
+               tempSensor->m_sensor.m_isRemote = true;
                m_numRemoteSensors++;
 
                PW_DEBUG( "Remote Therm: name %s",name.c_str() );
-               PW_DEBUG( "Id %u, feed %u",publicSensor.m_id,publicSensor.m_emonFeedId );
+               PW_DEBUG( "Id %u, feed %u",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId );
             }
             else
             {
-               strncpy( newSensor.m_addressStr,getStringFromcJSON( sensor,"address" ).c_str(),sizeof( newSensor.m_addressStr ) - 1 );
-               newSensor.m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
-               publicSensor.m_isRemote = false;
+               strncpy( tempSensor->m_addressStr,getStringFromcJSON( sensor,"address" ).c_str(),sizeof( tempSensor->m_addressStr ) - 1 );
+               tempSensor->m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
+               tempSensor->m_sensor.m_temp = TEMPERATURE_INVALID;
+               tempSensor->m_sensor.m_isRemote = false;
 
                for ( int i = 0; i < 8; i++ )
                {
                   uint8_t  byte;
-                  byte = toHex( newSensor.m_addressStr[ i * 2 ] );
+                  byte = toHex( tempSensor->m_addressStr[ i * 2 ] );
                   byte <<= 4;
-                  byte |= toHex( newSensor.m_addressStr[ (i * 2) + 1 ] );
-                  newSensor.m_address[ i ] = byte;
+                  byte |= toHex( tempSensor->m_addressStr[ (i * 2) + 1 ] );
+                  tempSensor->m_address[ i ] = byte;
                }
                char addr[ 32 ];
-               getAddressString( newSensor.m_address,addr );
+               getAddressString( tempSensor->m_address,addr );
 
                m_numLocalSensors++;
 
                PW_DEBUG( "Local Therm: name %s address %s",name.c_str(),addr );
-               PW_DEBUG( "Id %u, feed %u, cal %.2f ",publicSensor.m_id,publicSensor.m_emonFeedId,newSensor.m_calibrationOffset );
+               PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId,tempSensor->m_calibrationOffset );
             }
-
-            newSensor.m_public = publicSensor;
-            m_sensors.push_back( newSensor );
          }
       }
 
@@ -238,11 +198,11 @@ void  TemperatureModule::initialise()
       {
          // Find the device address at bus index values
 
-         for ( int i = 0; i < m_sensors.size(); i++ )
+         for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
          {
-            if ( ! m_sensors[ i ].m_public.m_isRemote )
+            if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
             {
-               const char *name = getSensorName( THERM,m_sensors[ i ].m_public.m_id ).c_str();
+               const char *name = getSensorName( THERM,m_sensors[ i ].m_sensor.m_id ).c_str();
                PW_DEBUG( "Locating %s",name );
                for ( int j = 0; j < devices; j++ )
                {
@@ -289,6 +249,22 @@ void  TemperatureModule::initialise()
    }
 }
 
+TempSensor *TemperatureModule::readNextSensor( uint8_t index )
+{
+   if ( index < m_numLocalSensors + m_numRemoteSensors )
+   {
+      if ( millis() - m_millisLastAquisition > TEMPERATURE_MIN_SAMPLING_PERIOD_MS && !index )
+      {
+         getTemperatures();
+         m_millisLastAquisition = millis();
+      }
+
+      return( &m_sensors[ index ].m_sensor );
+   }
+
+   return( nullptr );
+}
+
 void TemperatureModule::sample()
 {
    if ( m_numLocalSensors && millis() - m_millisLastAquisition > TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
@@ -300,16 +276,6 @@ void TemperatureModule::sample()
 
       END_TIMING;
    }
-}
-
-TempSensor *TemperatureModule::readNextSensor( uint8_t index )
-{
-   if ( index < m_sensors.size() )
-   {
-      return( &m_sensors[ index ].m_public );
-   }
-
-   return( nullptr );
 }
 
 void TemperatureModule::addUDPListener()
@@ -337,15 +303,15 @@ void TemperatureModule::addUDPListener()
                   uint8_t  id = getIntFromcJSON( sensor,"id",sensorNum++ );
                   float_t  value = getFloatFromcJSON( sensor,"value",TEMPERATURE_INVALID );
 
-                  for ( int i = 0; i < m_sensors.size(); i++ )
+                  for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
                   {
-                     const PrivateSensor &sensor = m_sensors[ i ];
-                     if ( sensor.m_public.m_isRemote && sensor.m_public.m_id == id )
+                     PrivateSensor *tempSensor = &m_sensors[ i ];
+                     if ( tempSensor->m_isValid && tempSensor->m_sensor.m_isRemote && tempSensor->m_sensor.m_id == id )
                      {
                         PW_MSG( "UDP: Assign remote temp ID %d %.1f",id,value );
                         if ( Measurement::takeSampleMutex( k_waitMuxexMs ) == 1 )
                         {
-                           m_sensors[ i ].m_public.m_temp = value;
+                           tempSensor->m_sensor.m_temp = value;
                            Measurement::releaseSampleMutex();
                         }
                         else
@@ -368,15 +334,15 @@ bool TemperatureModule::getTemperatures()
    // If faking, then incremenent local temperatures and also broadcast
    if ( m_fakeMeasurements )
    {
-      for ( int i = 0; i < m_sensors.size(); i++ )
+      for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
       {
-         if ( !m_sensors[ i ].m_public.m_isRemote )
+         if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
          {
-            if ( m_sensors[ i ].m_public.m_temp < (TEMPERATURE_INVALID + 1.0f) )
+            if ( m_sensors[ i ].m_sensor.m_temp < (TEMPERATURE_INVALID + 1.0f) )
             {
-               m_sensors[ i ].m_public.m_temp = i;
+               m_sensors[ i ].m_sensor.m_temp = i;
             }
-            m_sensors[ i ].m_public.m_temp += 0.1;
+            m_sensors[ i ].m_sensor.m_temp += 0.1;
          }
       }
 
@@ -389,6 +355,8 @@ bool TemperatureModule::getTemperatures()
       return false;
    }
 
+   START_TIMING( "1-Wire Acquisition" );
+
    // Request temperatures of all devices on the bus.  This may block so is not
    // an ideal way to obtain temperatures...
 
@@ -396,20 +364,20 @@ bool TemperatureModule::getTemperatures()
 
    // Now get the temperatures from the scratch pad used by the Dallas library
 
-   for ( int i = 0; i < m_sensors.size(); i++ )
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
-      m_sensors[ i ].m_public.m_temp = TEMPERATURE_INVALID;    // initially invalidate the temperature
+      m_sensors[ i ].m_sensor.m_temp = TEMPERATURE_INVALID;    // initially invalidate the temperature
 
-      if ( ! m_sensors[ i ].m_public.m_isRemote )
+      if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
       {
-         const char *name = getSensorName( THERM,m_sensors[ i ].m_public.m_id ).c_str();
+         const char *name = getSensorName( THERM,m_sensors[ i ].m_sensor.m_id ).c_str();
 
-         m_sensors[ i ].m_public.m_temp = m_dallasController->getTempC( m_sensors[ i ].m_address );
+         m_sensors[ i ].m_sensor.m_temp = m_dallasController->getTempC( m_sensors[ i ].m_address );
 
-         if ( m_sensors[ i ].m_public.m_temp != DEVICE_DISCONNECTED_C )
+         if ( m_sensors[ i ].m_sensor.m_temp != DEVICE_DISCONNECTED_C )
          {
-            PW_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_public.m_temp );
-            m_sensors[ i ].m_public.m_temp += m_sensors[ i ].m_calibrationOffset;
+            PW_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_sensor.m_temp );
+            m_sensors[ i ].m_sensor.m_temp += m_sensors[ i ].m_calibrationOffset;
          }
          else
          {
@@ -417,6 +385,8 @@ bool TemperatureModule::getTemperatures()
          }
       }
    }
+
+   END_TIMING;
 
    // Now broadcast on the network
 
@@ -429,11 +399,11 @@ float_t TemperatureModule::getTemperature( uint8_t tempId )
 {
    float_t  temp = TEMPERATURE_INVALID;
 
-   for ( int i = 0; i < m_sensors.size(); i++ )
+   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
-      if ( m_sensors[ i ].m_public.m_id == tempId )
+      if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_sensor.m_id == tempId )
       {
-         temp = m_sensors[ i ].m_public.m_temp;
+         temp = m_sensors[ i ].m_sensor.m_temp;
       }
    }
 
@@ -484,15 +454,16 @@ void  TemperatureModule::localBroadcastData()
    array = cJSON_AddArrayToObject( root,"sensors" );
    if ( array )
    {
-      for ( int i = 0; i < m_sensors.size(); i++ )
+      for ( int i = 0; i < m_numLocalSensors + m_numRemoteSensors; i++ )
       {
-         if ( ! m_sensors[ i ].m_public.m_isRemote )
+         PrivateSensor *tempSensor = &m_sensors[ i ];
+         if ( tempSensor->m_isValid && ! tempSensor->m_sensor.m_isRemote )
          {
             cJSON *sensor = cJSON_CreateObject();
             if ( sensor )
             {
-               cJSON_AddNumberToObject( sensor,"id", m_sensors[ i ].m_public.m_id ) ;
-               cJSON_AddNumberToObject( sensor,"value", m_sensors[ i ].m_public.m_temp );
+               cJSON_AddNumberToObject( sensor,"id", tempSensor->m_sensor.m_id ) ;
+               cJSON_AddNumberToObject( sensor,"value", tempSensor->m_sensor.m_temp );
                cJSON_AddItemToArray( array,sensor );
             }
          }
