@@ -52,7 +52,7 @@ public:
 
 private:
    typedef struct {
-      TempSensor     m_sensor;                        // sensor essentials
+      TempSensor     m_data;                          // sensor essentials
       DeviceAddress  m_address;                       // 64 bit address, array of 8 uint8_t
       uint8_t        m_busIndex;                      // index of the sensor on OneWire bus
       float_t        m_calibrationOffset;             // calibration offset
@@ -70,7 +70,7 @@ private:
    AsyncUDP          *m_udp;
 
    bool              m_isOk;
-   PrivateSensor     m_sensors[ MAX_TEMP_SENSORS ];
+   PrivateSensor     *m_sensors[ MAX_TEMP_SENSORS ];
    uint8_t           m_numLocalSensors;
    uint8_t           m_numRemoteSensors;
    uint16_t          m_sendPort;

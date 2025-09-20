@@ -144,11 +144,6 @@ bool userIOHoldScreen = false;   // if true then don't cycle screens
 
 int  touch1Value = 0;
 
-// Have an instance of Measurement::Sample here to avoid potential stack depth
-// issue, obviously consumes ram..
-
-Measurement::Sample  s_sample;
-
 void IRAM_ATTR gotTouch1Event()
 {
   wasButton1Pressed = true;
@@ -172,9 +167,9 @@ void  handleTouch1()
    userIO->updateLine( 1, "BT-1 pressed" );
 
    String   msgString;
+   const Measurement::Sample &sample = measurement->getLastSample();
    char     message[ 128 ];
 
-   s_sample = measurement->getLastSample();
    snprintf( message,sizeof(message),"Button samplen\n"
                     "IP : %s [%s]\n"
                     "Free Bytes : %u\n"
@@ -182,22 +177,22 @@ void  handleTouch1()
                     networking->getLocalMDNSName().c_str(),
                     networking->getIPAddress().c_str(),
                     ESP.getFreeHeap(),
-                    s_sample.m_sampleTime );
+                    sample.m_sampleTime );
 
    msgString = message;
 
-   for ( int i = 0; i < s_sample.m_tempSensors.size(); i++ )
+   for ( int i = 0; i < sample.m_tempSensors.size(); i++ )
    {
-      const TempSensor &sensor = s_sample.m_tempSensors[ i ];
+      const TempSensor &sensor = sample.m_tempSensors[ i ];
 
       snprintf( message,sizeof(message),"%30s,%.1f\n",getSensorName( THERM,sensor.m_id ).c_str(),sensor.m_temp );
       msgString += message;
    }
 
    int i = 0;
-   for ( int i = 0; i < s_sample.m_powerSensors.size(); i++ )
+   for ( int i = 0; i < sample.m_powerSensors.size(); i++ )
    {
-      const PowerSensor &sensor = s_sample.m_powerSensors[ i ];
+      const PowerSensor &sensor = sample.m_powerSensors[ i ];
 
       snprintf( message,sizeof(message),"%30s,%.1f\n",getSensorName( POWER,sensor.m_id ).c_str(),sensor.m_power,sensor.m_energy );
       msgString += message;
@@ -209,7 +204,6 @@ void  handleTouch1()
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG,true );
-
 }
 
 void  handleTouch2()

@@ -58,9 +58,9 @@ TemperatureModule::TemperatureModule()
    {
       m_sensors[ i ].m_isValid = false;
       m_sensors[ i ].m_busIndex = MAX_TEMP_SENSORS;
-      m_sensors[ i ].m_sensor.m_id = 255;
-      m_sensors[ i ].m_sensor.m_emonFeedId = 0;
-      m_sensors[ i ].m_sensor.m_temp = TEMPERATURE_INVALID;
+      m_sensors[ i ].m_data.m_id = 255;
+      m_sensors[ i ].m_data.m_emonFeedId = 0;
+      m_sensors[ i ].m_data.m_temp = TEMPERATURE_INVALID;
    }
 
    cJSON *root = getAllSensorJSON();
@@ -77,29 +77,29 @@ TemperatureModule::TemperatureModule()
             PrivateSensor *tempSensor = &m_sensors[ m_numLocalSensors + m_numRemoteSensors ];
             String name = getStringFromcJSON( sensor,"name" );
 
-            tempSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
-            tempSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
+            tempSensor->m_data.m_id = getIntFromcJSON( sensor,"id",sensorNum++ );
+            tempSensor->m_data.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
 
             tempSensor->m_isValid = true;
 
             // Add the name to the sensor name map
-            setSensorName( THERM,tempSensor->m_sensor.m_id,name );
+            setSensorName( THERM,tempSensor->m_data.m_id,name );
 
             if ( cJSON_GetObjectItem( sensor,"remote" ) )
             {
-               tempSensor->m_sensor.m_temp = TEMPERATURE_INVALID;
-               tempSensor->m_sensor.m_isRemote = true;
+               tempSensor->m_data.m_temp = TEMPERATURE_INVALID;
+               tempSensor->m_data.m_isRemote = true;
                m_numRemoteSensors++;
 
                PW_DEBUG( "Remote Therm: name %s",name.c_str() );
-               PW_DEBUG( "Id %u, feed %u",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId );
+               PW_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
             }
             else
             {
                strncpy( tempSensor->m_addressStr,getStringFromcJSON( sensor,"address" ).c_str(),sizeof( tempSensor->m_addressStr ) - 1 );
                tempSensor->m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
-               tempSensor->m_sensor.m_temp = TEMPERATURE_INVALID;
-               tempSensor->m_sensor.m_isRemote = false;
+               tempSensor->m_data.m_temp = TEMPERATURE_INVALID;
+               tempSensor->m_data.m_isRemote = false;
 
                for ( int i = 0; i < 8; i++ )
                {
@@ -115,7 +115,7 @@ TemperatureModule::TemperatureModule()
                m_numLocalSensors++;
 
                PW_DEBUG( "Local Therm: name %s address %s",name.c_str(),addr );
-               PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_sensor.m_id,tempSensor->m_sensor.m_emonFeedId,tempSensor->m_calibrationOffset );
+               PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId,tempSensor->m_calibrationOffset );
             }
          }
       }
@@ -200,9 +200,9 @@ void  TemperatureModule::initialise()
 
          for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
          {
-            if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
+            if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_data.m_isRemote )
             {
-               const char *name = getSensorName( THERM,m_sensors[ i ].m_sensor.m_id ).c_str();
+               const char *name = getSensorName( THERM,m_sensors[ i ].m_data.m_id ).c_str();
                PW_DEBUG( "Locating %s",name );
                for ( int j = 0; j < devices; j++ )
                {
@@ -259,7 +259,7 @@ TempSensor *TemperatureModule::readNextSensor( uint8_t index )
          m_millisLastAquisition = millis();
       }
 
-      return( &m_sensors[ index ].m_sensor );
+      return( &m_sensors[ index ].m_data );
    }
 
    return( nullptr );
@@ -306,12 +306,12 @@ void TemperatureModule::addUDPListener()
                   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
                   {
                      PrivateSensor *tempSensor = &m_sensors[ i ];
-                     if ( tempSensor->m_isValid && tempSensor->m_sensor.m_isRemote && tempSensor->m_sensor.m_id == id )
+                     if ( tempSensor->m_isValid && tempSensor->m_data.m_isRemote && tempSensor->m_data.m_id == id )
                      {
                         PW_MSG( "UDP: Assign remote temp ID %d %.1f",id,value );
                         if ( Measurement::takeSampleMutex( k_waitMuxexMs ) == 1 )
                         {
-                           tempSensor->m_sensor.m_temp = value;
+                           tempSensor->m_data.m_temp = value;
                            Measurement::releaseSampleMutex();
                         }
                         else
@@ -336,13 +336,13 @@ bool TemperatureModule::getTemperatures()
    {
       for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
       {
-         if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
+         if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_data.m_isRemote )
          {
-            if ( m_sensors[ i ].m_sensor.m_temp < (TEMPERATURE_INVALID + 1.0f) )
+            if ( m_sensors[ i ].m_data.m_temp < (TEMPERATURE_INVALID + 1.0f) )
             {
-               m_sensors[ i ].m_sensor.m_temp = i;
+               m_sensors[ i ].m_data.m_temp = i;
             }
-            m_sensors[ i ].m_sensor.m_temp += 0.1;
+            m_sensors[ i ].m_data.m_temp += 0.1;
          }
       }
 
@@ -366,18 +366,18 @@ bool TemperatureModule::getTemperatures()
 
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
-      m_sensors[ i ].m_sensor.m_temp = TEMPERATURE_INVALID;    // initially invalidate the temperature
+      m_sensors[ i ].m_data.m_temp = TEMPERATURE_INVALID;    // initially invalidate the temperature
 
-      if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_sensor.m_isRemote )
+      if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_data.m_isRemote )
       {
-         const char *name = getSensorName( THERM,m_sensors[ i ].m_sensor.m_id ).c_str();
+         const char *name = getSensorName( THERM,m_sensors[ i ].m_data.m_id ).c_str();
 
-         m_sensors[ i ].m_sensor.m_temp = m_dallasController->getTempC( m_sensors[ i ].m_address );
+         m_sensors[ i ].m_data.m_temp = m_dallasController->getTempC( m_sensors[ i ].m_address );
 
-         if ( m_sensors[ i ].m_sensor.m_temp != DEVICE_DISCONNECTED_C )
+         if ( m_sensors[ i ].m_data.m_temp != DEVICE_DISCONNECTED_C )
          {
-            PW_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_sensor.m_temp );
-            m_sensors[ i ].m_sensor.m_temp += m_sensors[ i ].m_calibrationOffset;
+            PW_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_data.m_temp );
+            m_sensors[ i ].m_data.m_temp += m_sensors[ i ].m_calibrationOffset;
          }
          else
          {
@@ -401,9 +401,9 @@ float_t TemperatureModule::getTemperature( uint8_t tempId )
 
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
-      if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_sensor.m_id == tempId )
+      if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_data.m_id == tempId )
       {
-         temp = m_sensors[ i ].m_sensor.m_temp;
+         temp = m_sensors[ i ].m_data.m_temp;
       }
    }
 
@@ -457,13 +457,13 @@ void  TemperatureModule::localBroadcastData()
       for ( int i = 0; i < m_numLocalSensors + m_numRemoteSensors; i++ )
       {
          PrivateSensor *tempSensor = &m_sensors[ i ];
-         if ( tempSensor->m_isValid && ! tempSensor->m_sensor.m_isRemote )
+         if ( tempSensor->m_isValid && ! tempSensor->m_data.m_isRemote )
          {
             cJSON *sensor = cJSON_CreateObject();
             if ( sensor )
             {
-               cJSON_AddNumberToObject( sensor,"id", tempSensor->m_sensor.m_id ) ;
-               cJSON_AddNumberToObject( sensor,"value", tempSensor->m_sensor.m_temp );
+               cJSON_AddNumberToObject( sensor,"id", tempSensor->m_data.m_id ) ;
+               cJSON_AddNumberToObject( sensor,"value", tempSensor->m_data.m_temp );
                cJSON_AddItemToArray( array,sensor );
             }
          }

@@ -158,7 +158,6 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
       }
    }
 
-
    if ( m_series )
    {
       // Parse the /lg.dat file for info
