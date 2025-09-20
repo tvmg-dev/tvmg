@@ -89,7 +89,7 @@ void PowerModule::initialise()
 
 void PowerModule::sample()
 {
-   if ( millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS && !index )
+   if ( millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS )
    {
       START_TIMING( "PowerModule Sample" );
 
