@@ -10,45 +10,6 @@
 
 static std::mutex copyMutex;
 
-SemaphoreHandle_t Measurement::s_sampleMutex = nullptr;
-uint32_t Measurement::s_mutexAcquiredMillis;
-
-int Measurement::takeSampleMutex( int ms )
-{
-   if ( ! s_sampleMutex )
-   {
-      PW_WARN( "No sample mutex" );
-      return -1;
-   }
-
-   uint32_t startMillis;
-
-   PW_DEBUG( "Take sample mutex" );
-   startMillis = millis();
-   int ok = xSemaphoreTakeRecursive( s_sampleMutex,ms * portTICK_PERIOD_MS);
-
-   if ( ok != pdTRUE )
-   {
-      PW_WARN( "Failed to take sample mutex" );
-   }
-   else
-   {
-      s_mutexAcquiredMillis = millis();
-      PW_DEBUG( "sample mutex took %d ms",s_mutexAcquiredMillis - startMillis );
-   }
-
-   return( ok == pdTRUE );
-}
-
-void  Measurement::releaseSampleMutex()
-{
-   if ( s_sampleMutex )
-   {
-      PW_DEBUG( "sample mutex held for %d",millis() - s_mutexAcquiredMillis );
-      xSemaphoreGiveRecursive( s_sampleMutex );
-   }
-}
-
 Measurement::Sample::Sample() :
              m_tempSensors(),
              m_powerSensors(),
@@ -99,9 +60,7 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
              m_dailyModbusSent( 0 ),
              m_dailyModbusFailed( 0 ),
              m_dailyEmonSent( 0 ),
-             m_dailyEmonFailed( 0 ),
-             m_dailySamples( 0 ),
-             m_dailySamplesFailed( 0 )
+             m_dailyEmonFailed( 0 )
 {
    PW_DEBUG( "Measurement::Measurement()" );
    PW_MSG( "Measurement Module Startup" );
@@ -122,26 +81,12 @@ Measurement::~Measurement()
 void  Measurement::initialise( void )
 {
    PW_DEBUG( "Measurement::initialise" );
-
-   if ( !s_sampleMutex )
-   {
-      s_sampleMutex = xSemaphoreCreateRecursiveMutex();
-   }
 }
 
 void  Measurement::takeSample( void )
 {
    PW_DEBUG( "Measurement::takeSample" );
    static uint sensorIndex = 0;
-
-   if ( takeSampleMutex( 100 ) != 1 )
-   {
-      m_dailySamplesFailed++;
-      PW_ERROR( "Failed sample %d %d",m_dailySamples,m_dailySamplesFailed );
-      return;
-   }
-
-   m_dailySamples++;
 
    uint32_t currentMS = millis();
    uint8_t  i;
@@ -281,8 +226,6 @@ void  Measurement::takeSample( void )
    }
 
    sensorIndex = (sensorIndex + 1) % 4;
-
-   releaseSampleMutex();
 }
 
 const Measurement::Sample &Measurement::getLastSample( void )
@@ -468,18 +411,6 @@ void  Measurement::sendUpdate()
       commsStr += line;
    }
 
-   if( m_dailySamples )
-   {
-      percentOk = 100;
-      if ( m_dailySamplesFailed )
-      {
-         percentOk = (100.0 * (m_dailySamples - m_dailySamplesFailed)) / m_dailySamples;
-      }
-
-      snprintf( line,sizeof(line),"Sampled: %u, Failed: %u - (%.1f %% Ok)\n",m_dailySamples,m_dailySamplesFailed,percentOk );
-      commsStr += line;
-   }
-
    m_dailyUpdated = true;
    String updateStr;
 
@@ -511,30 +442,6 @@ void  Measurement::sendUpdate()
 bool  Measurement::didDailyUpdate()
 {
    return m_dailyUpdated;
-}
-
-bool Measurement::getTemperature( uint8_t id,float *temp )
-{
-   bool found = false;
-
-   if ( temp )
-   {
-      std::lock_guard<std::mutex> lock( copyMutex );
-
-      for ( int i = 0; i < m_lastSample.m_tempSensors.size(); i++ )
-      {
-         const TempSensor &sensor = m_lastSample.m_tempSensors[ i ];
-
-         if ( sensor.m_id == id )
-         {
-            *temp = sensor.m_temp;
-            found = true;
-            break;
-         }
-      }
-   }
-
-   return found;
 }
 
 bool Measurement::isTemperatureDataAvailable()

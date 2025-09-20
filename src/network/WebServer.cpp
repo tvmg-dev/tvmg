@@ -863,6 +863,8 @@ void WebServer::setupAsyncServer()
 
       debugSensorNameMap();
 
+//      wasButton1Pressed = true;
+
       request->send(204);
    });
 

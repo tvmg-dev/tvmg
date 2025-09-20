@@ -17,8 +17,6 @@
 #define  FIRST_HM          70
 #define  SECOND_HM         80
 
-class UserIO;
-
 typedef struct {
    uint8_t  m_id;          // should be unique ID
    uint32_t m_emonPowerId; // Feed ID for emonCMS power
@@ -27,6 +25,7 @@ typedef struct {
    float_t  m_flowRate;    // flow rate
    float_t  m_flowTemp;
    float_t  m_returnTemp;
+   float_t  m_powerConsumed;  // Watts consumed by the device
 } HeatMeterSensor;
 
 class HeatMeter
@@ -59,7 +58,6 @@ public:
    void initialise();
    void sample();
    HeatMeterSensor  *readNextSensor( uint8_t index );
-   void  updateUserIO( UserIO *userIO );
    bool  isMeterAvailable();
 
 private:

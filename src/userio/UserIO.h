@@ -55,6 +55,7 @@ private:
    void  showHeatMeter();
    void  showCommsStatus();
    void  showLGStatus();
+   bool  getTemperature( uint8_t id,float *temp );
 
    Display              *m_display;
    ScreenType           m_currentScreen;

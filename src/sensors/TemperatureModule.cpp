@@ -1,6 +1,7 @@
 #include <cJSON.h>
 #include <WiFi.h>
-#include "AsyncUDP.h"
+#include <mutex>
+#include <AsyncUDP.h>
 
 #include "src/core/utils.h"
 #include "src/core/Measurement.h"
@@ -17,6 +18,8 @@
 extern Networking *networking;
 
 char  s_udpPacket[ 1024 ];
+
+static std::mutex remoteMutex;
 
 uint8_t toHex( char a )
 {
@@ -253,12 +256,14 @@ TempSensor *TemperatureModule::readNextSensor( uint8_t index )
 {
    if ( index < m_numLocalSensors + m_numRemoteSensors )
    {
-      if ( millis() - m_millisLastAquisition > TEMPERATURE_MIN_SAMPLING_PERIOD_MS && !index )
+      if ( !&m_sensors[ index ].m_data.m_isRemote )
       {
-         getTemperatures();
-         m_millisLastAquisition = millis();
+         return( &m_sensors[ index ].m_data );
       }
 
+      // We'll hold the remote mutex sensor to prevent an update to the remotes
+
+      std::lock_guard<std::mutex> lock( remoteMutex );
       return( &m_sensors[ index ].m_data );
    }
 
@@ -303,21 +308,15 @@ void TemperatureModule::addUDPListener()
                   uint8_t  id = getIntFromcJSON( sensor,"id",sensorNum++ );
                   float_t  value = getFloatFromcJSON( sensor,"value",TEMPERATURE_INVALID );
 
+                  std::lock_guard<std::mutex> lock( remoteMutex );
+
                   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
                   {
                      PrivateSensor *tempSensor = &m_sensors[ i ];
                      if ( tempSensor->m_isValid && tempSensor->m_data.m_isRemote && tempSensor->m_data.m_id == id )
                      {
                         PW_MSG( "UDP: Assign remote temp ID %d %.1f",id,value );
-                        if ( Measurement::takeSampleMutex( k_waitMuxexMs ) == 1 )
-                        {
-                           tempSensor->m_data.m_temp = value;
-                           Measurement::releaseSampleMutex();
-                        }
-                        else
-                        {
-                           PW_ERROR( "UDP: Failed to get sample mutex in %d ms",k_waitMuxexMs );
-                        }
+                        tempSensor->m_data.m_temp = value;
                      }
                   }
                }

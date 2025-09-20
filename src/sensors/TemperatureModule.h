@@ -70,7 +70,7 @@ private:
    AsyncUDP          *m_udp;
 
    bool              m_isOk;
-   PrivateSensor     *m_sensors[ MAX_TEMP_SENSORS ];
+   PrivateSensor     m_sensors[ MAX_TEMP_SENSORS ];
    uint8_t           m_numLocalSensors;
    uint8_t           m_numRemoteSensors;
    uint16_t          m_sendPort;

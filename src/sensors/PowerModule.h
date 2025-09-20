@@ -37,8 +37,8 @@ public:
 
 private:
    typedef struct {
-      PowerSensor m_sensor;                     // sensor essentials
-      uint8_t  m_address;                       // address on modbus
+      PowerSensor m_data;  // sensor essentials
+      uint8_t  m_address;  // address on modbus
       bool     m_isValid;
    } PrivateSensor;
 

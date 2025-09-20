@@ -22,8 +22,8 @@ PowerModule::PowerModule( ModbusMaster *modbus )
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
       m_sensors[ i ].m_isValid = false;
-      m_sensors[ i ].m_sensor.m_power = POWER_INVALID;
-      m_sensors[ i ].m_sensor.m_energy = ENERGY_INVALID;
+      m_sensors[ i ].m_data.m_power = POWER_INVALID;
+      m_sensors[ i ].m_data.m_energy = ENERGY_INVALID;
    }
 
    cJSON *root = getAllSensorJSON();
@@ -41,18 +41,18 @@ PowerModule::PowerModule( ModbusMaster *modbus )
             pwrSensor = &m_sensors[ m_numLocalSensors ];
 
             pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numLocalSensors );
-            pwrSensor->m_sensor.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
-            pwrSensor->m_sensor.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
+            pwrSensor->m_data.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
+            pwrSensor->m_data.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
 
-            pwrSensor->m_sensor.m_power = POWER_INVALID;
-            pwrSensor->m_sensor.m_energy = ENERGY_INVALID;
+            pwrSensor->m_data.m_power = POWER_INVALID;
+            pwrSensor->m_data.m_energy = ENERGY_INVALID;
             pwrSensor->m_isValid = true;
 
             // Add name to sensor name map
-            setSensorName( POWER,pwrSensor->m_sensor.m_id,name );
+            setSensorName( POWER,pwrSensor->m_data.m_id,name );
 
             PW_DEBUG( "Power: name %s address %u",name.c_str(),pwrSensor->m_address );
-            PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_sensor.m_id,pwrSensor->m_sensor.m_emonFeedId );
+            PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_data.m_id,pwrSensor->m_data.m_emonFeedId );
             m_numLocalSensors++;
          }
       }
@@ -108,7 +108,7 @@ PowerSensor  *PowerModule::readNextSensor( uint8_t index )
 {
    if ( index < m_numLocalSensors )
    {
-      return( &m_sensors[ index ].m_sensor );
+      return( &m_sensors[ index ].m_data );
    }
 
    return( nullptr );
@@ -136,14 +136,14 @@ bool PowerModule::getPower( uint8_t index )
    {
       if ( index < m_numLocalSensors )
       {
-         if ( m_sensors[ index ].m_sensor.m_energy == POWER_INVALID )
+         if ( m_sensors[ index ].m_data.m_energy == POWER_INVALID )
          {
-            m_sensors[ index ].m_sensor.m_energy = index;
-            m_sensors[ index ].m_sensor.m_power = index;
+            m_sensors[ index ].m_data.m_energy = index;
+            m_sensors[ index ].m_data.m_power = index;
          }
 
-         m_sensors[ index ].m_sensor.m_energy += 1;
-         m_sensors[ index ].m_sensor.m_power += 2;
+         m_sensors[ index ].m_data.m_energy += 1;
+         m_sensors[ index ].m_data.m_power += 2;
       }
 
       return true;
@@ -151,7 +151,7 @@ bool PowerModule::getPower( uint8_t index )
 
    if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_modbus )
    {
-      const char *name = getSensorName( POWER,m_sensors[ index ].m_sensor.m_id ).c_str();
+      const char *name = getSensorName( POWER,m_sensors[ index ].m_data.m_id ).c_str();
 
       // force a short delay if necessary
       if ( hwConfig->ModBusMsgDelay > -1 )
@@ -167,8 +167,8 @@ bool PowerModule::getPower( uint8_t index )
       if ( modbusResult != ModbusMaster::ku8MBSuccess )
       {
          PW_WARN( "Failed to obtain power info for %s",name );
-         m_sensors[ index ].m_sensor.m_energy = ENERGY_INVALID;
-         m_sensors[ index ].m_sensor.m_power = POWER_INVALID;
+         m_sensors[ index ].m_data.m_energy = ENERGY_INVALID;
+         m_sensors[ index ].m_data.m_power = POWER_INVALID;
       }
       else
       {
@@ -191,8 +191,8 @@ bool PowerModule::getPower( uint8_t index )
 
          PW_DEBUG( "%s : %.0f W : %.0f Whr",name,power,energy );
 
-         m_sensors[ index ].m_sensor.m_energy = energy;
-         m_sensors[ index ].m_sensor.m_power = power;
+         m_sensors[ index ].m_data.m_energy = energy;
+         m_sensors[ index ].m_data.m_power = power;
 
          PW_DEBUG( "I [%.1f] : V [%.1f] : Freq [%.1f] : PowerFactor [%.1f]",current, voltage, hz, pf );
          return true;

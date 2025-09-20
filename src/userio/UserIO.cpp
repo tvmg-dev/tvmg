@@ -279,42 +279,37 @@ void  UserIO::showTemps()
    {
       float flowT,returnT;
 
-      if ( m_measurement->getTemperature( HEAT_PUMP_FLOW,&flowT ) &&
-                     m_measurement->getTemperature( HEAT_PUMP_RETURN,&returnT ) )
+      if ( getTemperature( HEAT_PUMP_FLOW,&flowT ) && getTemperature( HEAT_PUMP_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"HP: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
          storeLine( 0,line );
       }
 
-      if ( m_measurement->getTemperature( HEATING_FLOW,&flowT ) &&
-                     m_measurement->getTemperature( HEATING_RETURN,&returnT ) )
+      if ( getTemperature( HEATING_FLOW,&flowT ) && getTemperature( HEATING_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
          storeLine( 1,line );
       }
 
-      if ( m_measurement->getTemperature( OUTSIDE,&flowT ) )
+      if ( getTemperature( OUTSIDE,&flowT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"OS: %3.1f",flowT );
          storeLine( 2,line );
       }
 
-      if ( m_measurement->getTemperature( LOFT_FLOW,&flowT ) &&
-                     m_measurement->getTemperature( LOFT_RETURN,&returnT ) )
+      if ( getTemperature( LOFT_FLOW,&flowT ) && getTemperature( LOFT_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"2: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
          storeLine( 3,line );
       }
 
-      if ( m_measurement->getTemperature( FIRST_FLOW,&flowT ) &&
-                     m_measurement->getTemperature( FIRST_RETURN,&returnT ) )
+      if ( getTemperature( FIRST_FLOW,&flowT ) && getTemperature( FIRST_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"1: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
          storeLine( 4,line );
       }
 
-      if ( m_measurement->getTemperature( GND_FLOW,&flowT ) &&
-                     m_measurement->getTemperature( GND_RETURN,&returnT ) )
+      if ( getTemperature( GND_FLOW,&flowT ) && getTemperature( GND_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"0: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
          storeLine( 5,line );
@@ -326,13 +321,38 @@ void  UserIO::showTemps()
 
 void  UserIO::showHeatMeter()
 {
-   if ( m_heatMeter )
+   if ( m_heatMeter && m_sample.m_heatMeterSensors.size() == 1 )
    {
       clear();
-      m_heatMeter->updateUserIO( this );
-   }
 
-   show( m_currentLines );
+      char line[ MAX_DISPLAY_COLUMNS ];
+
+      const HeatMeterSensor &sensor = m_sample.m_heatMeterSensors[ 0 ];
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%s",getSensorName( HEATMETER,sensor.m_id ) );
+      storeLine( 0,line );
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Watts : %.1f",sensor.m_powerConsumed );
+      storeLine( 1,line );
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Temp : %3.1f %3.1f",sensor.m_flowTemp,sensor.m_returnTemp );
+      storeLine( 4,line );
+
+      if ( sensor.m_power == HM_POWER_ERROR )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"Overflow power" );
+         storeLine( 2,line );
+      }
+      else
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"Flow : %3.1f l/min",sensor.m_flowRate );
+         storeLine( 2,line );
+         snprintf( line,MAX_DISPLAY_COLUMNS,"Heat : %.0f W",sensor.m_power );
+         storeLine( 5,line );
+      }
+
+      show( m_currentLines );
+   }
 }
 
 void  UserIO::showCommsStatus()
@@ -531,4 +551,26 @@ void  UserIO::showNext()
 void  UserIO::refresh()
 {
    show( m_currentScreen );
+}
+
+bool UserIO::getTemperature( uint8_t id,float *temp )
+{
+   bool found = false;
+
+   if ( temp )
+   {
+      for ( int i = 0; i < m_sample.m_tempSensors.size(); i++ )
+      {
+         const TempSensor &sensor = m_sample.m_tempSensors[ i ];
+
+         if ( sensor.m_id == id )
+         {
+            *temp = sensor.m_temp;
+            found = true;
+            break;
+         }
+      }
+   }
+
+   return found;
 }

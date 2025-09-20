@@ -2,7 +2,6 @@
 #define MEASUREMENT_H
 
 #include <time.h>
-#include <freertos/semphr.h>
 #include <vector>
 
 #include "utils.h"
@@ -40,11 +39,6 @@ public:
    bool  isPowerDataAvailable();
    bool  isHeatMeterDataAvailable();
 
-   bool getTemperature( uint8_t id,float *temp );
-
-   static int   takeSampleMutex( int ms );
-   static void  releaseSampleMutex();
-
 private:
    void  saveLastSample();
    bool  shouldSendDailyUpdate();
@@ -67,11 +61,6 @@ private:
    uint32_t    m_dailyModbusFailed;
    uint32_t    m_dailyEmonSent;
    uint32_t    m_dailyEmonFailed;
-   uint32_t    m_dailySamples;
-   uint32_t    m_dailySamplesFailed;
-
-   static SemaphoreHandle_t   s_sampleMutex;
-   static uint32_t            s_mutexAcquiredMillis;
 };
 
 #endif

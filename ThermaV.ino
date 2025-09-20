@@ -167,7 +167,7 @@ void  handleTouch1()
    userIO->updateLine( 1, "BT-1 pressed" );
 
    String   msgString;
-   const Measurement::Sample &sample = measurement->getLastSample();
+   const Measurement::Sample sample = measurement->getLastSample();
    char     message[ 128 ];
 
    snprintf( message,sizeof(message),"Button samplen\n"
@@ -198,7 +198,7 @@ void  handleTouch1()
       msgString += message;
    }
 
-   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString.c_str() );
+   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString );
 
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName() );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG );

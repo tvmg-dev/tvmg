@@ -1,7 +1,6 @@
 #include <cJSON.h>
 
 #include "src/config/Config.h"
-#include "src/userio/UserIO.h"
 #include "src/config/hwconfig.h"
 
 #include "HeatMeter.h"
@@ -110,46 +109,6 @@ bool  HeatMeterModule::isMeterAvailable()
    return( m_numLocalSensors > 0 );
 }
 
-void  HeatMeterModule::updateUserIO( UserIO *userIO )
-{
-   char line[ MAX_DISPLAY_COLUMNS ];
-
-   HeatMeter *meter = m_sensors[ 0 ];
-   if ( !meter )
-   {
-      snprintf( line,MAX_DISPLAY_COLUMNS,"No Heat Meter" );
-      userIO->storeLine( 0,line );
-      return;
-   }
-
-   HeatMeterSensor *sensor;
-   sensor = meter->getHeatMeterSensor();
-
-   String str = meter->getMode();
-   snprintf( line,MAX_DISPLAY_COLUMNS,"Mode  : %s",str.c_str() );
-   userIO->storeLine( 0,line );
-
-   str = meter->getBasicData();
-   snprintf( line,MAX_DISPLAY_COLUMNS,"Watts : %s",str.c_str() );
-   userIO->storeLine( 1,line );
-
-   snprintf( line,MAX_DISPLAY_COLUMNS,"Temp : %3.1f %3.1f",sensor->m_flowTemp,sensor->m_returnTemp );
-   userIO->storeLine( 4,line );
-
-   if ( sensor->m_power == HM_POWER_ERROR )
-   {
-      snprintf( line,MAX_DISPLAY_COLUMNS,"Overflow power" );
-      userIO->storeLine( 2,line );
-   }
-   else
-   {
-      snprintf( line,MAX_DISPLAY_COLUMNS,"Flow : %3.1f l/min",sensor->m_flowRate );
-      userIO->storeLine( 2,line );
-      snprintf( line,MAX_DISPLAY_COLUMNS,"Heat : %.0f W",sensor->m_power );
-      userIO->storeLine( 5,line );
-   }
-}
-
 HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const String &name,uint8_t id,
                            uint32_t emonFlowId, uint32_t emonPowerId, uint8_t flowTempId,
                            uint8_t returnTempId, float_t shc )
@@ -162,7 +121,11 @@ HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const Str
 {
    PW_DEBUG( "HeatMeter::HeatMeter %d",id );
 
-   setSensorName( HEATMETER,id,name );
+   String sensorName( name );
+   sensorName += " : ";
+   sensorName += m_flowMeter->getMode();
+
+   setSensorName( HEATMETER,id,sensorName );
 
    m_sensor.m_id = id;
    m_sensor.m_emonPowerId = emonPowerId;
@@ -171,6 +134,7 @@ HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const Str
    m_sensor.m_flowRate = 0;
    m_sensor.m_flowTemp = 0;
    m_sensor.m_returnTemp = 0;
+   m_sensor.m_powerConsumed = 0;
 }
 
 HeatMeter::~HeatMeter()
@@ -198,6 +162,7 @@ void  HeatMeter::takeMeasurement()
       if ( m_sensor.m_flowRate == FLOW_RATE_ERROR )
       {
          m_sensor.m_power = HM_POWER_ERROR;
+         m_sensor.m_powerConsumed = 0;
       }
       else
       {
@@ -213,9 +178,11 @@ void  HeatMeter::takeMeasurement()
          {
             m_sensor.m_power = 0;
          }
+
+         m_sensor.m_powerConsumed = m_flowMeter->getPowerConsumed();
       }
 
-      PW_MSG( "%s %.0f W %.1f l/min",name,m_sensor.m_power,m_sensor.m_flowRate );
+      PW_MSG( "%s %.0f W %.1f l/min (consumed %.1f)",name,m_sensor.m_power,m_sensor.m_flowRate,m_sensor.m_powerConsumed );
    }
 }
 
