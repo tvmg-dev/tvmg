@@ -307,7 +307,8 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
          if ( isNewFile )
          {
-            snprintf( line,128,",%s (power),%s (energy)",getSensorName( POWER,sensor->m_id ).c_str() );
+            const char *name = getSensorName( POWER,sensor->m_id ).c_str();
+            snprintf( line,128,",%s (power),%s (energy)",name,name );
             hdrString += line;
          }
          snprintf( line,128,",%.1f,%.1f",sensor->m_power,sensor->m_energy );

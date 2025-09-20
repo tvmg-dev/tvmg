@@ -254,7 +254,7 @@ bool  LGHeatPump::isAvailable()
 
 bool LGHeatPump::isLogging()
 {
-   return m_logRegisters;
+   return (m_logRegisters > 0);
 }
 
 void  LGHeatPump::setCurrentKW( float_t kw )
