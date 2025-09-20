@@ -256,14 +256,13 @@ void  UserIO::showStorage()
 void  UserIO::showEnergy()
 {
    char  line[ MAX_DISPLAY_COLUMNS ];
-   const PowerSensor *sensor;
 
-   int i = 0;
-   while( ( sensor = m_sample.m_powerSensors[ i ] ) )
+   for ( int i = 0; i < m_sample.m_powerSensors.size(); i++ )
    {
-      const char *name = getSensorName( POWER,sensor->m_id ).c_str();
+      const PowerSensor &sensor = m_sample.m_powerSensors[ i ];
+      const char *name = getSensorName( POWER,sensor.m_id ).c_str();
       storeLine( i * 2,name );
-      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f W %.0f kWh",sensor->m_power,sensor->m_energy / 1000.0 );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f W %.0f kWh",sensor.m_power,sensor.m_energy / 1000.0 );
       storeLine( 1 + i * 2,line );
       i++;
    }
@@ -276,7 +275,7 @@ void  UserIO::showTemps()
 
    char  line[ MAX_DISPLAY_COLUMNS ];
 
-   if ( m_measurement && m_measurement->takeSampleMutex( k_waitMutexMS ) == 1 )
+   if ( m_measurement )
    {
       float flowT,returnT;
 
@@ -322,8 +321,6 @@ void  UserIO::showTemps()
       }
 
       show( m_currentLines );
-
-      m_measurement->releaseSampleMutex();
    }
 }
 
@@ -365,7 +362,7 @@ void  UserIO::showCommsStatus()
       snprintf( line,MAX_DISPLAY_COLUMNS," Err: %u",fails );
       storeLine( 4,line );
 
-      PW_DEBUG( "modbus info %u %u",sends,fails );
+      PW_DEBUG( "modbus stats %u %u",sends,fails );
    }
 
    show( m_currentLines );

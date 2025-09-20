@@ -78,6 +78,11 @@ static std::map<float_t,float_t> r32Lookup = {
 
 LGStatus::LGStatus()
 {
+   // Assign a modbus error to start with, so will have invalid data
+   // if requested before successful acquisition
+
+   m_modbusError = true;
+
    m_time = 0;
    m_updates = 0;
 
@@ -101,6 +106,7 @@ LGStatus::LGStatus()
    m_isImmersion = false;
    m_isSilent = false;
    m_isDefrost = false;
+
 }
 
 LGHeatPump::LGHeatPump( ModbusMaster *master ) :
@@ -117,8 +123,6 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_logRegisters( false )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
-
-   m_currentStatus.m_modbusError = false;
 
    cJSON *root = getAllSensorJSON();
 
@@ -282,12 +286,8 @@ LGRegister *LGHeatPump::readNextSensor( uint8_t index )
       return nullptr;
    }
 
-   // If we've had a modbus error don't send any registers
-   if ( m_currentStatus.m_modbusError )
-   {
-      PW_DEBUG( "LG: modbus error, not returning data this sample" );
-      return nullptr;
-   }
+   // If we've had a modbus error then set invalid state
+   m_registers[ index ].m_isValid = !m_currentStatus.m_modbusError;
 
    return &m_registers[ index ];
 }
@@ -426,7 +426,6 @@ void  LGHeatPump::getLGData()
    do
    {
       bool modbusFailed = false;
-      m_currentStatus.m_modbusError = false;
 
       m_modbus->setSlaveId( m_modbusAddress );
 
@@ -481,6 +480,8 @@ void  LGHeatPump::getLGData()
          m_currentStatus.m_modbusError = true;
          break;
       }
+
+      m_currentStatus.m_modbusError = false;
 
       // log to file temporarily if enabled
 

@@ -276,61 +276,43 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       // Output header line if a new file
 
-      for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
+      for ( int i = 0; i < sample.m_tempSensors.size(); i++ )
       {
-         const TempSensor  *sensor;
-         sensor = sample.m_tempSensors[ i ];
-
-         if ( !sensor )
-         {
-            break;
-         }
+         const TempSensor  &sensor = sample.m_tempSensors[ i ];
 
          if ( isNewFile )
          {
-            snprintf( line,128,",%s",getSensorName( THERM,sensor->m_id ).c_str() );
+            snprintf( line,128,",%s",getSensorName( THERM,sensor.m_id ).c_str() );
             hdrString += line;
          }
-         snprintf( line,128,",%.1f",sensor->m_temp );
+         snprintf( line,128,",%.1f",sensor.m_temp );
          dataString += line;
       }
 
-      for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
+      for ( int i = 0; i < sample.m_powerSensors.size(); i++ )
       {
-         const PowerSensor  *sensor;
-         sensor = sample.m_powerSensors[ i ];
-
-         if ( !sensor )
-         {
-            break;
-         }
+         const PowerSensor &sensor = sample.m_powerSensors[ i ];
 
          if ( isNewFile )
          {
-            const char *name = getSensorName( POWER,sensor->m_id ).c_str();
+            const char *name = getSensorName( POWER,sensor.m_id ).c_str();
             snprintf( line,128,",%s (power),%s (energy)",name,name );
             hdrString += line;
          }
-         snprintf( line,128,",%.1f,%.1f",sensor->m_power,sensor->m_energy );
+         snprintf( line,128,",%.1f,%.1f",sensor.m_power,sensor.m_energy );
          dataString += line;
       }
 
-      for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
+      for ( int i = 0; i < sample.m_lgRegisters.size(); i++ )
       {
-         const LGRegister  *lgReg;
-         lgReg = sample.m_lgRegisters[ i ];
-
-         if ( !lgReg )
-         {
-            break;
-         }
+         const LGRegister &lgReg = sample.m_lgRegisters[ i ];
 
          if ( isNewFile )
          {
-            snprintf( line,128,",%s",getSensorName( HEATPUMP,lgReg->m_id ).c_str() );
+            snprintf( line,128,",%s",getSensorName( HEATPUMP,lgReg.m_id ).c_str() );
             hdrString += line;
          }
-         snprintf( line,128,",%.1f",lgReg->m_value );
+         snprintf( line,128,",%.1f",lgReg.m_value );
          dataString += line;
       }
 

@@ -1,3 +1,4 @@
+#include <mutex>
 
 #include "src/config/config.h"
 
@@ -6,6 +7,8 @@
 #include "src/network/Networking.h"
 
 #define INVALID_UPDATE_HOUR  25
+
+static std::mutex copyMutex;
 
 SemaphoreHandle_t Measurement::s_sampleMutex = nullptr;
 uint32_t Measurement::s_mutexAcquiredMillis;
@@ -46,50 +49,23 @@ void  Measurement::releaseSampleMutex()
    }
 }
 
-Measurement::Sample::Sample()
+Measurement::Sample::Sample() :
+             m_tempSensors(),
+             m_powerSensors(),
+             m_lgRegisters(),
+             m_heatMeterSensors()
 {
    m_sampleTime = 0;
-
-   // we use a nullptr to terminate the sensors when we iterate over them,
-   // so the arrays are actually sized with +1.
-
-   for ( int i = 0; i < MAX_TEMP_SENSORS + 1; i++ )
-   {
-      m_tempSensors[ i ] = nullptr;
-   }
-   for ( int i = 0; i < MAX_POWER_SENSORS + 1; i++ )
-   {
-      m_powerSensors[ i ] = nullptr;
-   }
-   for ( int i = 0; i < MAX_HP_REGISTERS + 1; i++ )
-   {
-      m_lgRegisters[ i ] = nullptr;
-   }
-   for ( int i = 0; i < MAX_HEAT_METERS + 1; i++ )
-   {
-      m_heatMeterSensors[ i ] = nullptr;
-   }
 }
 
 Measurement::Sample::Sample( const Measurement::Sample &other )
 {
    m_sampleTime = other.m_sampleTime;
-   for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
-   {
-      m_tempSensors[ i ] = other.m_tempSensors[ i ];
-   }
-   for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
-   {
-      m_powerSensors[ i ] = other.m_powerSensors[ i ];
-   }
-   for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
-   {
-      m_lgRegisters[ i ] = other.m_lgRegisters[ i ];
-   }
-   for ( int i = 0; i < MAX_HEAT_METERS; i++ )
-   {
-      m_heatMeterSensors[ i ] = other.m_heatMeterSensors[ i ];
-   }
+
+   m_tempSensors = other.m_tempSensors;
+   m_powerSensors = other.m_powerSensors;
+   m_lgRegisters = other.m_lgRegisters;
+   m_heatMeterSensors = other.m_heatMeterSensors;
 }
 
 Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &other )
@@ -97,22 +73,11 @@ Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &
    if ( this != &other )
    {
       m_sampleTime = other.m_sampleTime;
-      for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
-      {
-         m_tempSensors[ i ] = other.m_tempSensors[ i ];
-      }
-      for ( int i = 0; i <  MAX_POWER_SENSORS; i++ )
-      {
-         m_powerSensors[ i ] = other.m_powerSensors[ i ];
-      }
-      for ( int i = 0; i < MAX_HP_REGISTERS; i++ )
-      {
-         m_lgRegisters[ i ] = other.m_lgRegisters[ i ];
-      }
-      for ( int i = 0; i < MAX_HEAT_METERS; i++ )
-      {
-         m_heatMeterSensors[ i ] = other.m_heatMeterSensors[ i ];
-      }
+
+      m_tempSensors = other.m_tempSensors;
+      m_powerSensors = other.m_powerSensors;
+      m_lgRegisters = other.m_lgRegisters;
+      m_heatMeterSensors = other.m_heatMeterSensors;
    }
 
    return( *this );
@@ -181,79 +146,109 @@ void  Measurement::takeSample( void )
    uint32_t currentMS = millis();
    uint8_t  i;
 
-   // get the current sample time
+   // Reset the new sample if 1st item to sample
    if ( !sensorIndex )
    {
       time( &m_newSample.m_sampleTime );
+
+      m_newSample.m_tempSensors.clear();
+      m_newSample.m_powerSensors.clear();
+      m_newSample.m_lgRegisters.clear();
+      m_newSample.m_heatMeterSensors.clear();
    }
 
    // we get temps, power, LG and heat meter - but only 1 type per invocation so we're not
    // performing max processing in one call
    if ( sensorIndex == 0 )
    {
+      PW_MSG( "Sample : temperatures" );
+
       i = 0;
       TempSensor *tempSensor;
 
       m_tempModule->sample();
-      while ( ( tempSensor = m_tempModule->readNextSensor( i ) ) != nullptr )
+      while ( ( tempSensor = m_tempModule->readNextSensor( i++ ) ) )
       {
-         m_newSample.m_tempSensors[ i++ ] = tempSensor;
          const char *name = getSensorName( THERM,tempSensor->m_id ).c_str();
 
+         m_newSample.m_tempSensors.push_back( *tempSensor );
+
          PW_MSG( "%s [%u] feed %u temp %.2f",name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
+         PW_MSG( "temp size %d",m_newSample.m_tempSensors.size() );
       }
   }
    else if ( sensorIndex == 1 )
    {
+      PW_MSG( "Sample : power" );
+
       i = 0;
       PowerSensor *powerSensor;
 
       m_powerModule->sample();
-      while ( ( powerSensor = m_powerModule->readNextSensor( i ) ) )
+      while ( ( powerSensor = m_powerModule->readNextSensor( i++ ) ) )
       {
-         m_newSample.m_powerSensors[ i++ ] = powerSensor;
          const char *name = getSensorName( POWER,powerSensor->m_id ).c_str();
 
-         PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
+         m_newSample.m_powerSensors.push_back( *powerSensor );
 
          if ( powerSensor->m_id == HEAT_PUMP_ID && m_heatPump )
          {
             m_heatPump->setCurrentKW( powerSensor->m_power );
          }
+
+         PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
       }
    }
-   else if ( sensorIndex == 2 )
+   else if ( sensorIndex == 2 && m_heatPump )
    {
-      if ( m_heatPump )
-      {
-         i = 0;
-         LGRegister *lgRegister;
+      PW_MSG( "Sample : heat pump" );
 
-         m_heatPump->sample();
-         while ( ( lgRegister = m_heatPump->readNextSensor( i ) ) )
+      i = 0;
+      LGRegister *lgRegister;
+
+      m_heatPump->sample();
+      while ( ( lgRegister = m_heatPump->readNextSensor( i++ ) ) )
+      {
+         const char *name = getSensorName( HEATPUMP,lgRegister->m_id ).c_str();
+
+         m_newSample.m_lgRegisters.push_back( *lgRegister );
+
+         if ( lgRegister->m_isValid )
          {
-            m_newSample.m_lgRegisters[ i++ ] = lgRegister;
-            PW_DEBUG( "LG: %s %.1f",getSensorName( HEATPUMP,lgRegister->m_id ).c_str(),lgRegister->m_value );
+            PW_DEBUG( "LG: %s %.1f",name,lgRegister->m_value );
          }
-         PW_MSG( "Retrieved %d LG registers",i );
+         else
+         {
+            PW_DEBUG( "LG: %s invalid",name );
+         }
+      }
+
+      PW_MSG( "Retrieved %d LG registers",i - 1 );
+   }
+   else if ( sensorIndex == 3 && m_heatMeterModule )
+   {
+      PW_MSG( "Sample : heat meter" );
+
+      i = 0;
+      HeatMeterSensor *heatMeterSensor;
+
+      m_heatMeterModule->sample();
+      while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i++ ) ) )
+      {
+         const char *name = getSensorName( HEATMETER,heatMeterSensor->m_id ).c_str();
+
+         m_newSample.m_heatMeterSensors.push_back( *heatMeterSensor );
+
+         PW_MSG( "%s %.1f %.1f",name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
       }
    }
-   else if ( sensorIndex == 3 )
+
+   // if last sample item, then copy the new sample to the last sample
+   // member, protect races for last sample access
+   if ( sensorIndex == 3 )
    {
-      if ( m_heatMeterModule )
-      {
-         i = 0;
-         HeatMeterSensor *heatMeterSensor;
-
-         m_heatMeterModule->sample();
-         while ( ( heatMeterSensor = m_heatMeterModule->readNextSensor( i ) ) )
-         {
-            m_newSample.m_heatMeterSensors[ i++ ] = heatMeterSensor;
-            const char *name = getSensorName( HEATMETER,heatMeterSensor->m_id ).c_str();
-
-            PW_MSG( "%s %.1f %.1f",name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
-         }
-      }
+      std::lock_guard<std::mutex> lock( copyMutex );
+      m_lastSample = m_newSample;
    }
 
    // We only process data at the sample period, we may be taking measurements
@@ -266,8 +261,6 @@ void  Measurement::takeSample( void )
 
    if ( currentMS - m_millisLastAquisition >= (SAMPLING_PERIOD_MS - 2000) )
    {
-      m_lastSample = m_newSample;
-
       m_millisLastAquisition = currentMS;
 
       if ( m_storageModule )
@@ -288,22 +281,22 @@ void  Measurement::takeSample( void )
    }
 
    sensorIndex = (sensorIndex + 1) % 4;
+
    releaseSampleMutex();
 }
 
 const Measurement::Sample &Measurement::getLastSample( void )
 {
+   std::lock_guard<std::mutex> lock( copyMutex );
+
    return m_lastSample;
 }
 
 void  Measurement::updateEmon()
 {
    static   float k_errorTemp = 75.0f;
-   char     line[ 128 ];
-   String   thermometerStr, powerStr,lgStr;
 
    // Can't update if no network
-
    if ( ! m_networking )
    {
       return;
@@ -311,62 +304,60 @@ void  Measurement::updateEmon()
 
    // send any temperatures, power, heat pump and heat meter data
 
-   int i = 0;
-   const TempSensor  *tsensor;
-
-   // temps have to be > invalid and < error temp - seen the DS's return +128
-   // when master monitor has not retrieved sensible values
-
-   while ( (tsensor = m_lastSample.m_tempSensors[ i++ ] ) )
+   for ( int i = 0; i < m_lastSample.m_tempSensors.size(); i++ )
    {
-      if ( tsensor->m_emonFeedId != 0 && tsensor->m_temp > TEMPERATURE_INVALID &&
-                        tsensor->m_temp < k_errorTemp )
+      const TempSensor &sensor = m_lastSample.m_tempSensors[ i ];
+
+      // temps have to be > invalid and < error temp - seen the DS's return +128
+      // when master monitor has not retrieved sensible values
+      if ( sensor.m_emonFeedId && sensor.m_temp > TEMPERATURE_INVALID &&
+                        sensor.m_temp < k_errorTemp )
       {
-         m_networking->sendToEmonCMS( tsensor->m_emonFeedId,tsensor->m_temp );
+         m_networking->sendToEmonCMS( sensor.m_emonFeedId,sensor.m_temp );
       }
    }
 
-   i = 0;
-   const PowerSensor *sensor;
-   while( ( sensor = m_lastSample.m_powerSensors[ i++ ] ) )
+   for ( int i = 0; i < m_lastSample.m_powerSensors.size(); i++ )
    {
-      if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
+      const PowerSensor &sensor = m_lastSample.m_powerSensors[ i ];
+
+      if ( sensor.m_emonFeedId && sensor.m_power > POWER_INVALID  )
       {
-         m_networking->sendToEmonCMS( sensor->m_emonFeedId,sensor->m_power );
+         m_networking->sendToEmonCMS( sensor.m_emonFeedId,sensor.m_power );
       }
    }
 
-   i = 0;
-   const LGRegister *lgReg;
-   while( ( lgReg = m_lastSample.m_lgRegisters[ i++ ] ) )
+   for ( int i = 0; i < m_lastSample.m_lgRegisters.size(); i++ )
    {
-      if ( lgReg->m_emonFeedId != 0 && m_networking )
+      const LGRegister &sensor = m_lastSample.m_lgRegisters[ i ];
+
+      if ( sensor.m_emonFeedId && sensor.m_isValid )
       {
-         m_networking->sendToEmonCMS( lgReg->m_emonFeedId,lgReg->m_value );
+         m_networking->sendToEmonCMS( sensor.m_emonFeedId,sensor.m_value );
       }
    }
 
-   i = 0;
-   const HeatMeterSensor *hmSensor;
-   while( ( hmSensor = m_lastSample.m_heatMeterSensors[ i++ ] ) )
+   for ( int i = 0; i < m_lastSample.m_heatMeterSensors.size(); i++ )
    {
-      if ( hmSensor->m_emonPowerId && hmSensor->m_emonFlowId )
+      const HeatMeterSensor &sensor = m_lastSample.m_heatMeterSensors[ i ];
+
+      if ( sensor.m_emonPowerId && sensor.m_emonFlowId )
       {
          float_t flowRate, power;
 
-         if ( hmSensor->m_power == HM_POWER_ERROR )
+         if ( sensor.m_power == HM_POWER_ERROR )
          {
             flowRate = 0;
             power = -1;
          }
          else
          {
-            flowRate = hmSensor->m_flowRate;
-            power = hmSensor->m_power;
+            flowRate = sensor.m_flowRate;
+            power = sensor.m_power;
          }
 
-         m_networking->sendToEmonCMS( hmSensor->m_emonFlowId,flowRate );
-         m_networking->sendToEmonCMS( hmSensor->m_emonPowerId,power );
+         m_networking->sendToEmonCMS( sensor.m_emonFlowId,flowRate );
+         m_networking->sendToEmonCMS( sensor.m_emonPowerId,power );
       }
    }
 }
@@ -402,32 +393,28 @@ void  Measurement::sendUpdate()
 
    PW_MSG( "Sending daily update" );
 
-   int i = 0;
-   while ( m_lastSample.m_tempSensors[ i ] )
+   for ( int i = 0; i < m_lastSample.m_tempSensors.size();i++ )
    {
-      const TempSensor  *sensor = m_lastSample.m_tempSensors[ i ];
-      const char *name = getSensorName( THERM,sensor->m_id ).c_str();
+      const TempSensor &sensor = m_lastSample.m_tempSensors[ i ];
+      const char *name = getSensorName( THERM,sensor.m_id ).c_str();
 
-      PW_DEBUG( "TS %s %f %d",name,sensor->m_temp,sensor->m_emonFeedId );
-      if ( sensor->m_temp > TEMPERATURE_INVALID && sensor->m_emonFeedId != 0 )
+      PW_DEBUG( "TS %s %f %d",name,sensor.m_temp,sensor.m_emonFeedId );
+      if ( sensor.m_temp > TEMPERATURE_INVALID && sensor.m_emonFeedId != 0 )
       {
-         snprintf( line,sizeof(line),"%-30s : %4.1f\n",name,sensor->m_temp );
+         snprintf( line,sizeof(line),"%-30s : %4.1f\n",name,sensor.m_temp );
          thermometerStr += line;
       }
-
-      i++;
    }
 
-   i = 0;
-   const PowerSensor *sensor;
-   while( ( sensor = m_lastSample.m_powerSensors[ i++ ] ) )
+   for ( int i = 0; i < m_lastSample.m_powerSensors.size();i++ )
    {
-      const char *name = getSensorName( POWER,sensor->m_id ).c_str();
+      const PowerSensor &sensor = m_lastSample.m_powerSensors[ i ];
+      const char *name = getSensorName( POWER,sensor.m_id ).c_str();
 
-      PW_DEBUG( "PWR %s %f %d",name,sensor->m_power,sensor->m_emonFeedId );
-      if ( sensor->m_power > POWER_INVALID && sensor->m_emonFeedId != 0 )
+      PW_DEBUG( "PWR %s %f %d",name,sensor.m_power,sensor.m_emonFeedId );
+      if ( sensor.m_power > POWER_INVALID && sensor.m_emonFeedId != 0 )
       {
-         snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",name,sensor->m_power, sensor->m_energy / 1000.0 );
+         snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",name,sensor.m_power, sensor.m_energy / 1000.0 );
          powerStr += line;
       }
    }
@@ -529,24 +516,21 @@ bool  Measurement::didDailyUpdate()
 bool Measurement::getTemperature( uint8_t id,float *temp )
 {
    bool found = false;
-   int   i = 0;
-
-   // This is not thread safe, the caller should ensure that the sample
-   // mutex is held prior to calling
 
    if ( temp )
    {
-      while ( m_lastSample.m_tempSensors[ i ] )
-      {
-         const TempSensor  *sensor = m_lastSample.m_tempSensors[ i ];
+      std::lock_guard<std::mutex> lock( copyMutex );
 
-         if ( sensor && sensor->m_id == id )
+      for ( int i = 0; i < m_lastSample.m_tempSensors.size(); i++ )
+      {
+         const TempSensor &sensor = m_lastSample.m_tempSensors[ i ];
+
+         if ( sensor.m_id == id )
          {
-            *temp = sensor->m_temp;
+            *temp = sensor.m_temp;
             found = true;
             break;
          }
-         i++;
       }
    }
 
@@ -555,18 +539,24 @@ bool Measurement::getTemperature( uint8_t id,float *temp )
 
 bool Measurement::isTemperatureDataAvailable()
 {
-   // if we have at least 1 sensor then we have temperatures available
-   return( m_tempModule->readNextSensor( 0 ) != nullptr );
+   std::lock_guard<std::mutex> lock( copyMutex );
+
+   PW_DEBUG( "last sample temp size %d",m_lastSample.m_tempSensors.size() );
+   return ( m_lastSample.m_tempSensors.size() > 0 );
 }
 
 bool Measurement::isPowerDataAvailable()
 {
-   // if we have at least 1 sensor then we have power data available
-   return( m_powerModule->readNextSensor( 0 ) != nullptr );
+   std::lock_guard<std::mutex> lock( copyMutex );
+
+   PW_DEBUG( "last sample pwr size %d",m_lastSample.m_powerSensors.size() );
+   return ( m_lastSample.m_powerSensors.size() > 0 );
 }
 
 bool Measurement::isHeatMeterDataAvailable()
 {
-   // if we have at least 1 sensor then we have heat meter data available
-   return( m_heatMeterModule->readNextSensor( 0 ) != nullptr );
+   std::lock_guard<std::mutex> lock( copyMutex );
+
+   PW_DEBUG( "last sample hm size %d",m_lastSample.m_heatMeterSensors.size() );
+   return ( m_lastSample.m_heatMeterSensors.size() > 0 );
 }
