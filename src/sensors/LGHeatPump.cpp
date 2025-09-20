@@ -260,6 +260,32 @@ bool LGHeatPump::isLogging()
    return (m_logRegisters > 0);
 }
 
+int8_t LGHeatPump::getRegisterIndex( uint32_t parameter )
+{
+   int8_t   ret = -1;
+
+   std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
+   if ( it == m_registerMap.end() )
+   {
+      PW_ERROR( "No register found for %x",parameter );
+   }
+   else
+   {
+      uint8_t  index = it->second;
+      if ( index < m_numRegisters )
+      {
+         ret = index;
+      }
+      else
+      {
+         PW_ERROR( "Invalid register index %d for %x",index,parameter );
+      }
+   }
+
+   return ret;
+}
+
+
 void  LGHeatPump::setCurrentKW( float_t kw )
 {
    m_currentKW = kw;
@@ -968,8 +994,6 @@ void  LGHeatPump::updateUserIO( UserIO *userIO )
 
    snprintf( line,MAX_DISPLAY_COLUMNS,"Evap %.1f cond %.1f",lowT,highT );
    userIO->storeLine( 5,line );
-
-
 }
 
 float_t  LGHeatPump::convertR32PressureToTemp( float_t pressure )

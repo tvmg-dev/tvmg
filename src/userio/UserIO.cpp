@@ -269,13 +269,33 @@ void  UserIO::showEnergy()
    show( m_currentLines );
 }
 
+bool UserIO::getTemperature( uint8_t id,float *temp )
+{
+   bool found = false;
+
+   if ( temp )
+   {
+      for ( int i = 0; i < m_sample.m_tempSensors.size(); i++ )
+      {
+         const TempSensor &sensor = m_sample.m_tempSensors[ i ];
+
+         if ( sensor.m_id == id )
+         {
+            *temp = sensor.m_temp;
+            found = true;
+            break;
+         }
+      }
+   }
+
+   return found;
+}
+
 void  UserIO::showTemps()
 {
-   static int k_waitMutexMS = 100;
-
    char  line[ MAX_DISPLAY_COLUMNS ];
 
-   if ( m_measurement )
+   if ( m_sample.m_tempSensors.size() > 0 )
    {
       float flowT,returnT;
 
@@ -388,13 +408,115 @@ void  UserIO::showCommsStatus()
    show( m_currentLines );
 }
 
+void UserIO::getLGValue( uint32_t parameter,float_t *value )
+{
+   if ( value )
+   {
+      int8_t index = m_heatPump->getRegisterIndex( parameter );
+
+      if ( index != -1 && index < m_sample.m_lgRegisters.size() )
+      {
+         const char *name = getSensorName( HEATPUMP,m_sample.m_lgRegisters[ index ].m_id ).c_str();
+         *value = m_sample.m_lgRegisters[ index ].m_value;
+
+         PW_DEBUG( "lgvalue %s [%x] %.1f",name,parameter,*value );
+      }
+      else
+      {
+         *value = 0;
+      }
+   }
+}
+
 void  UserIO::showLGStatus()
 {
-   if ( m_heatPump )
+   PW_MSG( "Show LGStatus" );
+
+   if ( !m_heatPump || m_sample.m_lgRegisters.size() == 0 )
    {
-      clear();
-      m_heatPump->updateUserIO( this );
+      return;
    }
+
+   char line[ MAX_DISPLAY_COLUMNS ];
+
+   clear();
+   do
+   {
+      if ( !m_sample.m_lgRegisters[ 0 ].m_isValid )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"Modbus Err" );
+         storeLine( 0,line );
+         break;
+      }
+
+      float_t  flowRate,targetTemp;
+      getLGValue( FLOW_RATE,&flowRate );
+      getLGValue( TARGET_TEMP,&targetTemp );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.1f l/m. t: %.1f",flowRate,targetTemp );
+      storeLine( 1,line );
+
+      float_t inlet,outlet;
+      getLGValue( INLET_TEMP,&inlet );
+      getLGValue( OUTLET_TEMP,&outlet );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"i: %.1f o: %.1f",inlet,outlet );
+      storeLine( 1,line );
+
+      float_t compressorStatus;
+      getLGValue( COMPRESSOR_STATUS,&compressorStatus );
+      if ( compressorStatus < 0.2f )
+      {
+         snprintf( line,MAX_DISPLAY_COLUMNS,"Compress: OFF" );
+         storeLine( 3,line );
+         break;
+      }
+
+      float pwr;
+      getLGValue( HEATING_POWER,&pwr );
+//      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f [%.0f]",pwr,m_currentKW );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f",pwr );
+      storeLine( 2,line );
+
+      float_t cop,carnotCOP,copRatio;
+      float_t highT,lowT;
+      getLGValue( COP,&cop );
+      getLGValue( LOW_PRESS_TEMP,&lowT );
+      getLGValue( HIGH_PRESS_TEMP,&highT );
+      if ( highT - lowT > 1.0F )
+      {
+         carnotCOP = (273 + highT) / ( highT - lowT );
+         copRatio = 100.0 * (cop / carnotCOP);
+      }
+      else
+      {
+         carnotCOP = 1;
+         copRatio = 1;
+      }
+
+      PW_DEBUG( "HP COP %.1f %.1f %.0f%",cop,carnotCOP,copRatio );
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.1f %.1f %.0f",cop,carnotCOP,copRatio );
+      storeLine( 3,line );
+
+      float_t silent;
+      char powerChar = '+';
+      getLGValue( SILENT_STATUS,&silent );
+
+      if ( silent < 0.2f )
+      {
+         powerChar = '-';
+      }
+
+      float_t cr,compressHz;
+      getLGValue( COMPRESSION_RATIO,&cr );
+      getLGValue( COMPRESSOR_HZ,&compressHz );
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f Hz %c %.1f",compressHz,powerChar,cr );
+      storeLine( 4,line );
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"Evap %.1f cond %.1f",lowT,highT );
+      storeLine( 5,line );
+   }
+   while( 0 );
 
    show( m_currentLines );
 }
@@ -503,10 +625,10 @@ bool  UserIO::setNextScreen()
       switch ( m_currentScreen )
       {
          case TEMPERATURES:
-            retVal = m_measurement->isTemperatureDataAvailable();
+            retVal = (m_sample.m_tempSensors.size() > 0 );
             break;
          case ENERGY:
-            retVal = m_measurement->isPowerDataAvailable();
+            retVal = (m_sample.m_powerSensors.size() > 0 );
             break;
          case COMMS_STATUS:
             if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) == 1 || m_modbus )
@@ -515,13 +637,10 @@ bool  UserIO::setNextScreen()
             }
             break;
          case LG_STATUS:
-            if ( m_heatPump )
-            {
-               retVal = true;
-            }
+            retVal = (m_sample.m_lgRegisters.size() > 0 );
             break;
          case HEAT_METERS:
-            retVal = m_measurement->isHeatMeterDataAvailable();
+            retVal = (m_sample.m_heatMeterSensors.size() > 0 );
             break;
          default:
             break;
@@ -553,24 +672,3 @@ void  UserIO::refresh()
    show( m_currentScreen );
 }
 
-bool UserIO::getTemperature( uint8_t id,float *temp )
-{
-   bool found = false;
-
-   if ( temp )
-   {
-      for ( int i = 0; i < m_sample.m_tempSensors.size(); i++ )
-      {
-         const TempSensor &sensor = m_sample.m_tempSensors[ i ];
-
-         if ( sensor.m_id == id )
-         {
-            *temp = sensor.m_temp;
-            found = true;
-            break;
-         }
-      }
-   }
-
-   return found;
-}

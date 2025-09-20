@@ -56,6 +56,8 @@ private:
    void  showCommsStatus();
    void  showLGStatus();
    bool  getTemperature( uint8_t id,float *temp );
+   void  getLGValue( uint32_t parameter,float_t *value );
+
 
    Display              *m_display;
    ScreenType           m_currentScreen;

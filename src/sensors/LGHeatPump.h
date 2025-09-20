@@ -133,6 +133,7 @@ public:
    void  resetEventLog();
    void  sample();
    LGRegister *readNextSensor( uint8_t index );
+   int8_t getRegisterIndex( uint32_t parameter );
    void  setCurrentKW( float_t kw );
    void  updateUserIO( UserIO *userIO );
 
