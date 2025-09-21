@@ -68,7 +68,6 @@
 #define  COMPRESSION_RATIO (MB_CALCULATED | 0x0005 )
 
 class ModbusMaster;
-class UserIO;
 
 enum ModbusType {
    INVALID,
@@ -135,7 +134,6 @@ public:
    LGRegister *readNextSensor( uint8_t index );
    int8_t getRegisterIndex( uint32_t parameter );
    void  setCurrentKW( float_t kw );
-   void  updateUserIO( UserIO *userIO );
 
 private:
    void  getLGData();

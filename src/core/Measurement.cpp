@@ -119,7 +119,6 @@ void  Measurement::takeSample( void )
          m_newSample.m_tempSensors.push_back( *tempSensor );
 
          PW_MSG( "%s [%u] feed %u temp %.2f",name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
-         PW_MSG( "temp size %d",m_newSample.m_tempSensors.size() );
       }
   }
    else if ( sensorIndex == 1 )
@@ -149,6 +148,7 @@ void  Measurement::takeSample( void )
       PW_MSG( "Sample : heat pump" );
 
       i = 0;
+      int regsOk = 0;
       LGRegister *lgRegister;
 
       m_heatPump->sample();
@@ -161,6 +161,7 @@ void  Measurement::takeSample( void )
          if ( lgRegister->m_isValid )
          {
             PW_DEBUG( "LG: %s %.1f",name,lgRegister->m_value );
+            regsOk++;
          }
          else
          {
@@ -168,7 +169,7 @@ void  Measurement::takeSample( void )
          }
       }
 
-      PW_MSG( "Retrieved %d LG registers",i - 1 );
+      PW_MSG( "Read %d of %d LG registers",regsOk,i - 1 );
    }
    else if ( sensorIndex == 3 && m_heatMeterModule )
    {
@@ -184,7 +185,7 @@ void  Measurement::takeSample( void )
 
          m_newSample.m_heatMeterSensors.push_back( *heatMeterSensor );
 
-         PW_MSG( "%s %.1f %.1f",name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
+         PW_MSG( "%s %.1f W %.1f l/min",name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
       }
    }
 
@@ -286,21 +287,13 @@ void  Measurement::updateEmon()
 
       if ( sensor.m_emonPowerId && sensor.m_emonFlowId )
       {
-         float_t flowRate, power;
-
          if ( sensor.m_power == HM_POWER_ERROR )
          {
-            flowRate = 0;
-            power = -1;
-         }
-         else
-         {
-            flowRate = sensor.m_flowRate;
-            power = sensor.m_power;
+            return;
          }
 
-         m_networking->sendToEmonCMS( sensor.m_emonFlowId,flowRate );
-         m_networking->sendToEmonCMS( sensor.m_emonPowerId,power );
+         m_networking->sendToEmonCMS( sensor.m_emonFlowId,sensor.m_flowRate );
+         m_networking->sendToEmonCMS( sensor.m_emonPowerId,sensor.m_power );
       }
    }
 }
@@ -442,28 +435,4 @@ void  Measurement::sendUpdate()
 bool  Measurement::didDailyUpdate()
 {
    return m_dailyUpdated;
-}
-
-bool Measurement::isTemperatureDataAvailable()
-{
-   std::lock_guard<std::mutex> lock( copyMutex );
-
-   PW_DEBUG( "last sample temp size %d",m_lastSample.m_tempSensors.size() );
-   return ( m_lastSample.m_tempSensors.size() > 0 );
-}
-
-bool Measurement::isPowerDataAvailable()
-{
-   std::lock_guard<std::mutex> lock( copyMutex );
-
-   PW_DEBUG( "last sample pwr size %d",m_lastSample.m_powerSensors.size() );
-   return ( m_lastSample.m_powerSensors.size() > 0 );
-}
-
-bool Measurement::isHeatMeterDataAvailable()
-{
-   std::lock_guard<std::mutex> lock( copyMutex );
-
-   PW_DEBUG( "last sample hm size %d",m_lastSample.m_heatMeterSensors.size() );
-   return ( m_lastSample.m_heatMeterSensors.size() > 0 );
 }

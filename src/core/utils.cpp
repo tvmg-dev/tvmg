@@ -330,14 +330,14 @@ static void printMemCapsInfo(uint32_t caps, const char *caps_str)
    multi_heap_info_t info;
    size_t total = heap_caps_get_total_size(caps);
    heap_caps_get_info(&info, caps);
-   PW_DEBUG("%s Memory Info:", caps_str);
-   PW_DEBUG("------------------------------------------");
-   PW_DEBUG("  Total Size        : %8d B (%6.1f KB)", total, b2kb(total));
-   PW_DEBUG("  Free Bytes        : %8d B (%6.1f KB)", info.total_free_bytes, b2kb(info.total_free_bytes));
-   PW_DEBUG("  Allocated Bytes   : %8d B (%6.1f KB)", info.total_allocated_bytes, b2kb(info.total_allocated_bytes));
-   PW_DEBUG("  Minimum Free Bytes: %8d B (%6.1f KB)", info.minimum_free_bytes, b2kb(info.minimum_free_bytes));
-   PW_DEBUG("  Largest Free Block: %8d B (%6.1f KB)", info.largest_free_block, b2kb(info.largest_free_block));
-   PW_DEBUG("------------------------------------------");
+   PW_MSG("%s Memory Info:", caps_str);
+   PW_MSG("------------------------------------------");
+   PW_MSG("  Total Size        : %8d B (%6.1f KB)", total, b2kb(total));
+   PW_MSG("  Free Bytes        : %8d B (%6.1f KB)", info.total_free_bytes, b2kb(info.total_free_bytes));
+   PW_MSG("  Allocated Bytes   : %8d B (%6.1f KB)", info.total_allocated_bytes, b2kb(info.total_allocated_bytes));
+   PW_MSG("  Minimum Free Bytes: %8d B (%6.1f KB)", info.minimum_free_bytes, b2kb(info.minimum_free_bytes));
+   PW_MSG("  Largest Free Block: %8d B (%6.1f KB)", info.largest_free_block, b2kb(info.largest_free_block));
+   PW_MSG("------------------------------------------");
 }
 
 // Debug for finding stack depth, dervied from
@@ -354,13 +354,13 @@ void getRunTimeInfo()
    // Some memory info
 
    printMemCapsInfo( MALLOC_CAP_INTERNAL,"INTERNAL" );
-   PW_DEBUG( "Largest Free %d",largestFreeInternalBlock() );
+   PW_MSG( "Largest Free %d",largestFreeInternalBlock() );
 
    // How many current tasks, could change as we execute
 
    numTasks = uxTaskGetNumberOfTasks();
 
-   PW_DEBUG( "Total tasks %d",numTasks );
+   PW_MSG( "Total tasks %d",numTasks );
 
    if ( numTasks > MAX_TASKS )
    {
@@ -375,7 +375,7 @@ void getRunTimeInfo()
                               &ulTotalRunTime );
    END_TIMING;
 
-   PW_DEBUG( "runtime %ul %d %d %d",ulTotalRunTime,millis(),configTICK_RATE_HZ,portTICK_PERIOD_MS );
+   PW_MSG( "runtime %ul %d %d %d",ulTotalRunTime,millis(),configTICK_RATE_HZ,portTICK_PERIOD_MS );
 
    ulTotalRunTime /= 100UL;
 
@@ -390,7 +390,7 @@ void getRunTimeInfo()
             TaskStatus_t *task = &taskStatusArray[ t ];
 
             ulStatsAsPercentage = task->ulRunTimeCounter / ulTotalRunTime;
-            PW_DEBUG( "%s tt %d tt %d - stk %d Core %d",
+            PW_MSG( "%s tt %d tt %d - stk %d Core %d",
                               task->pcTaskName,
                               task->ulRunTimeCounter,
                               ulStatsAsPercentage,

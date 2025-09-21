@@ -174,7 +174,7 @@ void  HeatMeter::takeMeasurement()
 
          PW_DEBUG( "%s flow %.1f ret %.1f, %.1f l/min",name,m_sensor.m_flowTemp,m_sensor.m_returnTemp,m_sensor.m_flowRate );
 
-         if ( m_sensor.m_power < 0 )
+         if ( m_sensor.m_power < 1 )
          {
             m_sensor.m_power = 0;
          }
@@ -182,7 +182,7 @@ void  HeatMeter::takeMeasurement()
          m_sensor.m_powerConsumed = m_flowMeter->getPowerConsumed();
       }
 
-      PW_MSG( "%s %.0f W %.1f l/min (consumed %.1f)",name,m_sensor.m_power,m_sensor.m_flowRate,m_sensor.m_powerConsumed );
+      PW_DEBUG( "%s %.0f W %.1f l/min (consumed %.1f)",name,m_sensor.m_power,m_sensor.m_flowRate,m_sensor.m_powerConsumed );
    }
 }
 

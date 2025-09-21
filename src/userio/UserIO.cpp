@@ -18,16 +18,26 @@
 
 #include "UserIO.h"
 
+#undef   LG_VALUE_DEBUG
+
 extern Storage *storageModule;
 extern bool userIOHoldScreen;    // in ThermaV.ino - touch pins for now
 
 static TaskHandle_t  threadHandle = NULL;
 
+#define  USERIO_PERIOD_MS  5000
+
 void  updateThread( void *params )
 {
+   static uint32_t targetMillis = 0,deltaMillis,currentMillis;
    UserIO *userIO = static_cast<UserIO *>(params);
-   int i = 0;
+
    bool didSetScreenSaver = false;
+
+   if ( ! targetMillis )
+   {
+      targetMillis = millis();
+   }
 
    while( true )
    {
@@ -57,7 +67,22 @@ void  updateThread( void *params )
          END_TIMING;
       }
 
-      delay( 5000 );
+      // our target MS is our original millis at entry of this loop, plus
+      // our sampling delay
+
+      targetMillis += USERIO_PERIOD_MS;
+      currentMillis = millis();
+
+      // We may need to skip  we've executed too long in this loop
+
+      while ( currentMillis >= targetMillis )
+      {
+         targetMillis += USERIO_PERIOD_MS;
+      }
+
+      deltaMillis = targetMillis - currentMillis;
+
+      delay( deltaMillis );
    }
 }
 
@@ -179,6 +204,8 @@ void  UserIO::setModBus( ModbusMaster *modbus )
 
 void  UserIO::showNetwork()
 {
+   PW_MSG( "Show : Network" );
+
    char        line[ MAX_DISPLAY_COLUMNS ];
    struct tm   timeInfo;
    time_t      currentTime;
@@ -225,8 +252,45 @@ void  UserIO::showNetwork()
    show( m_currentLines );
 }
 
+void  UserIO::showCommsStatus()
+{
+   PW_MSG( "Show : Comms Status" );
+
+   char  line[ MAX_DISPLAY_COLUMNS ];
+
+   if ( m_networking )
+   {
+      Networking::Status nwState = m_networking->getStatus();
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"EMON: tx %u",nwState.emonSent );
+      storeLine( 0,line );
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"[QF,SF] %u,%u",nwState.emonQFails,nwState.emonFails );
+      storeLine( 1,line );
+   }
+
+   if ( m_modbus )
+   {
+      uint32_t sends,fails;
+
+      m_modbus->getTransactionCounts( &sends,&fails );
+
+      snprintf( line,MAX_DISPLAY_COLUMNS,"MB: tx %u", sends );
+      storeLine( 3,line );
+
+      snprintf( line,MAX_DISPLAY_COLUMNS," Err: %u",fails );
+      storeLine( 4,line );
+
+      PW_DEBUG( "modbus stats %u %u",sends,fails );
+   }
+
+   show( m_currentLines );
+}
+
 void  UserIO::showStorage()
 {
+   PW_MSG( "Show : Storage" );
+
    char  line[ MAX_DISPLAY_COLUMNS ];
 
    snprintf( line,MAX_DISPLAY_COLUMNS,"Version : %s",VERSION_STR );
@@ -255,6 +319,8 @@ void  UserIO::showStorage()
 
 void  UserIO::showEnergy()
 {
+   PW_MSG( "Show : Energy" );
+
    char  line[ MAX_DISPLAY_COLUMNS ];
 
    for ( int i = 0; i < m_sample.m_powerSensors.size(); i++ )
@@ -264,7 +330,6 @@ void  UserIO::showEnergy()
       storeLine( i * 2,name );
       snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f W %.0f kWh",sensor.m_power,sensor.m_energy / 1000.0 );
       storeLine( 1 + i * 2,line );
-      i++;
    }
    show( m_currentLines );
 }
@@ -293,6 +358,8 @@ bool UserIO::getTemperature( uint8_t id,float *temp )
 
 void  UserIO::showTemps()
 {
+   PW_MSG( "Show : Temperature" );
+
    char  line[ MAX_DISPLAY_COLUMNS ];
 
    if ( m_sample.m_tempSensors.size() > 0 )
@@ -341,6 +408,8 @@ void  UserIO::showTemps()
 
 void  UserIO::showHeatMeter()
 {
+   PW_MSG( "Show : HeatMeter" );
+
    if ( m_heatMeter && m_sample.m_heatMeterSensors.size() == 1 )
    {
       clear();
@@ -349,7 +418,7 @@ void  UserIO::showHeatMeter()
 
       const HeatMeterSensor &sensor = m_sample.m_heatMeterSensors[ 0 ];
 
-      snprintf( line,MAX_DISPLAY_COLUMNS,"%s",getSensorName( HEATMETER,sensor.m_id ) );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%s",getSensorName( HEATMETER,sensor.m_id ).c_str() );
       storeLine( 0,line );
 
       snprintf( line,MAX_DISPLAY_COLUMNS,"Watts : %.1f",sensor.m_powerConsumed );
@@ -375,39 +444,6 @@ void  UserIO::showHeatMeter()
    }
 }
 
-void  UserIO::showCommsStatus()
-{
-   char  line[ MAX_DISPLAY_COLUMNS ];
-
-   if ( m_networking )
-   {
-      Networking::Status nwState = m_networking->getStatus();
-
-      snprintf( line,MAX_DISPLAY_COLUMNS,"EMON: tx %u",nwState.emonSent );
-      storeLine( 0,line );
-
-      snprintf( line,MAX_DISPLAY_COLUMNS,"[QF,SF] %u,%u",nwState.emonQFails,nwState.emonFails );
-      storeLine( 1,line );
-   }
-
-   if ( m_modbus )
-   {
-      uint32_t sends,fails;
-
-      m_modbus->getTransactionCounts( &sends,&fails );
-
-      snprintf( line,MAX_DISPLAY_COLUMNS,"MB: tx %u", sends );
-      storeLine( 3,line );
-
-      snprintf( line,MAX_DISPLAY_COLUMNS," Err: %u",fails );
-      storeLine( 4,line );
-
-      PW_DEBUG( "modbus stats %u %u",sends,fails );
-   }
-
-   show( m_currentLines );
-}
-
 void UserIO::getLGValue( uint32_t parameter,float_t *value )
 {
    if ( value )
@@ -418,8 +454,9 @@ void UserIO::getLGValue( uint32_t parameter,float_t *value )
       {
          const char *name = getSensorName( HEATPUMP,m_sample.m_lgRegisters[ index ].m_id ).c_str();
          *value = m_sample.m_lgRegisters[ index ].m_value;
-
+#ifdef LG_VALUE_DEBUG
          PW_DEBUG( "lgvalue %s [%x] %.1f",name,parameter,*value );
+#endif
       }
       else
       {
@@ -430,7 +467,7 @@ void UserIO::getLGValue( uint32_t parameter,float_t *value )
 
 void  UserIO::showLGStatus()
 {
-   PW_MSG( "Show LGStatus" );
+   PW_MSG( "Show : LGStatus" );
 
    if ( !m_heatPump || m_sample.m_lgRegisters.size() == 0 )
    {
@@ -453,7 +490,7 @@ void  UserIO::showLGStatus()
       getLGValue( FLOW_RATE,&flowRate );
       getLGValue( TARGET_TEMP,&targetTemp );
       snprintf( line,MAX_DISPLAY_COLUMNS,"%.1f l/m. t: %.1f",flowRate,targetTemp );
-      storeLine( 1,line );
+      storeLine( 0,line );
 
       float_t inlet,outlet;
       getLGValue( INLET_TEMP,&inlet );
@@ -470,10 +507,20 @@ void  UserIO::showLGStatus()
          break;
       }
 
+      /* Try and find current power usage */
+      float powerConsumed = POWER_INVALID;
+      for ( int i = 0; i < m_sample.m_powerSensors.size(); i++ )
+      {
+         const PowerSensor &sensor = m_sample.m_powerSensors[ i ];
+         if ( sensor.m_id == HEAT_PUMP_ID )
+         {
+            powerConsumed = sensor.m_power;
+         }
+      }
+
       float pwr;
       getLGValue( HEATING_POWER,&pwr );
-//      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f [%.0f]",pwr,m_currentKW );
-      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f",pwr );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f [%.0f]",pwr,powerConsumed );
       storeLine( 2,line );
 
       float_t cop,carnotCOP,copRatio;
@@ -481,6 +528,7 @@ void  UserIO::showLGStatus()
       getLGValue( COP,&cop );
       getLGValue( LOW_PRESS_TEMP,&lowT );
       getLGValue( HIGH_PRESS_TEMP,&highT );
+
       if ( highT - lowT > 1.0F )
       {
          carnotCOP = (273 + highT) / ( highT - lowT );
@@ -498,19 +546,19 @@ void  UserIO::showLGStatus()
       storeLine( 3,line );
 
       float_t silent;
-      char powerChar = '+';
+      String powerStr;
       getLGValue( SILENT_STATUS,&silent );
 
-      if ( silent < 0.2f )
+      if ( silent > 0.2 )
       {
-         powerChar = '-';
+         powerStr = "[s]";
       }
 
       float_t cr,compressHz;
       getLGValue( COMPRESSION_RATIO,&cr );
       getLGValue( COMPRESSOR_HZ,&compressHz );
 
-      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f Hz %c %.1f",compressHz,powerChar,cr );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f Hz,%.1f %s",compressHz,cr,powerStr.c_str() );
       storeLine( 4,line );
 
       snprintf( line,MAX_DISPLAY_COLUMNS,"Evap %.1f cond %.1f",lowT,highT );

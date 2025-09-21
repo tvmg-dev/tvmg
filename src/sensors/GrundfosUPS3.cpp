@@ -185,16 +185,25 @@ void  GrundfosUPS3::sample()
    detachInterrupt( m_pwmGPIO );
 
    PW_DEBUG( "high %u low %u", highCount,lowCount );
-   PW_DEBUG( "Discards: time %u level %u", levelDiscards,timeDiscards );
+   PW_DEBUG( "Discards: time %u level %u",timeDiscards,levelDiscards );
 
    // quality is 0 - 100, we expect ~ 50 samples, roughly an equal number
-   // of high and low counts
+   // of high and low counts.  A quality of < 5 suggests pump is off
 
    m_quality = highCount + lowCount;
    m_power = 0;
-   if ( m_quality < 85 || !timeBetweenPositiveEdges || ! highCount || ! lowCount )
+
+   if ( m_quality < 5 )
+   {
+      PW_DEBUG( "Pump is not running" );
+      return;
+   }
+
+   // We allow some problematic samples, 70% ?
+   if ( m_quality < 70 || !timeBetweenPositiveEdges || ! highCount || ! lowCount )
    {
       PW_WARN( "Poor quality from UPS3 - quality %u",m_quality );
+      m_power = HM_POWER_ERROR;
       return;
    }
 
@@ -218,6 +227,11 @@ float_t  GrundfosUPS3::getFlowRate()
    if ( !UPS3Coeffs.count( m_mode ) )
    {
       PW_ERROR( "Flow Rate : no coeffs for current mode !" );
+   }
+   else if ( m_power == HM_POWER_ERROR )
+   {
+      PW_WARN( "Failed to read power consumed" );
+      flowRate = FLOW_RATE_ERROR;
    }
    else
    {
