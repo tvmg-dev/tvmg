@@ -495,7 +495,7 @@ void startNetworking()
       userIO->updateLine( 5,"Reboot in 5s" );
 
       char msg[ 128 ];
-      snprintf( msg,128,"Failed to aquire NTP - rebooting",VERSION_STR  );
+      snprintf( msg,128,"Failed to aquire NTP - rebooting"  );
 
       networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                   "Heat Pump Monitoring - Startup NTP fault",msg );
@@ -633,7 +633,8 @@ void handleBootEmail( const String &rebootStr )
 
    // Send emails, attachments if available
 
-   String emailMsg( "Initial boot up completed\nVersion : " VERSION_STR "\n\n" );
+   String emailMsg( "Initial boot up completed\nVersion : ");
+   emailMsg += String( k_versionStr ) + "\n\n";
    emailMsg += networking->getIPAddress();
    emailMsg += "\n\n";
 
@@ -800,7 +801,7 @@ void setup( void )
 
    config->setPersistentInt( k_rebootType,BOOT_IN_SETUP );
 
-   PW_MSG( "Version: %s",VERSION_STR );
+   PW_MSG( "Version: %s",k_versionStr );
    PW_MSG( "Arduino Board: %s", ARDUINO_BOARD );
    PW_MSG( "Arduino Variant: %s", ARDUINO_VARIANT );
    PW_MSG( "Arduino Version: %s", ESP_ARDUINO_VERSION_STR);

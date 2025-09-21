@@ -6,7 +6,7 @@
 #include "src/core/utils.h"
 #include "hwconfig.h"
 
-#define VERSION_STR        "v25.09.06"
+extern const char *k_versionStr;
 
 #define SAMPLING_PERIOD_MS 30000
 

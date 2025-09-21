@@ -288,13 +288,24 @@ void TemperatureModule::addUDPListener()
    uint16_t  listenPort = GET_REGISTRY_INT( LISTEN_UDP_PORT );
    static int k_waitMuxexMs = 2000;  // wait up to 2s to get the sample mutex
 
-   PW_MSG( "Adding UDP listener %d",listenPort );
-   if( listenPort != -1 && m_udp && m_udp->listen( listenPort ) ) {
+   if ( listenPort == -1 || ! m_udp )
+   {
+      PW_ERROR( "Can't listen as no port & UDP device" );
+      return;
+   }
+
+   if( !m_udp->listen( listenPort ) )
+   {
+      PW_ERROR( "Failed to setup UDP listener on port %d",listenPort );
+   }
+   else
+   {
+      PW_MSG( "Adding UDP listener %d",listenPort );
       m_udp->onPacket([ & ](AsyncUDPPacket packet) {
          if ( packet.length() < sizeof( s_udpPacket ) - 1 )
          {
             strncpy( s_udpPacket,reinterpret_cast<const char *>(packet.data()),packet.length() );
-            s_udpPacket[ packet.length() ] = 0;
+            s_udpPacket[ packet.length() ] = '\0';
 
             cJSON *root = cJSON_Parse( s_udpPacket );
             if ( root )

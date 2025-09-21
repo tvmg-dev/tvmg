@@ -293,7 +293,7 @@ void  UserIO::showStorage()
 
    char  line[ MAX_DISPLAY_COLUMNS ];
 
-   snprintf( line,MAX_DISPLAY_COLUMNS,"Version : %s",VERSION_STR );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Version : %s",k_versionStr );
    storeLine( 0,line );
 
    if ( storageModule )

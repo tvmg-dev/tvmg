@@ -9,6 +9,8 @@
 
 Config   *s_instance = nullptr;
 
+const char *k_versionStr = "v25.09.07";
+
 char  defaultConfigString[] = "unknown";
 
 uint8_t Config::numRegistryEntries = 0;
@@ -181,7 +183,7 @@ Config::Config( char *fileName )
       PW_MSG( "Config():" );
       PW_MSG( "  SPIFFS : used %d of %d",m_spiffs->usedBytes(),m_spiffs->totalBytes() );
       PW_MSG( "  Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
-      PW_MSG( "  Firmware %s",VERSION_STR );
+      PW_MSG( "  Firmware %s",k_versionStr );
    }
 
    strncpy( m_configFileName,fileName,MAX_FILENAME );

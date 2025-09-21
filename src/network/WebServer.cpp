@@ -275,7 +275,7 @@ String processor(const String& var)
 {
    if(var == "VERSION")
    {
-      return( String( VERSION_STR ) );
+      return( String( k_versionStr ) );
    }
 
    if(var == "UPTIME")

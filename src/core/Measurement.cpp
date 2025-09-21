@@ -410,7 +410,7 @@ void  Measurement::sendUpdate()
    char subject[ 64 ];
 
    snprintf( subject,sizeof(subject),"Daily Update : %s [%s]",m_networking->getLocalMDNSName().c_str(),m_networking->getIPAddress().c_str() );
-   snprintf( line,sizeof(line),"Version : %s\n\n",VERSION_STR );
+   snprintf( line,sizeof(line),"Version : %s\n\n",k_versionStr );
 
    updateStr += line;
    updateStr += thermometerStr;
