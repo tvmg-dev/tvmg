@@ -1,9 +1,10 @@
-xx - UDP remote. Add new AsyncUDP instance in networking for listening
+v25.09.08 - UDP remote. Add new AsyncUDP instance in networking for listening
             for temp. broadcast messages.  When sampling temps don't set
             invalid temperatures for remote sensors (would need timer to
             set invalid ideally).
             UPS3 heat meter - power of zero is valid.
             UDP loggging, limit msg to CONFIG_TCP_MSS size (1436 bytes)
+            Reboot page restyle
 v25.09.07 - UDP remote: Async_udp library needs patching to prevent call to
             ::listen() failing if the UDP task already exists
 v25.09.06 - Reboot : New html for reboot, which occurs in loop thread after

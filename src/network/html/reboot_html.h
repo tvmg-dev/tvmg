@@ -3,12 +3,14 @@ const char reboot_html[] PROGMEM = R"rawliteral(
 <html>
 <head>
   <title>Rebooting...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="refresh" content="15; URL=/manager">
   <style>
     body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+    body { background-color: #f7f7f7; }
     .spinner {
-      border: 8px solid #f3f3f3; /* Light grey */
-      border-top: 8px solid #3498db; /* Blue */
+      border: 8px solid #dddddd;
+      border-top: 8px solid #a3a3a3;
       border-radius: 50%;
       width: 60px;
       height: 60px;

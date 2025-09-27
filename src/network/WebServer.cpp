@@ -508,7 +508,6 @@ const char *runtimeInfoButton  = R"raw(
 
 void WebServer::generateOptionsSection()
 {
-//   PW_MSG( "gsc entry: %s",optionsSection.c_str() );
    optionsSection = initialSSaverCheckbox;
 
    // Has the screen saver been disabled ?
@@ -532,7 +531,6 @@ void WebServer::generateOptionsSection()
 
       optionsSection += String( runtimeInfoButton );
    }
-//   PW_MSG( "gsc exit: %s",optionsSection.c_str() );
 }
 
 void WebServer::initialise()

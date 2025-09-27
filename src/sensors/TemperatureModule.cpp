@@ -17,7 +17,7 @@
 
 extern Networking *networking;
 
-char  s_udpPacket[ 1024 ];
+char  s_udpPacket[ 512 ];
 
 static std::mutex remoteMutex;
 
@@ -286,7 +286,6 @@ void TemperatureModule::sample()
 void TemperatureModule::addUDPListener()
 {
    uint16_t  listenPort = GET_REGISTRY_INT( LISTEN_UDP_PORT );
-   static int k_waitMuxexMs = 2000;  // wait up to 2s to get the sample mutex
 
    AsyncUDP *udp = Networking::getListenUDP();
    if ( listenPort == -1 || ! udp )
@@ -315,6 +314,7 @@ void TemperatureModule::addUDPListener()
                cJSON *sensor;
                int   sensorNum = 1;
 
+               int numAssigned = 0;
                cJSON_ArrayForEach( sensor,sensors )
                {
                   uint8_t  id = getIntFromcJSON( sensor,"id",sensorNum++ );
@@ -327,10 +327,16 @@ void TemperatureModule::addUDPListener()
                      PrivateSensor *tempSensor = &m_sensors[ i ];
                      if ( tempSensor->m_isValid && tempSensor->m_data.m_isRemote && tempSensor->m_data.m_id == id )
                      {
-                        PW_MSG( "UDP: Assign remote temp ID %d %.1f",id,value );
+                        PW_DEBUG( "UDP: Assign remote temp ID %d %.1f",id,value );
                         tempSensor->m_data.m_temp = value;
+                        numAssigned++;
                      }
                   }
+               }
+
+               if ( numAssigned )
+               {
+                  PW_MSG( "Assigned %d remote temperatures",numAssigned );
                }
 
                cJSON_Delete( root );
