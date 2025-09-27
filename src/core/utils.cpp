@@ -716,9 +716,9 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       }
 
       uint16_t len = debugString.length();
-      if ( len > 2048 )
+      if ( len > CONFIG_TCP_MSS )
       {
-         len = 2048;
+         len = CONFIG_TCP_MSS;
          String tooBig = "Message is too big for UDP, limiting";
          (void) Networking::getUDP()->writeTo( (const uint8_t *) tooBig.c_str(),strlen(tooBig.c_str()),subNet,UDPDebugPort );
       }

@@ -357,6 +357,8 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
 //----------------------------------------------------------------------
 
 AsyncUDP *Networking::s_udp = nullptr;
+AsyncUDP *Networking::s_listenUdp = nullptr;
+
 uint32_t Networking::s_mutexAcquiredMillis;
 SemaphoreHandle_t Networking::s_networkMutex = NULL;
 
@@ -577,6 +579,7 @@ void Networking::initialise()
 
    // Create new UDP
    s_udp = new AsyncUDP;
+   s_listenUdp = new AsyncUDP;
 
    // Now create out background task helper, up to 50 emon messages
    // may be queued.
@@ -760,6 +763,11 @@ WebServer   *Networking::getWebServer()
 AsyncUDP    *Networking::getUDP()
 {
    return( s_udp );
+}
+
+AsyncUDP    *Networking::getListenUDP()
+{
+   return( s_listenUdp );
 }
 
 void  Networking::releaseWebClient()

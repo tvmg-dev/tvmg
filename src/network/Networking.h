@@ -54,7 +54,8 @@ public:
    static int   takeNetworkMutex( int ms );
    static void  releaseNetworkMutex();
 
-   static   AsyncUDP    *getUDP();
+   static AsyncUDP    *getUDP();
+   static AsyncUDP    *getListenUDP();
 
 private:
    Emailer           *m_emailer;
@@ -66,6 +67,8 @@ private:
    bool              m_hasUpdated;
 
    static AsyncUDP            *s_udp;
+   static AsyncUDP            *s_listenUdp;
+
    static SemaphoreHandle_t   s_networkMutex;
    static uint32_t            s_mutexAcquiredMillis;
 };

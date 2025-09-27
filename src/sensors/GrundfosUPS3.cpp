@@ -233,7 +233,7 @@ float_t  GrundfosUPS3::getFlowRate()
       PW_WARN( "Failed to read power consumed" );
       flowRate = FLOW_RATE_ERROR;
    }
-   else
+   else if ( m_power > 1.0f )       // m_power will be zero if the pump is off, that's valid
    {
       coeffs = UPS3Coeffs.at( m_mode );
 
