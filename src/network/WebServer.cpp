@@ -98,11 +98,6 @@ void resetFS()
    }
 
    root.close();
-
-   // write out we've performed a reset via the server, then set factory reset
-
-   Config::instance()->setPersistentInt( k_rebootType,SERVER_RESET );
-   Config::instance()->setFactoryReset();
 }
 
 bool  isHiddenExtension( const String &filename )
@@ -450,7 +445,6 @@ WebServer::WebServer( Networking *networking )
           m_networking( networking ),
           m_hiddenPage(),
           m_downloadFile()
-
 {
    PW_DEBUG( "WebServer()" );
 
@@ -797,7 +791,9 @@ void WebServer::setupAsyncServer()
 
       PW_WARN( "Resetting..." );
 
+      // reset files (set to defaults) and set factor reset marker, then reboot
       resetFS();
+      Config::instance()->setFactoryReset();
 
       request->send(200);
 
@@ -866,8 +862,6 @@ void WebServer::setupAsyncServer()
       request->send(204);
    });
 
-   // if we reboot then we also clear down the factor reset marker if it exists
-
    m_webServer->on("/reboot", HTTP_POST, [](AsyncWebServerRequest *request)
    {
       if(!request->authenticate(http_username, http_password))
@@ -876,7 +870,18 @@ void WebServer::setupAsyncServer()
       }
 
       request->send(200, "text/html", reboot_html);
+
+      // if this is from factory reset, then we need to actually reset
+      // here as we won't enter the main task loop - the reboot() will set
+      // the reboot reason to SERVER_REBOOT
+
+      if ( Config::instance()->isFactoryReset() )
+      {
+         reboot();
+      }
+
       setRebootRequired();
+
    });
 
    m_webServer->onNotFound(notFound);

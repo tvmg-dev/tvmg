@@ -1,3 +1,4 @@
+v25.11.01 - Fix reset processing
 v25.09.08 - UDP remote. Add new AsyncUDP instance in networking for listening
             for temp. broadcast messages.  When sampling temps don't set
             invalid temperatures for remote sensors (would need timer to

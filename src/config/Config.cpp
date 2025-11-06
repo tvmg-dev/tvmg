@@ -9,7 +9,7 @@
 
 Config   *s_instance = nullptr;
 
-const char *k_versionStr = "v25.09.08";
+const char *k_versionStr = "v25.11.01";
 
 char  defaultConfigString[] = "unknown";
 
@@ -278,60 +278,33 @@ bool  Config::readRegistryFromFile( void )
       PW_WARN( "Read maximum %d entries from %s",numLines,m_configFileName );
    }
 
-
    return( numLines > 0 );
 }
 
-#define  FACTORY_RESET_MARKER "/factory.res"
-
 bool  Config::isFactoryReset()
 {
-   bool  isReset = false;
+   int32_t rebootReason;
 
-   if ( m_spiffs && m_spiffs->exists( FACTORY_RESET_MARKER ) )
-   {
-      isReset = true;
-   }
+   getPersistentInt( k_rebootType,&rebootReason,0 );
 
-   return isReset;
-}
-
-void  Config::clearFactoryReset()
-{
-   if ( m_spiffs )
-   {
-      m_spiffs->remove( FACTORY_RESET_MARKER );
-   }
+   return ( rebootReason == SERVER_RESET );
 }
 
 void  Config::setFactoryReset()
 {
-   if ( m_spiffs )
+   // Clear preferences, not quite the same as formatting it, and set
+   // reboot type to server reset
+
+   Preferences pref;
+   if ( !pref.begin( k_nvsNamespace ) )
    {
-      File resetFile = m_spiffs->open( FACTORY_RESET_MARKER,"w" );
-      if ( resetFile )
-      {
-         resetFile.println( "reset" );
-         resetFile.close();
-      }
-
-      // we also reset the reboot counts
-
-      setPersistentInt( k_rebootCounter,0 );
-      setPersistentInt( k_noNetworkCounter,0 );
-
-      // and we clear preferences, not quite the same as formatting it
-
-      Preferences pref;
-      if ( !pref.begin( k_nvsNamespace ) )
-      {
-         PW_ERROR( "Failed to start nvs %s",k_nvsNamespace );
-      }
-      else
-      {
-         pref.clear();
-         pref.end();
-      }
+      PW_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+   }
+   else
+   {
+      pref.clear();
+      pref.end();
+      setPersistentInt( k_rebootType,SERVER_RESET );
    }
 }
 
@@ -481,7 +454,7 @@ String  Config::getRebootReason( RebootType *type )
    // soft reset counter and last cycle time.  We also reset if we've had an
    // OTA update or server reboot
 
-   if ( reboot == POWER_CYCLE || reboot == SERVER_OTA_UPDATE || reboot == SERVER_REBOOT )
+   if ( reboot == POWER_CYCLE || reboot == SERVER_OTA_UPDATE || reboot == SERVER_REBOOT  || reboot == SERVER_RESET )
    {
       PW_DEBUG( "Resetting soft reboot data" );
       s_softResets = 0;
@@ -557,13 +530,22 @@ void hwReset()
    PW_DEBUG( "out hwReset" );
 }
 
+void reboot()
+{
+   Config::instance()->setPersistentInt( k_rebootType,SERVER_REBOOT );
+
+   delay( 500 );
+   ESP.restart();
+}
+
+
 static bool s_isRebootRequired = false;
 void    setRebootRequired()
 {
    s_isRebootRequired = true;
 }
 
-bool isReootRequired()
+bool isRebootRequired()
 {
    return s_isRebootRequired;
 }

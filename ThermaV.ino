@@ -859,20 +859,6 @@ void handleAnyOTAUpdate()
    }
 }
 
-// handle reboot request from server
-
-void handleRebootRequest()
-{
-   if ( isReootRequired() )
-   {
-      Config::instance()->clearFactoryReset();
-      Config::instance()->setPersistentInt( k_rebootType,SERVER_REBOOT );
-
-      delay( 500 );
-      ESP.restart();
-   }
-}
-
 // ---------------------------------------------------------------------
 // checkNetworking
 //
@@ -944,7 +930,10 @@ void loop(void)
 
    // Check for reboot requested, doing this in the loop task to
    // allow the webserver to respond
-   handleRebootRequest();
+   if ( isRebootRequired() )
+   {
+      reboot();
+   }
 
    // Check network is alive
    restartRequired |= !isNetworkOk();
