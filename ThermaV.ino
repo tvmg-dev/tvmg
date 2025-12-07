@@ -14,6 +14,7 @@
 #include "src/sensors/TemperatureModule.h"
 #include "src/sensors/PowerModule.h"
 #include "src/sensors/HeatMeter.h"
+#include "src/sensors/ShellyPM.h"
 
 #include "src/userio/UserIO.h"
 
@@ -27,6 +28,7 @@
 ModbusMaster      *modbusMaster = nullptr;
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
+ShellyPowerModule *shellyPowerModule = nullptr;
 ModbusTCP         *modbusTCP = nullptr;
 Storage           *storageModule = nullptr;
 HeatMeterModule   *heatMeterModule = nullptr;
@@ -551,6 +553,11 @@ void  initialiseMeasurement()
    powerModule = new PowerModule( modbusMaster );
    powerModule->initialise();
 
+   // Instantiate the Shelly power collecting module
+
+   shellyPowerModule = new ShellyPowerModule();
+   shellyPowerModule->initialise();
+
    // Instantiate the heat pump collecting module if active and we have
    // a valid modbus
 
@@ -583,7 +590,7 @@ void  initialiseMeasurement()
    // Instantiate the measurement module, but don't initialise it just yet,
    // userIO needs access to data
 
-   measurement = new Measurement( tempModule,powerModule,lgThermaV,heatMeterModule,storageModule,networking );
+   measurement = new Measurement( tempModule,powerModule,shellyPowerModule,lgThermaV,heatMeterModule,storageModule,networking );
    userIO->setMeasurement( measurement );
 
    // let's tell storage we have networking available

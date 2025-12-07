@@ -323,14 +323,27 @@ void  UserIO::showEnergy()
 
    char  line[ MAX_DISPLAY_COLUMNS ];
 
+   int lineNum = 0;
    for ( int i = 0; i < m_sample.m_powerSensors.size(); i++ )
    {
       const PowerSensor &sensor = m_sample.m_powerSensors[ i ];
       const char *name = getSensorName( POWER,sensor.m_id ).c_str();
-      storeLine( i * 2,name );
+      storeLine( lineNum * 2,name );
       snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f W %.0f kWh",sensor.m_power,sensor.m_energy / 1000.0 );
-      storeLine( 1 + i * 2,line );
+      storeLine( 1 + lineNum * 2,line );
+      lineNum++;
    }
+
+   for ( int i = 0; i < m_sample.m_shellyPowerSensors.size(); i++ )
+   {
+      const ShellyPowerSensor &sensor = m_sample.m_shellyPowerSensors[ i ];
+      const char *name = getSensorName( SHELLYPM,sensor.m_id ).c_str();
+      storeLine( lineNum * 2,name );
+      snprintf( line,MAX_DISPLAY_COLUMNS,"%.0f W %.0f kWh",sensor.m_power,sensor.m_energy / 1000.0 );
+      storeLine( 1 + lineNum * 2,line );
+      lineNum++;
+   }
+
    show( m_currentLines );
 }
 
@@ -676,7 +689,7 @@ bool  UserIO::setNextScreen()
             retVal = (m_sample.m_tempSensors.size() > 0 );
             break;
          case ENERGY:
-            retVal = (m_sample.m_powerSensors.size() > 0 );
+            retVal = (m_sample.m_powerSensors.size() > 0 || m_sample.m_shellyPowerSensors.size() > 0 );
             break;
          case COMMS_STATUS:
             if ( GET_REGISTRY_INT( UPDATE_EMONCMS ) == 1 || m_modbus )

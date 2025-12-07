@@ -41,7 +41,6 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
       {
          if ( strcmpcJSON( sensor,"type",MODBUSTCP_SENSOR_NAME ) == 0 )
          {
-            char tcpServerAddress[ 64 ];
             String name;
 
             m_sensor.m_isValid = true;

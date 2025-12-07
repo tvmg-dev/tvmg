@@ -13,6 +13,7 @@ static std::mutex copyMutex;
 Measurement::Sample::Sample() :
              m_tempSensors(),
              m_powerSensors(),
+             m_shellyPowerSensors(),
              m_lgRegisters(),
              m_heatMeterSensors()
 {
@@ -25,6 +26,7 @@ Measurement::Sample::Sample( const Measurement::Sample &other )
 
    m_tempSensors = other.m_tempSensors;
    m_powerSensors = other.m_powerSensors;
+   m_shellyPowerSensors = other.m_shellyPowerSensors;
    m_lgRegisters = other.m_lgRegisters;
    m_heatMeterSensors = other.m_heatMeterSensors;
 }
@@ -37,6 +39,7 @@ Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &
 
       m_tempSensors = other.m_tempSensors;
       m_powerSensors = other.m_powerSensors;
+      m_shellyPowerSensors = other.m_shellyPowerSensors;
       m_lgRegisters = other.m_lgRegisters;
       m_heatMeterSensors = other.m_heatMeterSensors;
    }
@@ -44,10 +47,11 @@ Measurement::Sample & Measurement::Sample::operator=(const Measurement::Sample &
    return( *this );
 }
 
-Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModule,LGHeatPump *heatPump,
+Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModule,ShellyPowerModule *shellyModule,LGHeatPump *heatPump,
                                           HeatMeterModule *hmModule, Storage *storage,Networking *networking )
            : m_tempModule( tempModule ),
              m_powerModule( powerModule ),
+             m_shellyPowerModule( shellyModule ),
              m_heatPump( heatPump ),
              m_heatMeterModule( hmModule ),
              m_storageModule( storage ),
@@ -98,11 +102,12 @@ void  Measurement::takeSample( void )
 
       m_newSample.m_tempSensors.clear();
       m_newSample.m_powerSensors.clear();
+      m_newSample.m_shellyPowerSensors.clear();
       m_newSample.m_lgRegisters.clear();
       m_newSample.m_heatMeterSensors.clear();
    }
 
-   // we get temps, power, LG and heat meter - but only 1 type per invocation so we're not
+   // we get temps, power (including Shelly's), LG and heat meter - but only 1 type per invocation so we're not
    // performing max processing in one call
    if ( sensorIndex == 0 )
    {
@@ -120,7 +125,7 @@ void  Measurement::takeSample( void )
 
          PW_MSG( "%s [%u] feed %u temp %.2f",name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
       }
-  }
+   }
    else if ( sensorIndex == 1 )
    {
       PW_MSG( "Sample : power" );
@@ -142,6 +147,25 @@ void  Measurement::takeSample( void )
 
          PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
       }
+
+      i = 0;
+      ShellyPowerSensor *shellySensor;
+
+      m_shellyPowerModule->sample();
+      while ( ( shellySensor = m_shellyPowerModule->readNextSensor( i++ ) ) )
+      {
+         const char *name = getSensorName( SHELLYPM,shellySensor->m_id ).c_str();
+
+         m_newSample.m_shellyPowerSensors.push_back( *shellySensor );
+
+         if ( shellySensor->m_id == HEAT_PUMP_ID && m_heatPump )
+         {
+            m_heatPump->setCurrentKW( shellySensor->m_power );
+         }
+
+         PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,shellySensor->m_id,shellySensor->m_emonFeedId,shellySensor->m_power,shellySensor->m_energy );
+      }
+
    }
    else if ( sensorIndex == 2 && m_heatPump )
    {

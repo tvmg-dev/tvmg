@@ -7,6 +7,7 @@
 #include "utils.h"
 #include "src/sensors/TemperatureModule.h"
 #include "src/sensors/PowerModule.h"
+#include "src/sensors/ShellyPM.h"
 #include "src/sensors/LGHeatPump.h"
 #include "src/sensors/HeatMeter.h"
 
@@ -18,17 +19,18 @@ class Measurement
 public:
    struct Sample {
       time_t       m_sampleTime;
-      std::vector<TempSensor>       m_tempSensors;
-      std::vector<PowerSensor>      m_powerSensors;
-      std::vector<LGRegister>       m_lgRegisters;
-      std::vector<HeatMeterSensor>  m_heatMeterSensors;
+      std::vector<TempSensor>          m_tempSensors;
+      std::vector<PowerSensor>         m_powerSensors;
+      std::vector<ShellyPowerSensor>   m_shellyPowerSensors;
+      std::vector<LGRegister>          m_lgRegisters;
+      std::vector<HeatMeterSensor>     m_heatMeterSensors;
 
       Sample();
       Sample( const Sample &other );
       Sample & operator=(const Sample &other );
    };
 
-   Measurement( TemperatureModule *tempModule, PowerModule *powerModule,LGHeatPump *heatPump,
+   Measurement( TemperatureModule *tempModule, PowerModule *powerModule,ShellyPowerModule *shellyModule, LGHeatPump *heatPump,
                                     HeatMeterModule *hmModule,Storage *storage,Networking *networking );
    ~Measurement();
    void     initialise();
@@ -44,6 +46,7 @@ private:
 
    TemperatureModule *m_tempModule;
    PowerModule       *m_powerModule;
+   ShellyPowerModule *m_shellyPowerModule;
    LGHeatPump        *m_heatPump;
    HeatMeterModule   *m_heatMeterModule;
    Storage           *m_storageModule;

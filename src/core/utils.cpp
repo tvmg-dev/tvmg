@@ -432,6 +432,8 @@ static const char *sensorTypeName( SensorType type )
          return "HeatMeter";
       case HEATPUMP:
          return "HeatPump";
+      case SHELLYPM:
+         return "ShellyPM";
       default:
          return "Unknown";
    }
@@ -469,7 +471,7 @@ const String &getSensorName(SensorType type, uint32_t id)
 
 void debugSensorNameMap()
 {
-   const SensorType allTypes[] = {THERM, POWER, HEATMETER, HEATPUMP};
+   const SensorType allTypes[] = {THERM, POWER, HEATMETER, HEATPUMP, SHELLYPM};
 
    for (SensorType type : allTypes)
    {
