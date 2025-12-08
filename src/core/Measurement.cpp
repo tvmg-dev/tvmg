@@ -295,6 +295,16 @@ void  Measurement::updateEmon()
       }
    }
 
+   for ( int i = 0; i < m_lastSample.m_shellyPowerSensors.size(); i++ )
+   {
+      const ShellyPowerSensor &sensor = m_lastSample.m_shellyPowerSensors[ i ];
+
+      if ( sensor.m_emonFeedId && sensor.m_power > POWER_INVALID  )
+      {
+         m_networking->sendToEmonCMS( sensor.m_emonFeedId,sensor.m_power );
+      }
+   }
+
    for ( int i = 0; i < m_lastSample.m_lgRegisters.size(); i++ )
    {
       const LGRegister &sensor = m_lastSample.m_lgRegisters[ i ];
