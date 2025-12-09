@@ -1,3 +1,4 @@
+v25.12.03 - Add timeouts to Shelly and OpenWeather HTTP requests
 v25.12.02 - Support Shelly EM and PMG3 energy monitors via their local
             HTTP servers.
             Support OpenWeather HTTP API to fetch local outdoor temp.
