@@ -448,9 +448,9 @@ void startNetworking()
    config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
 
    networking = new Networking;
-   networking->initialise();
-
    userIO->setNetworking( networking );
+
+   networking->initialise();
 
    if ( !networking->isConnected() )
    {

@@ -62,7 +62,6 @@ private:
    WebServer         *m_webServer;
    UserIO            *m_userIO;
    Status            m_status;
-   String            m_emonCert;
    bool              m_willSendEmails;
    bool              m_hasUpdated;
 
