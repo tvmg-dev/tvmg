@@ -646,8 +646,11 @@ float TemperatureModule::fetchOpenWeather( const String &url )
       }
    }
 
+   // Create a new client, we'll allow up to 5s to acquire data
+
    HTTPClient http;
    http.begin( *client,url );
+   http.setTimeout( 5000 );
 
    int resp = http.GET();
 

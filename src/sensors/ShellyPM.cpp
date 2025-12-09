@@ -169,6 +169,9 @@ bool ShellyPowerModule::getEM( PrivateSensor *sensor )
    HTTPClient http;
    http.begin( restQuery );
 
+   // Allow 4s to get data from the Shelly
+   http.setTimeout( 4000 );
+
    int httpResponse = http.GET();
    if ( httpResponse > 0 )
    {
@@ -206,6 +209,9 @@ bool ShellyPowerModule::getPMG3( PrivateSensor *sensor )
 
    HTTPClient http;
    http.begin( restQuery );
+
+   // Allow 4s to get data from the Shelly
+   http.setTimeout( 4000 );
 
    int httpResponse = http.GET();
    if ( httpResponse > 0 )
