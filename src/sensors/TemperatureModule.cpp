@@ -644,37 +644,43 @@ float TemperatureModule::fetchOpenWeather( const String &url )
       {
          client->setCACert( sectigoCert );
       }
+
    }
 
-   // Create a new client, we'll allow up to 5s to acquire data
-
-   HTTPClient http;
-   http.begin( *client,url );
-   http.setTimeout( 5000 );
-
-   int resp = http.GET();
-
-   int httpResponse = http.GET();
-   if ( httpResponse > 0 )
+   if ( client )
    {
-      String resp = http.getString();
+      client->setTimeout( 5000 );
 
-      resp.replace( ":true",":1" );
-      resp.replace( ":false",":0" );
+      // Create a new client, we'll allow up to 5s to acquire data
 
-      cJSON *root = cJSON_Parse( resp.c_str() );
-      if ( root )
+      HTTPClient http;
+      http.begin( *client,url );
+      http.setTimeout( 5000 );
+
+      int resp = http.GET();
+
+      int httpResponse = http.GET();
+      if ( httpResponse > 0 )
       {
-         cJSON *main = cJSON_GetObjectItem( root,"main" );
-         if ( main )
-         {
-            temperature = getFloatFromcJSON( main,"temp",TEMPERATURE_INVALID );
-         }
-         cJSON_Delete( root );
-      }
-   }
+         String resp = http.getString();
 
-   http.end();
+         resp.replace( ":true",":1" );
+         resp.replace( ":false",":0" );
+
+         cJSON *root = cJSON_Parse( resp.c_str() );
+         if ( root )
+         {
+            cJSON *main = cJSON_GetObjectItem( root,"main" );
+            if ( main )
+            {
+               temperature = getFloatFromcJSON( main,"temp",TEMPERATURE_INVALID );
+            }
+            cJSON_Delete( root );
+         }
+      }
+
+      http.end();
+   }
 
    if ( temperature != TEMPERATURE_INVALID )
    {
