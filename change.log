@@ -1,3 +1,10 @@
+v25.12.02 - Support Shelly EM and PMG3 energy monitors via their local
+            HTTP servers.
+            Support OpenWeather HTTP API to fetch local outdoor temp.
+            Don't attempt a Dallas 1-wire acquisition if no DS18B20's
+            found on the bus.
+            Embed SSL certificates for emoncms and OpenWeather as opposed
+            to using files in SPIFFS.
 v25.11.01 - Fix reset processing
 v25.09.08 - UDP remote. Add new AsyncUDP instance in networking for listening
             for temp. broadcast messages.  When sampling temps don't set
