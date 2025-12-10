@@ -322,6 +322,15 @@ uint32_t largestFreeInternalBlock()
    return( info.largest_free_block );
 }
 
+uint32_t freeKiB()
+{
+   multi_heap_info_t info;
+
+   heap_caps_get_info(&info, MALLOC_CAP_INTERNAL);
+
+   return( info.total_free_bytes / 1024 );
+}
+
 #define b2kb(b)                ((float)b / 1024.0)
 #define b2mb(b)                ((float)b / (1024.0 * 1024.0))
 
@@ -669,7 +678,8 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       // get stack watermark for current task, current core and largest block
       // available from the heap (which will be less than the free heap size)
 
-      sprintf( line,"[%u,%s,%u,%u] - ",xPortGetCoreID(),taskStatus.pcTaskName,taskStatus.usStackHighWaterMark,largestFreeInternalBlock() / 1024 );
+//      sprintf( line,"[%u,%s,%u,%u] - ",xPortGetCoreID(),taskStatus.pcTaskName,taskStatus.usStackHighWaterMark,largestFreeInternalBlock() / 1024 );
+      sprintf( line,"[%u,%s,%u,%u] - ",xPortGetCoreID(),taskStatus.pcTaskName,taskStatus.usStackHighWaterMark,freeKiB() );
 
       debugString += line;
    }

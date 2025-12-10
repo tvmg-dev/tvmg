@@ -625,14 +625,44 @@ idWkvklsQLI+qGu41SWyxP7x09fn1txDAXYw+zuLXfdKiXyaNb78yvBXAfCNP6CH
 MntHWpdLgtJmwsQt6j8k9Kf5qLnjatkYYaA7jBU=
 -----END CERTIFICATE----- )rawliteral";
 
+
+// A debug class to access the connect() method of HTTPClient
+
+class PeteHTTP : public HTTPClient
+{
+public:
+   PeteHTTP();
+   ~PeteHTTP();
+   bool connect();
+};
+
+PeteHTTP::PeteHTTP()
+        : HTTPClient()
+{
+}
+
+PeteHTTP::~PeteHTTP()
+{
+}
+
+bool PeteHTTP::connect()
+{
+   return HTTPClient::connect();
+}
+
+// Some long duration requests to get weather data from openweather HTTP API
+// so added timeouts to see if that helps - more testing required
+
 float TemperatureModule::fetchOpenWeather( const String &url )
 {
    float temperature = TEMPERATURE_INVALID;
+   static uint timeout = 1000;
 
    static WiFiClientSecure  *client = nullptr;
 
    if ( !client )
    {
+      PW_MSG( "New WiFiSecure for OpenWeather" );
       client = new WiFiClientSecure;
 
       if ( GET_REGISTRY_INT( OPENWEATHER_INSECURE ) == 1 )
@@ -643,20 +673,32 @@ float TemperatureModule::fetchOpenWeather( const String &url )
       else
       {
          client->setCACert( sectigoCert );
+         client->setHandshakeTimeout( timeout / 1000 );      // in seconds !
       }
-
    }
 
    if ( client )
    {
-      client->setTimeout( 5000 );
+      // We have the network mutex as we're in a sample measurement, so
+      // can safely release the webclient used for emoncms
 
-      // Create a new client, we'll allow up to 5s to acquire data
+      Networking::releaseWebClient();
 
-      HTTPClient http;
+      // Create a new client
+
+      PeteHTTP http;
       http.begin( *client,url );
-      http.setTimeout( 5000 );
 
+      http.setConnectTimeout( timeout );  // for the connection
+      http.setTimeout( timeout );         // for the HTTP response
+      http.setReuse( true );
+
+      START_TIMING( "OW Connecting" );
+      bool connected = http.connect();
+
+      END_TIMING;
+
+      START_TIMING( "OW GET" );
       int resp = http.GET();
 
       int httpResponse = http.GET();
@@ -678,8 +720,14 @@ float TemperatureModule::fetchOpenWeather( const String &url )
             cJSON_Delete( root );
          }
       }
+      else
+      {
+         PW_ERROR( "Failed HTTP GET %d",httpResponse );
+      }
 
       http.end();
+
+      END_TIMING;
    }
 
    if ( temperature != TEMPERATURE_INVALID )

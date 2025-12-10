@@ -146,6 +146,9 @@ bool ShellyPowerModule::getPower( uint8_t index )
       return false;
    }
 
+   sensor->m_data.m_power = POWER_INVALID;
+   sensor->m_data.m_energy = ENERGY_INVALID;
+
    if ( sensor->m_model == PMG3 )
    {
       return getPMG3( sensor );
@@ -182,7 +185,15 @@ bool ShellyPowerModule::getEM( PrivateSensor *sensor )
       cJSON *json = cJSON_Parse( resp.c_str() );
       if ( json )
       {
-         sensor->m_data.m_power = getFloatFromcJSON( json,"power",POWER_INVALID );
+         float power = getFloatFromcJSON( json,"power",-100 );
+
+         // put a 3W lower limit in place, seen -ve values returned
+         if ( power > -100 && power < 3 )
+         {
+            power = 0;
+         }
+
+         sensor->m_data.m_power = power;
          sensor->m_data.m_energy = getFloatFromcJSON( json,"total",ENERGY_INVALID );
          if ( sensor->m_data.m_power != POWER_INVALID && sensor->m_data.m_energy != ENERGY_INVALID )
          {
@@ -223,8 +234,14 @@ bool ShellyPowerModule::getPMG3( PrivateSensor *sensor )
       cJSON *root = cJSON_Parse( resp.c_str() );
       if ( root )
       {
-         sensor->m_data.m_power = getFloatFromcJSON( root,"apower",POWER_INVALID );
-         sensor->m_data.m_energy = ENERGY_INVALID;
+         float power = getFloatFromcJSON( root,"apower",-100 );
+
+         // put a 3W lower limit in place, seen -ve values returned
+         if ( power > -100 && power < 3 )
+         {
+            power = 0;
+         }
+         sensor->m_data.m_power = power;
 
          cJSON *aenergy = cJSON_GetObjectItem( root,"aenergy" );
          if ( aenergy )
