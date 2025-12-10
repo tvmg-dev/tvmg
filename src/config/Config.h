@@ -77,6 +77,7 @@ public:
    String  getAppRebootReason( RebootType code );
    String  getRebootReason( RebootType *type );
    bool    isFastReset();
+   bool    didRebootNoWiFi();
 
    bool    getPersistentInt( const String &key,int32_t *value,int32_t defValue = -1 );
    void    setPersistentInt( const String &key,int32_t value );

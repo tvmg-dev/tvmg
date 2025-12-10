@@ -9,7 +9,7 @@
 
 Config   *s_instance = nullptr;
 
-const char *k_versionStr = "v25.12.05b";
+const char *k_versionStr = "v25.12.05c";
 
 char  defaultConfigString[] = "unknown";
 
@@ -288,6 +288,15 @@ bool  Config::isFactoryReset()
    getPersistentInt( k_rebootType,&rebootReason,0 );
 
    return ( rebootReason == SERVER_RESET );
+}
+
+bool  Config::didRebootNoWiFi()
+{
+   int32_t rebootReason;
+
+   getPersistentInt( k_rebootType,&rebootReason,0 );
+
+   return ( rebootReason == BOOT_NO_WIFI );
 }
 
 void  Config::setFactoryReset()

@@ -871,11 +871,11 @@ void WebServer::setupAsyncServer()
 
       request->send(200, "text/html", reboot_html);
 
-      // if this is from factory reset, then we need to actually reset
+      // if this is from factory reset or no WiFi, then we need to actually reset
       // here as we won't enter the main task loop - the reboot() will set
       // the reboot reason to SERVER_REBOOT
 
-      if ( Config::instance()->isFactoryReset() )
+      if ( Config::instance()->isFactoryReset() || Config::instance()->didRebootNoWiFi() )
       {
          reboot();
       }
