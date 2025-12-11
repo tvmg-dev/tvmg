@@ -8,6 +8,7 @@
 
 #include "src/sensors/TemperatureModule.h"
 #include "src/sensors/PowerModule.h"
+#include "src/sensors/ShellyPM.h"
 
 #define WRITE_TEST_FILE "/test.dat"
 
@@ -296,6 +297,20 @@ void  Storage::storeSample( const Measurement::Sample &sample )
          if ( isNewFile )
          {
             const char *name = getSensorName( POWER,sensor.m_id ).c_str();
+            snprintf( line,128,",%s (power),%s (energy)",name,name );
+            hdrString += line;
+         }
+         snprintf( line,128,",%.1f,%.1f",sensor.m_power,sensor.m_energy );
+         dataString += line;
+      }
+
+      for ( int i = 0; i < sample.m_shellyPowerSensors.size(); i++ )
+      {
+         const ShellyPowerSensor &sensor = sample.m_shellyPowerSensors[ i ];
+
+         if ( isNewFile )
+         {
+            const char *name = getSensorName( SHELLYPM,sensor.m_id ).c_str();
             snprintf( line,128,",%s (power),%s (energy)",name,name );
             hdrString += line;
          }

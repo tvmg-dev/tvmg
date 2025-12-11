@@ -9,7 +9,7 @@
 
 Config   *s_instance = nullptr;
 
-const char *k_versionStr = "v25.12.05e";
+const char *k_versionStr = "v25.12.04";
 
 char  defaultConfigString[] = "unknown";
 
