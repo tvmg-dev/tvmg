@@ -586,7 +586,7 @@ void  TemperatureModule::localBroadcastData()
 }
 
 // Sectigo RSA Organization Validation Secure Server CA cert for
-// openweather, expires 31/12/2030
+// openweather, expires 30/12/2030
 
 const char sectigoCert[] = R"rawliteral(
 -----BEGIN CERTIFICATE-----
@@ -656,7 +656,7 @@ bool PeteHTTP::connect()
 float TemperatureModule::fetchOpenWeather( const String &url )
 {
    float temperature = TEMPERATURE_INVALID;
-   static uint timeout = 1000;
+   static uint timeoutMS = 2000;
 
    static WiFiClientSecure  *client = nullptr;
 
@@ -672,8 +672,9 @@ float TemperatureModule::fetchOpenWeather( const String &url )
       }
       else
       {
+
          client->setCACert( sectigoCert );
-         client->setHandshakeTimeout( timeout / 1000 );      // in seconds !
+         client->setHandshakeTimeout( timeoutMS / 1000 );      // in seconds !
       }
    }
 
@@ -689,17 +690,18 @@ float TemperatureModule::fetchOpenWeather( const String &url )
       PeteHTTP http;
       http.begin( *client,url );
 
-      http.setConnectTimeout( timeout );  // for the connection
-      http.setTimeout( timeout );         // for the HTTP response
+      http.setConnectTimeout( timeoutMS );  // for the connection
+      http.setTimeout( timeoutMS );         // for the HTTP response
       http.setReuse( true );
 
+#if 0
       START_TIMING( "OW Connecting" );
       bool connected = http.connect();
 
       END_TIMING;
+#endif
 
       START_TIMING( "OW GET" );
-      int resp = http.GET();
 
       int httpResponse = http.GET();
       if ( httpResponse > 0 )
@@ -725,9 +727,8 @@ float TemperatureModule::fetchOpenWeather( const String &url )
          PW_ERROR( "Failed HTTP GET %d",httpResponse );
       }
 
-      http.end();
-
       END_TIMING;
+      http.end();
    }
 
    if ( temperature != TEMPERATURE_INVALID )
