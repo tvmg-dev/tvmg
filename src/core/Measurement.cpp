@@ -235,7 +235,7 @@ void  Measurement::takeSample( void )
 
       if ( m_storageModule )
       {
-         m_storageModule->storeSample( m_lastSample );
+         m_storageModule->storeSample( m_lastSample,shouldSendDailyUpdate() );
       }
 
       updateEmon();

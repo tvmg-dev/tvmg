@@ -14,7 +14,7 @@ public:
    Storage();
    ~Storage();
    void  initialise();
-   void  storeSample( const Measurement::Sample &sample );
+   void  storeSample( const Measurement::Sample &sample,bool isNewFile );
    char  *getCurrentFileName();
    void  setNetworking( Networking *network );
    void  getStatus( char *line );

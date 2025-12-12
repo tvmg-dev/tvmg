@@ -190,7 +190,7 @@ void  Storage::setNetworking( Networking *network )
    }
 }
 
-void  Storage::storeSample( const Measurement::Sample &sample )
+void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
 {
    // we won't store if the card isn't ok,or no card at all
 
@@ -199,7 +199,6 @@ void  Storage::storeSample( const Measurement::Sample &sample )
       return;
    }
 
-   bool   isNewFile = false;
    bool   currentFileExists = false;
    struct tm timeInfo;
    char   fileName[ MAX_FILENAME + 1 ];
@@ -207,16 +206,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
    localtime_r( &sample.m_sampleTime,&timeInfo );
    strftime( fileName,MAX_FILENAME,"/%Y%m%d.dat",&timeInfo );
 
-   // If the filename is new, then we send out the existing file.
-
-   if ( ! SD.exists( fileName ) )
-   {
-      isNewFile = true;
-      if ( SD.exists( m_currentFileName ) )
-      {
-         currentFileExists = true;
-      }
-   }
+   // If we're closing the file then send old file, debug log & delete older files
 
    if ( isNewFile )
    {
@@ -224,7 +214,7 @@ void  Storage::storeSample( const Measurement::Sample &sample )
 
       // As this is a new file, let's send previous file onwards
 
-      if ( m_networking && strlen( m_currentFileName ) && currentFileExists )
+      if ( m_networking && strlen( m_currentFileName ) && SD.exists( m_currentFileName ) )
       {
          char subject[ 128 ];
 
