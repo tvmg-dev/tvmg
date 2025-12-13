@@ -47,14 +47,7 @@ tmvg_esp32.build.partitions=4MB_ota_512KB_spiffs
 tmvg_esp32.build.loop_core=-DARDUINO_RUNNING_CORE=1
 tmvg_esp32.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
 
-tmvg_esp32.JTAGAdapter.default=Disabled
-tmvg_esp32.JTAGAdapter.default.build.copy_jtag_files=0
-tmvg_esp32.JTAGAdapter.external=FTDI Adapter
-tmvg_esp32.JTAGAdapter.external.build.openocdscript=esp32-wrover-kit-3.3v.cfg
-tmvg_esp32.JTAGAdapter.external.build.copy_jtag_files=1
-tmvg_esp32.JTAGAdapter.bridge=ESP USB Bridge
-tmvg_esp32.JTAGAdapter.bridge.build.openocdscript=esp32-bridge.cfg
-tmvg_esp32.JTAGAdapter.bridge.build.copy_jtag_files=1
+tmvg_esp32.build.copy_jtag_files=0
 
 # Menu to select board type, not really necessary
 
@@ -297,3 +290,78 @@ pw_wshare.menu.EraseFlash.all=Enabled
 pw_wshare.menu.EraseFlash.all.upload.erase_cmd=-e
 
 ##############################################################
+
+tmvg_esp32s3.name=TMVG ESP32S3
+
+tmvg_esp32s3.bootloader.tool=esptool_py
+tmvg_esp32s3.bootloader.tool.default=esptool_py
+
+tmvg_esp32s3.upload.tool=esptool_py
+tmvg_esp32s3.upload.tool.default=esptool_py
+tmvg_esp32s3.upload.tool.network=esp_ota
+tmvg_esp32s3.upload.maximum_size=4718592
+tmvg_esp32s3.upload.maximum_data_size=327680
+tmvg_esp32s3.upload.flags=
+tmvg_esp32s3.upload.extra_flags=
+tmvg_esp32s3.upload.erase_cmd=
+tmvg_esp32s3.upload.use_1200bps_touch=false
+tmvg_esp32s3.upload.wait_for_upload_port=false
+tmvg_esp32s3.upload.speed=921600
+
+tmvg_esp32s3.serial.disableDTR=false
+tmvg_esp32s3.serial.disableRTS=false
+
+tmvg_esp32s3.build.tarch=xtensa
+tmvg_esp32s3.build.bootloader_addr=0x0
+tmvg_esp32s3.build.target=esp32s3
+tmvg_esp32s3.build.mcu=esp32s3
+tmvg_esp32s3.build.core=esp32
+tmvg_esp32s3.build.variant=esp32s3
+tmvg_esp32s3.build.board=gadgets3
+
+tmvg_esp32s3.build.usb_mode=1
+tmvg_esp32s3.build.cdc_on_boot=0
+tmvg_esp32s3.build.msc_on_boot=0
+tmvg_esp32s3.build.dfu_on_boot=0
+tmvg_esp32s3.build.f_cpu=240000000L
+tmvg_esp32s3.build.flash_size=16MB
+tmvg_esp32s3.build.flash_freq=80m
+tmvg_esp32s3.build.flash_mode=dio
+tmvg_esp32s3.build.boot=qio
+tmvg_esp32s3.build.boot_freq=80m
+tmvg_esp32s3.build.defines={build.psram_defines}
+tmvg_esp32s3.build.psram_type=qspi
+tmvg_esp32s3.build.memory_type={build.boot}_{build.psram_type}
+
+tmvg_esp32s3.build.partitions=large_spiffs_16MB
+
+tmvg_esp32s3.build.loop_core=-DARDUINO_RUNNING_CORE=1
+tmvg_esp32s3.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
+
+tmvg_esp32s3.build.psram_defines=-DBOARD_HAS_PSRAM
+tmvg_esp32s3.build.psram_type=opi
+
+tmvg_esp32s3.build.zigbee_mode=
+tmvg_esp32s3.build.zigbee_libs=
+
+tmvg_esp32s3.build.copy_jtag_files=0
+
+tmvg_esp32s3.menu.DebugLevel.none=None
+tmvg_esp32s3.menu.DebugLevel.none.build.code_debug=0
+tmvg_esp32s3.menu.DebugLevel.error=Error
+tmvg_esp32s3.menu.DebugLevel.error.build.code_debug=1
+tmvg_esp32s3.menu.DebugLevel.warn=Warn
+tmvg_esp32s3.menu.DebugLevel.warn.build.code_debug=2
+tmvg_esp32s3.menu.DebugLevel.info=Info
+tmvg_esp32s3.menu.DebugLevel.info.build.code_debug=3
+tmvg_esp32s3.menu.DebugLevel.debug=Debug
+tmvg_esp32s3.menu.DebugLevel.debug.build.code_debug=4
+tmvg_esp32s3.menu.DebugLevel.verbose=Verbose
+tmvg_esp32s3.menu.DebugLevel.verbose.build.code_debug=5
+
+# The FQDN will have TMVGRevision=v1, the 'version 1' is shown in the menu
+
+tmvg_esp32s3.menu.TMVGRevision.v2=version 2
+
+
+####################################################################

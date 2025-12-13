@@ -1,10 +1,12 @@
+v25.12.06 - Webserver reboot directly when in AP mode.
+            Support esp32s3 gadget, UserIO to console.
 v25.12.05 - Send stored data at daily update time.
             Rework the boards.txt to separate out custom boards from
             original Espressif esp32 release.
 v25.12.04 - Fix webserver reboot from No WiFi on boot failure.
             Add Shelly data to stored samples.
             Show free memory not largest free block in debug logs.
-v25.12.03 - Add timeouts to Shelly and OpenWeather HTTP requests
+v25.12.03 - Add timeouts to Shelly and OpenWeather HTTP requests.
 v25.12.02 - Support Shelly EM and PMG3 energy monitors via their local
             HTTP servers.
             Support OpenWeather HTTP API to fetch local outdoor temp.

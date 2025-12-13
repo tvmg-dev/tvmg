@@ -10,7 +10,7 @@
 #include "src/config/Config.h"
 #include "src/config/hwconfig.h"
 
-#if PW_LCD
+#ifndef OLED_AVAILABLE
    #include "LcdDisplay.h"
 #else
    #include "OledDisplay.h"
@@ -100,7 +100,7 @@ UserIO::UserIO()
 {
    PW_MSG( "UserIO Module Startup" );
 
-#ifdef PW_LCD
+#ifndef OLED_AVAILABLE
    m_display = new LcdDisplay;
 #else
    m_display = new OledDisplay;

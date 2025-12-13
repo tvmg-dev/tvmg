@@ -36,6 +36,7 @@ public:
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSPIFFS = false );
    void sendToEmonCMS( uint32_t emonFeedId,float_t value );
    bool isConnected();
+   bool inAPMode();
    bool didAcquireNTP();
    String getIPAddress();
    String getMDNSName();

@@ -9,7 +9,7 @@
 
 Config   *s_instance = nullptr;
 
-const char *k_versionStr = "v25.12.05";
+const char *k_versionStr = "v25.12.06";
 
 char  defaultConfigString[] = "unknown";
 
@@ -55,8 +55,6 @@ static std::map<esp_reset_reason_t,String> s_esp32RebooMap = {
 
 RTC_NOINIT_ATTR   uint32_t s_softResets;
 RTC_NOINIT_ATTR   uint32_t s_lastResetSeconds;
-
-bool  s_isFast = false;
 
 // info under system namespace in non-volatile store partition
 
@@ -163,6 +161,7 @@ char *getRegistryString( char *key )
 
 Config::Config( char *fileName )
       : m_isRegistryOk( false ),
+        m_wasFastReboot( false ),
         m_spiffs( &SPIFFS ),
         m_configFileName()
 {
@@ -500,7 +499,7 @@ String  Config::getRebootReason( RebootType *type )
    if ( s_softResets >= ALLOWED_FAST_RESETS )
    {
       PW_ERROR( "Too many fast resets" );
-      s_isFast = true;
+      m_wasFastReboot = true;
    }
 
    *type = reboot;
@@ -512,9 +511,9 @@ String  Config::getRebootReason( RebootType *type )
    return( appReason );
 }
 
-bool Config::isFastReset()
+bool Config::wasFastReboot()
 {
-   return s_isFast;
+   return m_wasFastReboot;
 }
 
 void hwReset()
@@ -535,6 +534,8 @@ void hwReset()
    wdt_hal_config_stage(&rwdt_ctx, WDT_STAGE0, stage_timeout_ticks, WDT_STAGE_ACTION_RESET_RTC);
    wdt_hal_enable(&rwdt_ctx);
    wdt_hal_write_protect_enable(&rwdt_ctx);
+
+   delay( 500 );
 
    PW_DEBUG( "out hwReset" );
 }

@@ -678,6 +678,11 @@ bool  Networking::isConnected()
    return m_status.isConnected;
 }
 
+bool Networking::inAPMode()
+{
+   return ( WiFi.getMode() == WIFI_MODE_AP );
+}
+
 String Networking::getIPAddress()
 {
    return( m_status.ipAddr );

@@ -96,9 +96,9 @@ void newConfiguration( void )
 
       if ( !config->isFactoryReset() )
       {
-         if ( config->isFastReset() )
+         if ( config->wasFastReboot() )
          {
-            snprintf( line,MAX_DISPLAY_COLUMNS,"Fast Reset Error" );
+            snprintf( line,MAX_DISPLAY_COLUMNS,"Fast Reboot Error" );
          }
          else
          {
@@ -407,7 +407,7 @@ String handleBootReason()
 
    // If we fast booted then drop to AP mode again
 
-   if ( config->isFastReset() )
+   if ( config->wasFastReboot() )
    {
       newConfiguration();
    }
@@ -757,6 +757,17 @@ void  handleDebugTests()
       }
    }
 }
+
+// ---------------------------------------------------------------------
+// Conditionally override the ESP's shouldPrintChipDebugReport() so we get a report of
+// the devide info
+
+#if 0
+bool shouldPrintChipDebugReport(void)
+{
+  return true;
+}
+#endif
 
 // ---------------------------------------------------------------------
 // Create/initialise all modules prior to main loop

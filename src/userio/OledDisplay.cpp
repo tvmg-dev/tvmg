@@ -1,4 +1,4 @@
-#if !PW_LCD
+#ifdef OLED_AVAILABLE
 
 #include <U8g2lib.h>
 

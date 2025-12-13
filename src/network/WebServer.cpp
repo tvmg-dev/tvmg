@@ -819,6 +819,11 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on(m_hiddenPage.c_str(), HTTP_GET, [](AsyncWebServerRequest *request)
    {
+      if ( GET_REGISTRY_INT( DEBUGPAGE_HWRESET ) == 1 )
+      {
+         hwReset();
+      }
+
       if(!request->authenticate(http_username, http_password))
       {
          return request->requestAuthentication();
@@ -828,27 +833,18 @@ void WebServer::setupAsyncServer()
       {
          getRunTimeInfo();
          Networking::releaseNetworkMutex();
-#if 1
-         // cause task watchog
-         uint32_t start = millis();
-         while( millis() - start < 10000 )
+
+         if ( GET_REGISTRY_INT( DEBUGPAGE_CPU0_TASKWDT ) == 1 )
          {
-            buffs++;
+            // cause task watchog
+            uint32_t start = millis();
+            while( millis() - start < 180000 )
+            {
+               buffs++;
+            }
          }
-#endif
       }
       request->send(200);
-   });
-
-   m_webServer->on("/debug", HTTP_POST, [](AsyncWebServerRequest *request)
-   {
-      if ( Networking::takeNetworkMutex( 100 ) == 1 )
-      {
-         getRunTimeInfo();
-         Networking::releaseNetworkMutex();
-      }
-
-      request->redirect("/manager");
    });
 
    m_webServer->on("/runtimeinfo", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -856,8 +852,6 @@ void WebServer::setupAsyncServer()
       getRunTimeInfo();
 
       debugSensorNameMap();
-
-//      wasButton1Pressed = true;
 
       request->send(204);
    });
@@ -871,11 +865,9 @@ void WebServer::setupAsyncServer()
 
       request->send(200, "text/html", reboot_html);
 
-      // if this is from factory reset or no WiFi, then we need to actually reset
-      // here as we won't enter the main task loop - the reboot() will set
-      // the reboot reason to SERVER_REBOOT
+      // if this we're in Access Point mode then allow immediate reboot
 
-      if ( Config::instance()->isFactoryReset() || Config::instance()->didRebootNoWiFi() )
+      if ( s_networking->inAPMode() )
       {
          reboot();
       }

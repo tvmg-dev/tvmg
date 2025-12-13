@@ -1,4 +1,4 @@
-#if PW_LCD
+#ifndef OLED_AVAILABLE
 
 #include "src/core/utils.h"
 

@@ -119,11 +119,32 @@ HardwareConfig WaveshareLCD =
    false          // has SD card
 };
 
+HardwareConfig ESP32S3Gadget =
+{
+   -1,            // OneWireGPIO
+   -1,            // ModBusSerial
+   -1,            // ModBusBaudRate
+   -1,            // ModBusSerialFormat
+   -1,            // ModBusRxGPIO
+   -1,            // ModBusTxGPIO
+   -1,            // ModBusMsgDelay
+   -1,            // ModBus485EnGPIO
+   -1,             // OLEDClkGPIO
+   -1,             // OLEDDataGPIO
+   -1,            // TouchButton1
+   -1,            // TouchButton2
+   -1,            // PWM GPIO
+   false          // has SD card
+};
+
+
+
 #define  TNODE_BOARD_FILE     "/tnode.hid"
 #define  MASTER_BOARD_FILE    "/master.hid"
 #define  EXTERNAL_BOARD_FILE  "/external.hid"
 #define  MONITOR_BOARD_FILE   "/monitor.hid"
 #define  WAVESHARE_LCD_FILE   "/lcd.hid"
+#define  ESP32S3_FILE         "/esp32s3.hid"
 
 HardwareConfig *hwConfig = nullptr;
 
@@ -164,10 +185,15 @@ void  selectHardware()
          PW_MSG( "Monitor Board" );
          hwConfig = &MonitorBoard;
       }
-      if ( spiffs->exists( TNODE_BOARD_FILE ) )
+      else if ( spiffs->exists( TNODE_BOARD_FILE ) )
       {
          PW_MSG( "TNode" );
          hwConfig = &TemperatureNode;
+      }
+      else if ( spiffs->exists( ESP32S3_FILE ) )
+      {
+         PW_MSG( "ESP32S3" );
+         hwConfig = &ESP32S3Gadget;
       }
    }
 
