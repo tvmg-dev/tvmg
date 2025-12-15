@@ -926,6 +926,16 @@ void loop(void)
 
    bool  restartRequired = false;
 
+#ifndef OLED_AVAILABLE
+   static uint8_t  count = 0;
+   uint8_t         brightness = 16;
+   if ( count++ % 2 )
+   {
+      brightness = 0;
+   }
+   rgbLedWrite( 48,0,0,brightness );
+#endif
+
    START_TIMING( "Main Loop" );
 
    if ( ! targetMillis )

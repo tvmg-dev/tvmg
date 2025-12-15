@@ -197,11 +197,19 @@ void  selectHardware()
       }
    }
 
+#ifdef OLED_AVAILABLE
    if ( !hwConfig )
    {
       PW_MSG( "No board file - default to TNode" );
       hwConfig = &TemperatureNode;
    }
+#else
+   if ( !hwConfig )
+   {
+      PW_MSG( "No board file - default to ESP32S3" );
+      hwConfig = &ESP32S3Gadget;
+   }
+#endif
 }
 
 bool  boardHasSDCard()

@@ -249,11 +249,11 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
       strcpy( m_currentFileName,fileName );
    }
 
-   File  file = SD.open( fileName,FILE_APPEND );
+   File  file = SD.open( m_currentFileName,FILE_APPEND );
 
    if( !file )
    {
-      PW_WARN( "Failed to open %s",fileName );
+      PW_WARN( "Failed to open %s",m_currentFileName );
       m_storageOk = false;
    }
    else

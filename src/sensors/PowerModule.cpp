@@ -28,7 +28,7 @@ PowerModule::PowerModule( ModbusMaster *modbus )
 
    cJSON *root = getAllSensorJSON();
 
-  if ( root && isSensorRequired( POWER_SENSOR_NAME ) )
+   if ( root && isSensorRequired( POWER_SENSOR_NAME ) )
    {
       cJSON *sensor;
       cJSON_ArrayForEach( sensor,root )
