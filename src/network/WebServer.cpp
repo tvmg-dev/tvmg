@@ -442,6 +442,7 @@ void notFound(AsyncWebServerRequest *request)
 
 WebServer::WebServer( Networking *networking )
         : m_webServer( nullptr ),
+          m_events( nullptr ),
           m_networking( networking ),
           m_hiddenPage(),
           m_downloadFile()
@@ -478,6 +479,9 @@ WebServer::WebServer( Networking *networking )
 WebServer::~WebServer()
 {
    PW_DEBUG( "~WebServer()" );
+
+   delete m_events;
+   delete m_webServer;
 }
 
 const char *initialSSaverCheckbox = R"raw(
@@ -545,6 +549,9 @@ void WebServer::setupAsyncServer()
 {
    m_webServer = new AsyncWebServer( 80 );
 
+   m_events = new AsyncEventSource("/events");
+   m_webServer->addHandler(m_events);
+
    m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
       PW_DEBUG( "/manager request" );
@@ -558,109 +565,115 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/update", HTTP_POST, [&](AsyncWebServerRequest *request)
    {
+      // --- 1. THE RESPONSE HANDLER (Called after upload completes) ---
+      // We just send a simple HTTP 200 to acknowledge the AJAX request.
+      // The manager UI is being updated separately in Javascript via the
+      // Send Server Events (SSE) '/events' stream.
+
       bool ok = !Update.hasError();
+      request->send(200, "text/plain", ok ? "OK" : "FAIL");
 
-      AsyncWebServerResponse *response = request->beginResponse(200, "text/html", ok ? ok_html : failed_html);
-
-      response->addHeader("Connection", "close");
-      request->send(response);
-
+      // Release the network mutex now that the transfer is done
       Networking::releaseNetworkMutex();
    },
    [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
    {
-      if(!index)
+      // --- 2. THE UPLOAD HANDLER (Called for every chunk of the .bin file) ---
+
+      size_t totalSize = request->contentLength(); // Total file size for percentage
+
+      if (!index)
       {
-         bool  startedOk = false;
+         bool startedOk = false;
          updatePos = 0;
          buffs = 0;
 
-         if ( Networking::takeNetworkMutex( 10000 ) == 1 )
+         if (Networking::takeNetworkMutex(10000) == 1)
          {
-            PW_DEBUG( "server - update with %s",filename.c_str() );
+            PW_DEBUG( "OTA: Starting update for %s", filename.c_str() );
+            m_networking->setUpdateProgress(0, filename, false);
 
-            m_networking->setUpdateProgress( 0,filename,false );
+            // Reset UI via SSE
+            m_events->send( "0", "ota_progress", millis() );
 
-            startedOk = Update.begin(UPDATE_SIZE_UNKNOWN,U_FLASH);
+            // Start the internal Flash update process
+            startedOk = Update.begin( UPDATE_SIZE_UNKNOWN,U_FLASH );
          }
 
-         if ( !startedOk )
+         if (!startedOk)
          {
-            m_networking->setUpdateProgress( -1,filename,false );
-
+            PW_ERROR( "Failed to start update" );
+            m_networking->setUpdateProgress( -1, filename, false );
             Networking::releaseNetworkMutex();
-
-            return request->send(400, "text/plain", "OTA could not begin");
+            // Signal failure to the UI immediately
+            m_events->send( "failed:Could not begin update", "ota_state", millis() );
+            return;
          }
       }
 
-      if(!Update.hasError())
+      // Copy incoming data into the scratchBuffer
+      if (!Update.hasError())
       {
-         int   copyLen;
+         size_t remainingInPacket = len;
+         size_t packetOffset = 0;
 
-         // We copy as many bytes into our scratchBuffer as we can
-
-         if ( updatePos + len <= scratchBufferSize )
+         while (remainingInPacket > 0)
          {
-            copyLen = len;
-         }
-         else
-         {
-            copyLen = scratchBufferSize - updatePos;
-         }
+            size_t spaceInBuffer = scratchBufferSize - updatePos;
+            size_t canCopy = (remainingInPacket < spaceInBuffer) ? remainingInPacket : spaceInBuffer;
 
-#ifdef DEBUG_OTA_BUFFER
-         PW_DEBUG( "curr %d, add %d",updatePos,copyLen );
-#endif
+            memcpy( &scratchBuffer[updatePos], &data[packetOffset], canCopy );
 
-         memcpy( &scratchBuffer[ updatePos ],data,copyLen );
+            updatePos += canCopy;
+            packetOffset += canCopy;
+            remainingInPacket -= canCopy;
 
-         // Now set out next update position in our buffer (therefore modulo buff size)
+            // When scratchBuffer is full, write it to Flash
+            if (updatePos == scratchBufferSize)
+            {
+               Update.write(scratchBuffer, scratchBufferSize);
+               buffs++;
+               updatePos = 0;
 
-         updatePos += copyLen;
-         updatePos %= scratchBufferSize;
-
-         // If our update position is zero then we need to write the buffer to file
-
-         if ( ! updatePos )
-         {
-            m_networking->setUpdateProgress( index,filename,false );
-
-            buffs++;
-
-#ifdef DEBUG_OTA_BUFFER
-            PW_DEBUG( "Writing buffer... %d",buffs );
-#endif
-
-            Update.write( scratchBuffer,scratchBufferSize );
-
-            // Now need to set a new update position based on the bytes we didn't copy over
-            // and of course copy these bytes into the start of the buffer
-
-#ifdef DEBUG_OTA_BUFFER
-            PW_DEBUG( "new tmpBuff from %d - %d bytes",copyLen,len-copyLen );
-#endif
-            memcpy( scratchBuffer,&data[ copyLen ],len - copyLen );
-            updatePos = len - copyLen;
+               // Send progress percentage via SSE (e.g., "45")
+               if (totalSize > 0)
+               {
+                  int progress = (index + packetOffset) * 100 / totalSize;
+                  char progMsg[8];
+                  sprintf( progMsg, "%d", progress );
+                  m_events->send( progMsg, "ota_progress", millis() );
+               }
+               m_networking->setUpdateProgress( index + packetOffset, filename, false );
+            }
          }
 
-         if ( final )
+         // FINALIZATION: Runs on the last packet
+         if (final)
          {
-            PW_MSG( "Final size %d, final buffer %d",index + len,buffs * scratchBufferSize + updatePos );
-            Update.write( scratchBuffer,updatePos );
-         }
-      }
+            // Write any remaining bytes left in the buffer
+            if (updatePos > 0)
+            {
+               Update.write(scratchBuffer, updatePos);
+            }
 
-      if( final )
-      {
-         if ( !Update.end( true ) )
-         {
-            Update.printError(Serial);
-            m_networking->setUpdateProgress( -1,filename,true );
-         }
-         else
-         {
-            m_networking->setUpdateProgress( index,filename,true );
+            if (Update.end(true))
+            {
+               // SUCCESS: Tell the browser to start its reboot countdown
+               m_events->send( "100", "ota_progress", millis() );
+               m_events->send( "reboot", "ota_state", millis() );
+               m_networking->setUpdateProgress(index + len, filename, true);
+               PW_MSG( "OTA Success. Total written: %d bytes", (buffs * scratchBufferSize) + updatePos );
+            }
+            else
+            {
+               // FAILURE: Send the specific error message to the browser
+               String errorStr = Update.errorString();
+               String sseFailMsg = "failed:" + (errorStr.length() ? errorStr : "Flash Error");
+               m_events->send( sseFailMsg.c_str(), "ota_state", millis() );
+
+               m_networking->setUpdateProgress(-1, filename, true);
+               PW_ERROR( "OTA Failed %s",errorStr.c_str() );
+            }
          }
       }
    });
@@ -849,7 +862,7 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/runtimeinfo", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      getRunTimeInfo();
+   getRunTimeInfo();
 
       debugSensorNameMap();
 

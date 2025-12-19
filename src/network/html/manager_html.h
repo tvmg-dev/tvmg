@@ -2,7 +2,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML>
 <html>
  <head>
-  <title>ESP32 SPIFFS Manager</title>
+  <title>TMVG Manager</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="refresh" content="120">
@@ -22,115 +22,120 @@ const char manager_html[] PROGMEM = R"rawliteral(
    fieldset { width:700px; background-color: #f7f7f7; }
    p {margin-bottom: 0em;  margin-top: 0em; }
    .left { display:inline-block; float: left; text-align:left; margin-left: 30px; }
+
+   /* Progress Bar Styles - using %% to escape for the async webserver processor */
+   .progress-wrapper { width: 100%%; background-color: #ddd; border-radius: 5px; margin: 10px 0; display:none; }
+   .progress-bar { width: 0%%; height: 20px; background-color: #4CAF50; border-radius: 5px; text-align: center; color: white; line-height: 20px; transition: width 0.3s; }
+   .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%%; width: 18px; height: 18px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 10px; }
+   @keyframes spin { 0%% { transform: rotate(0deg); } 100%% { transform: rotate(360deg); } }
   </style>
+
   <script>
+   /* AJAX OTA Logic */
+   function startOTAUpdate() {
+    var input = document.getElementById('update');
+    var file = input.files[0];
+    if(input.files.length==0) { alert("You have not chosen a file!"); return; }
+    if(!file.name.endsWith(".bin")) { alert("Incorrect file type!"); return; }
+
+    document.getElementById('ota_form').style.display = 'none';
+    document.getElementById('ota_progress_ui').style.display = 'block';
+
+    var bar = document.getElementById('ota_bar');
+    var status = document.getElementById('ota_status');
+    var source = new EventSource('/events');
+
+    source.addEventListener('ota_progress', function(e) {
+     var bar = document.getElementById('ota_bar');
+     var progress = parseInt(e.data);
+     bar.style.width = progress + '%%';
+     bar.innerHTML = progress + '%%';
+    }, false);
+
+    source.addEventListener('ota_state', function(e) {
+     if (e.data === "reboot") {
+      source.close();
+      status.innerHTML = "<b>Update Successful: Rebooting...</b> <div class='spinner'></div>";
+      setTimeout(function() { window.location.href = "/manager"; }, 10000);
+     } else if (e.data.startsWith("failed")) {
+      source.close();
+      alert("Update Failed: " + e.data.split(":")[1]);
+      location.reload();
+     }
+    }, false);
+
+    var xhr = new XMLHttpRequest();
+    var formData = new FormData();
+    formData.append("update", file);
+    xhr.open("POST", "/update", true);
+    xhr.send(formData);
+   }
+
    function validateFormUpdate() {
     var inputElement = document.getElementById('update');
-    var files = inputElement.files;
-    if(files.length==0)
-    {
-      alert("You have not chosen a file!");
-      return false;
-    }
-    var value = inputElement.value;
-    var dotIndex = value.lastIndexOf(".")+1;
-    var valueExtension = value.substring(dotIndex);
-    if(valueExtension != "bin")
-    {
-      alert("Incorrect file type!");
-      return false;
-    }
+    if(inputElement.files.length==0) { alert("You have not chosen a file!"); return false; }
+    if(!inputElement.value.endsWith(".bin")) { alert("Incorrect file type!"); return false; }
+    return true;
    }
    function validateFormUpload() {
     var inputElement = document.getElementById('upload_data');
-    var files = inputElement.files;
-    if(files.length==0)
-    {
-      alert("You have not chosen a file!");
-      return false;
-    }
+    if(inputElement.files.length==0) { alert("You have not chosen a file!"); return false; }
    }
    function validateFileEdit() {
     var allowedExtensions = "%ALLOWED_EXTENSIONS_EDIT%";
     var editSelectValue = document.getElementById('edit_path').value;
-    var dotIndex = editSelectValue.lastIndexOf(".")+1;
-    var editSelectValueExtension = editSelectValue.substring(dotIndex);
-    var extIndex = allowedExtensions.indexOf(editSelectValueExtension);
-
-    if(editSelectValue == "choose"){
-      alert("You have not chosen a file!");
-      return false;
-    }
-    if(extIndex == -1){
-      alert("Editing of this file type is not supported!");
-      return false;
-    }
+    if(editSelectValue == "choose"){ alert("You have not chosen a file!"); return false; }
+    if(allowedExtensions.indexOf(editSelectValue.substring(editSelectValue.lastIndexOf(".")+1)) == -1){ alert("Editing of this file type is not supported!"); return false; }
    }
    function validateFileDelete(){
     var fileName = document.getElementById('delete_path').value;
-    if(fileName == "choose"){
-      alert("You have not chosen a file!");
-      return false;
-    }
-    var text = "WARNING: Pressing the \"OK\" button will delete ";
-    var prompt = text.concat( fileName );
-    if (confirm(prompt) == true){
-      return true;
-    }
-    else{
-      return false;
-    }
+    if(fileName == "choose"){ alert("You have not chosen a file!"); return false; }
+    return confirm("WARNING: Pressing the \"OK\" button will delete " + fileName);
    }
    function validateFileDownload(){
-    var fileName = document.getElementById('download_path').value;
-    if(fileName == "choose"){
-      alert("You have not chosen a file!");
-      return false;
-    }
+    if(document.getElementById('download_path').value == "choose"){ alert("You have not chosen a file!"); return false; }
    }
    function confirmReset(){
-    var text = "WARNING: Pressing the \"OK\" button immediately resets to defaults and restarts";
-    if (confirm(text) == true){
-      return true;
-    }
-    else{
-      return false;
-    }
+    return confirm("WARNING: Pressing the \"OK\" button immediately resets to defaults and restarts");
    }
    function checkbox(element){
     var xhr = new XMLHttpRequest();
-    if (element.checked) {
-      xhr.open("GET","/checkbox?item="+element.id+"&state=1",true);
-    } else {
-      xhr.open("GET","/checkbox?item="+element.id+"&state=0",true);
-    }
+    xhr.open("GET","/checkbox?item="+element.id+"&state="+(element.checked?"1":"0"),true);
     xhr.send();
    }
   </script>
  </head>
+
  <body>
    <center>
      <h2>ThermaV Monitor</h2>
      <div id="spacer_5"></div>
      <fieldset><legend>Firmware Update</legend>
-       <table><tbody><tr>
-        <td colspan="2">Current Version : %VERSION%</td>
-        <td colspan="2">%UPTIME%</td></tr>
-        <tr>
-         <td width="25%%">%IPADDR%</td>
-         <td width="25%%">%WIFI%</td>
-         <td width="25%%">%MODBUS%</td>
-         <td width="25%%">%EMON%</td>
-        </tr>
-       </tbody></table>
+        <table><tbody><tr>
+         <td colspan="2">Current Version : %VERSION%</td>
+         <td colspan="2">%UPTIME%</td></tr>
+         <tr>
+          <td width="25%%">%IPADDR%</td>
+          <td width="25%%">%WIFI%</td>
+          <td width="25%%">%MODBUS%</td>
+          <td width="25%%">%EMON%</td>
+         </tr>
+        </tbody></table>
       <div id="spacer_5"></div>
-      <form method="POST" action="/update" enctype="multipart/form-data">
-       <table><tr><td id="tdth1">
-       <input type="file" id="update" name="update">
-       </td><td>
-       <input type="submit" id="submit" value="Update!" onclick="return validateFormUpdate()">
-       </td></tr></table>
-      </form>
+
+      <div id="ota_form">
+        <table><tr><td id="tdth1">
+        <input type="file" id="update" name="update">
+        </td><td>
+        <input type="button" id="submit" value="Update!" onclick="startOTAUpdate()">
+        </td></tr></table>
+      </div>
+
+      <div id="ota_progress_ui" style="display:none;">
+        <p id="ota_status">Uploading & Flashing...</p>
+        <div class="progress-wrapper" style="display:block;"><div id="ota_bar" class="progress-bar">0%%</div></div>
+      </div>
+
       <div id="spacer_5"></div>
      </fieldset>
 
@@ -207,7 +212,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
          <input type="submit" id="submit" value="Reboot">
          </form>
         </td></tr>
-         %OPTIONS_SECTION%
+        %OPTIONS_SECTION%
         </table>
       <div id="spacer_5"></div>
      </fieldset>
@@ -230,4 +235,5 @@ const char manager_html[] PROGMEM = R"rawliteral(
      <iframe style="display:none" name="self_page"></iframe>
    </center>
  </body>
-</html> )rawliteral";
+</html>
+)rawliteral";

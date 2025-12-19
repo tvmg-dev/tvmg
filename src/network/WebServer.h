@@ -17,10 +17,11 @@ private:
    void setupAsyncServer();
    void handleCheckbox( const String &item,const String &state );
 
-   AsyncWebServer *m_webServer;
-   Networking     *m_networking;
-   String         m_hiddenPage;
-   File           m_downloadFile;
+   AsyncWebServer    *m_webServer;
+   AsyncEventSource  *m_events;
+   Networking        *m_networking;
+   String            m_hiddenPage;
+   File              m_downloadFile;
 };
 
 #endif
