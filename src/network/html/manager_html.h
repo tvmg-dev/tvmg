@@ -1,239 +1,159 @@
 const char manager_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML>
-<html>
+<html lang="en">
  <head>
   <title>TMVG Manager</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="120">
   <style>
-   body { background-color: #f7f7f7; }
-   #submit { width:120px; }
-   #edit_path { width:250px; }
-   #delete_path { width:250px; }
-   #download_path { width:250px; }
-   #spacer_10 { height: 10px; }
-   #spacer_5 { height: 5px; }
-   #first_td_th { width:400px; }
-   #reset_notice { color: #ff0000; }
-   table { background-color: #dddddd; border-collapse: collapse; width:650px; }
-   td, th { border: 1px solid #dddddd; text-align: left; padding: 8px; }
-   tr:nth-child(even) { background-color: #ffffff; }
-   fieldset { width:700px; background-color: #f7f7f7; }
-   p {margin-bottom: 0em;  margin-top: 0em; }
-   .left { display:inline-block; float: left; text-align:left; margin-left: 30px; }
+   * { box-sizing: border-box; }
+   body { background-color: #f7f7f7; font-family: system-ui, -apple-system, sans-serif; font-size: 13px; line-height: 1.2; color: #333; margin: 0; padding: 10px; }
 
-   /* Progress Bar Styles - using %% to escape for the async webserver processor */
-   .progress-wrapper { width: 100%%; background-color: #ddd; border-radius: 5px; margin: 10px 0; display:none; }
-   .progress-bar { width: 0%%; height: 20px; background-color: #4CAF50; border-radius: 5px; text-align: center; color: white; line-height: 20px; transition: width 0.3s; }
-   .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%%; width: 18px; height: 18px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 10px; }
+   .container { max-width: 680px; margin: 0 auto; }
+   h2 { margin: 6px 0 2px 0; font-size: 1.2em; text-align: center; }
+
+   fieldset { background-color: #fff; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 6px; padding: 8px 12px; width: 100%%; }
+   legend { font-weight: bold; padding: 0 4px; font-size: 0.85em; color: #666; }
+
+   table { border-collapse: collapse; width: 100%%; margin-bottom: 2px; font-size: 0.9em; }
+   td, th { border: 1px solid #eee; padding: 4px 8px; text-align: left; }
+   tr:nth-child(even) { background-color: #fcfcfc; }
+
+   .form-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; gap: 15px; border-bottom: 1px solid #f0f0f0; min-height: 32px; }
+   .form-row:last-child { border-bottom: none; }
+   .form-label { flex: 0 0 auto; min-width: 120px; }
+
+   /* Form Fix: Added gap and flex-grow for filename space */
+   form { margin: 0; display: inline-flex; align-items: center; gap: 12px; flex: 1; justify-content: flex-end; }
+
+   input[type="submit"], input[type="button"], button {
+    padding: 0 10px; height: 24px; cursor: pointer; border-radius: 3px; border: 1px solid #bbb;
+    background: #f0f0f0; font-size: 11px; font-weight: 500; white-space: nowrap;
+   }
+   input[type="submit"]:hover { background: #e5e5e5; }
+
+   /* File input sizing to prevent overlap */
+   input[type="file"] { font-size: 12px; flex: 1; min-width: 0; }
+   select { font-size: 12px; max-width: 200px; }
+
+   input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; margin: 0; }
+   #reset_notice { color: #d32f2f; font-weight: bold; }
+
+   .progress-wrapper { width: 100%%; background-color: #eee; border-radius: 4px; margin: 6px 0; display: none; overflow: hidden; border: 1px solid #ddd; }
+   .progress-bar { width: 0%%; height: 16px; background-color: #4CAF50; text-align: center; color: white; line-height: 16px; transition: width 0.3s ease; font-size: 10px; }
+
+   .spinner { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%%; width: 12px; height: 12px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 5px; }
    @keyframes spin { 0%% { transform: rotate(0deg); } 100%% { transform: rotate(360deg); } }
   </style>
 
   <script>
-   /* AJAX OTA Logic */
    function startOTAUpdate() {
-    var input = document.getElementById('update');
-    var file = input.files[0];
-    if(input.files.length==0) { alert("You have not chosen a file!"); return; }
-    if(!file.name.endsWith(".bin")) { alert("Incorrect file type!"); return; }
-
+    const input = document.getElementById('update');
+    if(!input.files.length) { alert("Select file"); return; }
     document.getElementById('ota_form').style.display = 'none';
     document.getElementById('ota_progress_ui').style.display = 'block';
-
-    var bar = document.getElementById('ota_bar');
-    var status = document.getElementById('ota_status');
-    var source = new EventSource('/events');
-
+    const bar = document.getElementById('ota_bar');
+    const status = document.getElementById('ota_status');
+    const source = new EventSource('/events');
     source.addEventListener('ota_progress', function(e) {
-     var bar = document.getElementById('ota_bar');
-     var progress = parseInt(e.data);
-     bar.style.width = progress + '%%';
-     bar.innerHTML = progress + '%%';
-    }, false);
-
+     const progress = parseInt(e.data);
+     if(!isNaN(progress)) { bar.style.width = progress + '%%'; bar.innerHTML = progress + '%%'; }
+    });
     source.addEventListener('ota_state', function(e) {
      if (e.data === "reboot") {
       source.close();
-      status.innerHTML = "<b>Update Successful: Rebooting...</b> <div class='spinner'></div>";
-      setTimeout(function() { window.location.href = "/manager"; }, 10000);
+      status.innerHTML = "<b>Rebooting...</b> <div class='spinner'></div>";
+      setTimeout(() => { window.location.href = "/manager?v=" + Math.random(); }, 10000);
      } else if (e.data.startsWith("failed")) {
       source.close();
-      alert("Update Failed: " + e.data.split(":")[1]);
+      alert("Error: " + e.data.split(":")[1]);
       location.reload();
      }
-    }, false);
-
-    var xhr = new XMLHttpRequest();
-    var formData = new FormData();
-    formData.append("update", file);
+    });
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    formData.append("update", input.files[0]);
     xhr.open("POST", "/update", true);
     xhr.send(formData);
    }
 
-   function validateFormUpdate() {
-    var inputElement = document.getElementById('update');
-    if(inputElement.files.length==0) { alert("You have not chosen a file!"); return false; }
-    if(!inputElement.value.endsWith(".bin")) { alert("Incorrect file type!"); return false; }
-    return true;
-   }
-   function validateFormUpload() {
-    var inputElement = document.getElementById('upload_data');
-    if(inputElement.files.length==0) { alert("You have not chosen a file!"); return false; }
-   }
-   function validateFileEdit() {
-    var allowedExtensions = "%ALLOWED_EXTENSIONS_EDIT%";
-    var editSelectValue = document.getElementById('edit_path').value;
-    if(editSelectValue == "choose"){ alert("You have not chosen a file!"); return false; }
-    if(allowedExtensions.indexOf(editSelectValue.substring(editSelectValue.lastIndexOf(".")+1)) == -1){ alert("Editing of this file type is not supported!"); return false; }
-   }
-   function validateFileDelete(){
-    var fileName = document.getElementById('delete_path').value;
-    if(fileName == "choose"){ alert("You have not chosen a file!"); return false; }
-    return confirm("WARNING: Pressing the \"OK\" button will delete " + fileName);
-   }
-   function validateFileDownload(){
-    if(document.getElementById('download_path').value == "choose"){ alert("You have not chosen a file!"); return false; }
-   }
-   function confirmReset(){
-    return confirm("WARNING: Pressing the \"OK\" button immediately resets to defaults and restarts");
-   }
-   function checkbox(element){
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET","/checkbox?item="+element.id+"&state="+(element.checked?"1":"0"),true);
+   function checkbox(el) {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", "/checkbox?item=" + el.id + "&state=" + (el.checked ? "1" : "0"), true);
     xhr.send();
+   }
+
+   function confirmFileDelete() {
+    // Look for the select element inside the delete row
+    const select = document.getElementById('delete_path');
+    const filename = select.value;
+
+    if (filename === "choose" || filename === "") {
+        alert("Please select a file to delete.");
+        return false;
+    }
+
+    // This puts the filename directly into the browser's confirm dialog
+    return confirm("Are you sure you want to permanently delete: " + filename + "?");
    }
   </script>
  </head>
 
  <body>
-   <center>
-     <h2>ThermaV Monitor</h2>
-     <div id="spacer_5"></div>
-     <fieldset><legend>Firmware Update</legend>
-        <table><tbody><tr>
-         <td colspan="2">Current Version : %VERSION%</td>
-         <td colspan="2">%UPTIME%</td></tr>
-         <tr>
-          <td width="25%%">%IPADDR%</td>
-          <td width="25%%">%WIFI%</td>
-          <td width="25%%">%MODBUS%</td>
-          <td width="25%%">%EMON%</td>
-         </tr>
-        </tbody></table>
-      <div id="spacer_5"></div>
+  <div class="container">
+   <h2>ThermaV Monitor</h2>
 
-      <div id="ota_form">
-        <table><tr><td id="tdth1">
-        <input type="file" id="update" name="update">
-        </td><td>
-        <input type="button" id="submit" value="Update!" onclick="startOTAUpdate()">
-        </td></tr></table>
-      </div>
+   <fieldset>
+    <legend>System Status</legend>
+    <table>
+     <tr><td colspan="2">Version: %VERSION%</td><td colspan="2">%UPTIME%</td></tr>
+     <tr>
+      <td width="25%%">%IPADDR%</td><td width="25%%">%WIFI%</td>
+      <td width="25%%">%MODBUS%</td><td width="25%%">%EMON%</td>
+     </tr>
+    </table>
+    <div id="ota_form" class="form-row" style="border:none; padding-top:8px;">
+      <span class="form-label" style="min-width:auto; color: #4CAF50; font-weight: bold;">Firmware Update</span>
+      <form style="justify-content: space-between;">
+        <input type="file" id="update" name="update" accept=".bin">
+        <button type="button" onclick="startOTAUpdate()">Update!</button>
+      </form>
+    </div>
+    <div id="ota_progress_ui" style="display:none;">
+     <p id="ota_status" style="text-align:center;">Flashing...</p>
+     <div class="progress-wrapper" style="display:block;"><div id="ota_bar" class="progress-bar">0%%</div></div>
+    </div>
+   </fieldset>
 
-      <div id="ota_progress_ui" style="display:none;">
-        <p id="ota_status">Uploading & Flashing...</p>
-        <div class="progress-wrapper" style="display:block;"><div id="ota_bar" class="progress-bar">0%%</div></div>
-      </div>
-
-      <div id="spacer_5"></div>
-     </fieldset>
-
-     <div id="spacer_5"></div>
-     <h2>ESP32 SPIFFS Manager</h2>
-
-     <div id="spacer_5"></div>
-     <fieldset><legend>File list</legend>
-      <p>Full SPIFFS storage: %SPIFFS_TOTAL_BYTES%, used: %SPIFFS_USED_BYTES%, available: %SPIFFS_FREE_BYTES%</p>
-      <div id="spacer_5"></div>
+   <fieldset>
+    <legend>Filesystem (%SPIFFS_USED_BYTES% / %SPIFFS_TOTAL_BYTES%)</legend>
+    <div style="max-height: 120px; overflow-y: auto; background: #fafafa; border: 1px solid #eee; padding: 4px; border-radius: 3px;">
       %LISTEN_FILES%
-      <div id="spacer_5"></div>
-     </fieldset>
+    </div>
+   </fieldset>
 
-     <div id="spacer_5"></div>
-     <fieldset><legend>File upload</legend>
-      <div id="spacer_5"></div>
-      <form method="POST" action="/upload" enctype="multipart/form-data">
-       <table><tr><td id="tdth2">
-       <input type="file" id="upload_data" name="upload_data">
-       </td><td>
-       <input type="submit" id="submit" value="File upload!" onclick="return validateFormUpload()">
-       </td></tr></table>
-      </form>
-      <div id="spacer_5"></div>
-     </fieldset>
+   <fieldset>
+    <legend>File Actions</legend>
+    <div class="form-row"><span class="form-label">Upload</span><form method="POST" action="/upload" enctype="multipart/form-data"><input type="file" id="upload_data" name="upload_data"><input type="submit" value="Upload" onclick="if(!document.getElementById('upload_data').files.length) return false;"></form></div>
+    <div class="form-row"><span class="form-label">Edit</span><form method="GET" action="/edit">%EDIT_FILES% <input type="submit" value="Edit"></form></div>
+    <div class="form-row"><span class="form-label">Delete</span><form method="GET" action="/delete">%DELETE_FILES% <input type="submit" value="Delete" onclick="return confirmFileDelete()"></form></div>
+    <div class="form-row"><span class="form-label">Download</span><form method="GET" action="/download">%DOWNLOAD_FILES% <input type="submit" value="Get"></form></div>
+   </fieldset>
 
-     <div id="spacer_5"></div>
-     <fieldset><legend>Edit file</legend>
-      <div id="spacer_5"></div>
-      <form method="GET" action="/edit">
-       <table><tr><td id="tdth3">
-       %EDIT_FILES%
-       </td><td>
-       <input type="submit" id="submit" value="Edit" onclick="return validateFileEdit()">
-       </td></tr></table>
-      </form>
-      <div id="spacer_5"></div>
-     </fieldset>
+   <fieldset>
+    <legend>System Controls</legend>
+    <div class="form-row">
+     <span class="form-label">Restart Device</span>
+     <form method="POST" action="/reboot"><input type="submit" value="Restart"></form>
+    </div>
+    %OPTIONS_SECTION%
+    <div class="form-row">
+     <span id="reset_notice" class="form-label">Factory Reset (requires confirmation)</span>
+     <form method="POST" action="/reset"><input type="submit" value="Reset" onclick="return confirm('WARNING: Pressing OK will immediately reset to defaults and restart')"></form>
+    </div>
+   </fieldset>
 
-     <div id="spacer_5"></div>
-     <fieldset><legend>Delete file</legend>
-       <div id="spacer_5"></div>
-       <form method="GET" action="/delete">
-        <table><tr><td id="tdth4">
-        %DELETE_FILES%
-        </td><td>
-        <input type="submit" id="submit" value="Delete" onclick="return validateFileDelete()">
-        </td></tr></table>
-       </form>
-       <div id="spacer_5"></div>
-     </fieldset>
-
-     <div id="spacer_5"></div>
-     <fieldset><legend>Download file</legend>
-      <div id="spacer_5"></div>
-      <form method="GET" action="/download">
-        <table><tr><td id="tdth5">
-        %DOWNLOAD_FILES%
-        </td><td>
-        <input type="submit" id="download" value="Download" onclick="return validateFileDownload()">
-        </td></tr></table>
-      </form>
-      <div id="spacer_5"></div>
-     </fieldset>
-
-     <div id="spacer_5"></div>
-     <fieldset><legend>Options</legend>
-      <div id="spacer_5"></div>
-        <table><tr><td id="tdth16">
-        <p>Soft Reboot the device</p>
-        </td><td>
-         <form method="POST" action="/reboot" target="_self">
-         <input type="submit" id="submit" value="Reboot">
-         </form>
-        </td></tr>
-        %OPTIONS_SECTION%
-        </table>
-      <div id="spacer_5"></div>
-     </fieldset>
-
-     <div id="spacer_5"></div>
-     <fieldset><legend>Reset Board</legend>
-      <div id="spacer_5"></div>
-      <form method="POST" action="/reset" target="_self">
-        <table><tr><td id="tdth7">
-        <p id="reset_notice">Pressing the 'Reset' button will reset the board ! <br>
-        (This will need additional confirmation) </p>
-        </td><td>
-        <input type="submit" id="submit" value="Reset" onclick="return confirmReset()">
-        </td></tr></table>
-      </form>
-      <div id="spacer_5"></div>
-     </fieldset>
-
-     <div id="spacer_10"></div>
-     <iframe style="display:none" name="self_page"></iframe>
-   </center>
+  </div>
  </body>
 </html>
 )rawliteral";

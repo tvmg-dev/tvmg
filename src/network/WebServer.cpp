@@ -17,8 +17,6 @@
 #include "WebServer.h"
 #include "html/edit_html.h"
 #include "html/manager_html.h"
-#include "html/ok_html.h"
-#include "html/failed_html.h"
 #include "html/reboot_html.h"
 
 #include "src/config/Config.h"
@@ -297,6 +295,11 @@ String processor(const String& var)
       return uptime;
    }
 
+  if(var == "EDIT_FILENAME")
+  {
+     return savePath;
+  }
+
   if(var == "IPADDR" )
   {
      String info( "IP: ");
@@ -484,21 +487,27 @@ WebServer::~WebServer()
    delete m_webServer;
 }
 
+// HTML for the check boxes and runtime info
+
 const char *initialSSaverCheckbox = R"raw(
-<tr><td colspan="2"> <label><input id="ssaver" onchange="checkbox(this)"
-type="checkbox" checked> Display screen saver (usually activates 5 minutes after boot)</label><br>
-</td></tr>)raw";
+<div class="form-row">
+  <span class="form-label">Display screen saver (activates after 5m)</span>
+  <input id="ssaver" onchange="checkbox(this)" type="checkbox" checked>
+</div>)raw";
 
-const char *initalUdpCheckbox  = R"raw(
-<tr><td colspan="2"> <label><input id="udpdebug" onchange="checkbox(this)"
-type="checkbox" checked> UDP Debug Active</label><br>
-</td></tr>)raw";
+const char *initalUdpCheckbox = R"raw(
+<div class="form-row">
+  <span class="form-label">UDP Debug Active</span>
+  <input id="udpdebug" onchange="checkbox(this)" type="checkbox" checked>
+</div>)raw";
 
-const char *runtimeInfoButton  = R"raw(
-<tr><td><p>Generate Runtime Info (see logs)</p></td>
-<td><form method="POST" action="/runtimeinfo" target="_self">
-<input type="submit" id="submit" value="RunTime Info">
-</form></td></tr>)raw";
+const char *runtimeInfoButton = R"raw(
+<div class="form-row">
+  <span class="form-label">Generate Runtime Info (see logs)</span>
+  <form method="POST" action="/runtimeinfo" target="_self">
+    <input type="submit" value="Run">
+  </form>
+</div>)raw";
 
 // Generate the options settings.  We need to generate this as any manager
 // page refresh/reload will perform a GET for the page so we need to ensure
@@ -612,7 +621,7 @@ void WebServer::setupAsyncServer()
       }
 
       // Copy incoming data into the scratchBuffer
-      if (!Update.hasError())
+      if ( !Update.hasError() )
       {
          size_t remainingInPacket = len;
          size_t packetOffset = 0;
@@ -876,7 +885,7 @@ void WebServer::setupAsyncServer()
          return request->requestAuthentication();
       }
 
-      request->send(200, "text/html", reboot_html);
+      request->send_P(200, "text/html", reboot_html,processor);
 
       // if this we're in Access Point mode then allow immediate reboot
 
