@@ -1,5 +1,7 @@
 #include <mutex>
 
+#include <cJSON.h>
+
 #include "src/config/config.h"
 
 #include "Measurement.h"
@@ -8,7 +10,9 @@
 
 #define INVALID_UPDATE_HOUR  25
 
-static std::mutex copyMutex;
+static std::recursive_mutex sampleMutex;
+
+static Measurement *s_instance = nullptr;
 
 Measurement::Sample::Sample() :
              m_tempSensors(),
@@ -75,11 +79,18 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
       m_dailyUpdateHour = updateHour;
       PW_DEBUG( "Setting update hour to %u",m_dailyUpdateHour );
    }
+
+   s_instance = this;
 }
 
 Measurement::~Measurement()
 {
    PW_DEBUG( "Measurement::~Measurement()" );
+}
+
+Measurement   *Measurement::instance()
+{
+   return s_instance;
 }
 
 void  Measurement::initialise( void )
@@ -217,7 +228,7 @@ void  Measurement::takeSample( void )
    // member, protect races for last sample access
    if ( sensorIndex == 3 )
    {
-      std::lock_guard<std::mutex> lock( copyMutex );
+      std::lock_guard<std::recursive_mutex> lock( sampleMutex );
       m_lastSample = m_newSample;
    }
 
@@ -239,10 +250,13 @@ void  Measurement::takeSample( void )
       }
 
       updateEmon();
+      char *json = getSampleJSON();
+      free( json );
+
 
       if ( shouldSendDailyUpdate() )
       {
-         sendUpdate();
+         sendDailyUpdate();
       }
    }
    else
@@ -255,7 +269,7 @@ void  Measurement::takeSample( void )
 
 const Measurement::Sample &Measurement::getLastSample( void )
 {
-   std::lock_guard<std::mutex> lock( copyMutex );
+   std::lock_guard<std::recursive_mutex> lock( sampleMutex );
 
    return m_lastSample;
 }
@@ -332,6 +346,136 @@ void  Measurement::updateEmon()
    }
 }
 
+#define CJSON_CHECK_PTR(ptr) do if (!(ptr)) { failed = true; goto exit; } while( 0 )
+
+#define CJSON_ADD_NUM( obj,name,val,isValid ) \
+do { \
+   cJSON *node = nullptr; \
+   if ( isValid ) \
+   { \
+      char buf[ 16 ]; \
+      snprintf( buf,sizeof(buf),"%.1f",val ); \
+      node = cJSON_CreateRaw( buf ); \
+   } \
+   else \
+   { \
+      node  = cJSON_CreateNull(); \
+   } \
+   CJSON_CHECK_PTR( node ); \
+   cJSON_AddItemToObject( obj,name,node ); \
+} while(0)
+
+char * Measurement::getSampleJSON()
+{
+   bool failed = false;
+   char *jsonString = nullptr;
+   cJSON *parent = nullptr;
+   cJSON *child = nullptr;
+   static float k_errorTemp = 75.0f;
+
+   // Take the mutex to protect the sample, may be called from webserver
+
+   std::lock_guard<std::recursive_mutex> lock( sampleMutex );
+
+   struct tm timeinfo;
+   localtime_r( &m_lastSample.m_sampleTime,&timeinfo );
+
+   char timeBuf[ 32 ];
+   strftime( timeBuf,sizeof(timeBuf), "%d/%m/%Y - %H:%M:%S", &timeinfo );
+
+   cJSON *root = cJSON_CreateObject();
+   CJSON_CHECK_PTR( root );
+
+   CJSON_CHECK_PTR( cJSON_AddStringToObject( root, "time",timeBuf ) );
+
+   if ( m_lastSample.m_tempSensors.size() )
+   {
+      parent = root;    // it's at the top level - so we're not testing for remotes/openweather
+      CJSON_CHECK_PTR( child = cJSON_AddObjectToObject( parent,"temperatures" ) );
+
+      for ( int i = 0; i < m_lastSample.m_tempSensors.size(); i++ )
+      {
+         const TempSensor &sensor = m_lastSample.m_tempSensors[ i ];
+         const char *name = getSensorName( THERM,sensor.m_id ).c_str();
+
+         float temp = sensor.m_temp;
+         CJSON_ADD_NUM( child,name,temp,(temp > TEMPERATURE_INVALID && temp < k_errorTemp ) );
+      }
+   }
+
+   if ( m_lastSample.m_powerSensors.size() || m_lastSample.m_shellyPowerSensors.size() )
+   {
+      CJSON_CHECK_PTR( parent = cJSON_AddObjectToObject( root,"power" ) );
+
+      for ( int i = 0; i < m_lastSample.m_powerSensors.size(); i++ )
+      {
+         const PowerSensor &sensor = m_lastSample.m_powerSensors[ i ];
+         const char *name = getSensorName( POWER,sensor.m_id ).c_str();
+
+         CJSON_CHECK_PTR( child = cJSON_AddObjectToObject( parent,name ) );
+
+         CJSON_ADD_NUM( child,"power",sensor.m_power,(sensor.m_power > POWER_INVALID) );
+         CJSON_ADD_NUM( child,"energy",sensor.m_energy,(sensor.m_power > POWER_INVALID) );
+      }
+
+      for ( int i = 0; i < m_lastSample.m_shellyPowerSensors.size(); i++ )
+      {
+         const ShellyPowerSensor &sensor = m_lastSample.m_shellyPowerSensors[ i ];
+         const char *name = getSensorName( SHELLYPM,sensor.m_id ).c_str();
+
+         CJSON_CHECK_PTR( child = cJSON_AddObjectToObject( parent,name ) );
+
+         CJSON_ADD_NUM( child,"power",sensor.m_power,(sensor.m_power > POWER_INVALID) );
+         CJSON_ADD_NUM( child,"energy",sensor.m_energy,(sensor.m_power > POWER_INVALID) );
+      }
+   }
+
+   if ( m_lastSample.m_heatMeterSensors.size() )
+   {
+      CJSON_CHECK_PTR( parent = cJSON_AddObjectToObject( root,"HeatMeter" ) );
+      for ( int i = 0; i < m_lastSample.m_heatMeterSensors.size(); i++ )
+      {
+         const HeatMeterSensor &sensor = m_lastSample.m_heatMeterSensors[ i ];
+         const char *name = getSensorName( HEATMETER,sensor.m_id ).c_str();
+         bool isValid = (sensor.m_power == HM_POWER_ERROR );
+
+         CJSON_CHECK_PTR( child = cJSON_AddObjectToObject( parent,name ) );
+
+         CJSON_ADD_NUM( child,"lpm",sensor.m_flowRate,isValid );
+         CJSON_ADD_NUM( child,"power",sensor.m_power,isValid );
+         CJSON_ADD_NUM( child,"flow",sensor.m_flowTemp,isValid );
+         CJSON_ADD_NUM( child,"return",sensor.m_returnTemp,isValid );
+         CJSON_ADD_NUM( child,"watts",sensor.m_powerConsumed,isValid );
+      }
+   }
+
+   if ( m_lastSample.m_lgRegisters.size() )
+   {
+      CJSON_CHECK_PTR( parent = cJSON_AddObjectToObject( root,"LG" ) );
+
+      for ( int i = 0; i < m_lastSample.m_lgRegisters.size(); i++ )
+      {
+         const LGRegister &lgReg = m_lastSample.m_lgRegisters[ i ];
+         const char *name = getSensorName( HEATMETER,lgReg.m_id ).c_str();
+
+         CJSON_ADD_NUM( parent,name,lgReg.m_value,true );
+      }
+   }
+
+   jsonString = cJSON_PrintUnformatted(root);
+
+   PW_DEBUG( "JSON: %s",jsonString );
+
+exit:
+   if ( failed )
+   {
+      PW_ERROR( "Failed to generate sample json" );
+   }
+
+   cJSON_Delete(root);
+   return( jsonString );
+}
+
 bool Measurement::shouldSendDailyUpdate()
 {
    if ( m_dailyUpdateHour != INVALID_UPDATE_HOUR )
@@ -356,7 +500,7 @@ bool Measurement::shouldSendDailyUpdate()
    return false;
 }
 
-void  Measurement::sendUpdate()
+void  Measurement::sendDailyUpdate()
 {
    char     line[ 128 ];
    String   thermometerStr,powerStr,lgStr,commsStr;

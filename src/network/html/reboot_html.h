@@ -50,7 +50,7 @@ const char reboot_html[] PROGMEM = R"rawliteral(
       })
       .catch(() => { setTimeout(pingServer, 2000); });
    }
-   window.onload = function() { setTimeout(pingServer, 3000); };
+   window.onload = function() { setTimeout(pingServer, 5000); };
   </script>
  </head>
  <body>

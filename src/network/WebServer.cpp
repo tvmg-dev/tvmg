@@ -21,6 +21,7 @@
 
 #include "src/config/Config.h"
 #include "src/core/utils.h"
+#include "src/core/Measurement.h"
 
 #include "src/userio/UserIO.h"
 #include "Networking.h"
@@ -549,10 +550,8 @@ void WebServer::initialise()
    setupAsyncServer();
 }
 
-//#define  DEBUG_OTA_BUFFER
-
-int      updatePos;
-int      buffs;
+int updatePos;
+int buffs;
 
 void WebServer::setupAsyncServer()
 {
@@ -896,6 +895,29 @@ void WebServer::setupAsyncServer()
 
       setRebootRequired();
 
+   });
+
+   m_webServer->on("/json", HTTP_GET, [this](AsyncWebServerRequest *request)
+   {
+      Measurement *measurement = Measurement::instance();
+      bool sent = false;
+
+      if ( measurement )
+      {
+         char *json = measurement->getSampleJSON();
+
+         if ( json )
+         {
+            request->send( 200,"application/json",json);
+            free( json );
+            sent = true;
+         }
+      }
+
+      if ( !sent  )
+      {
+         request->send( 500,"text/plain","JSON Generation Failed" );
+      }
    });
 
    m_webServer->onNotFound(notFound);

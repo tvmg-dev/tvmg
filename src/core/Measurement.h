@@ -33,16 +33,18 @@ public:
    Measurement( TemperatureModule *tempModule, PowerModule *powerModule,ShellyPowerModule *shellyModule, LGHeatPump *heatPump,
                                     HeatMeterModule *hmModule,Storage *storage,Networking *networking );
    ~Measurement();
+   static   Measurement *instance();
    void     initialise();
    void     takeSample();
    const Sample   &getLastSample();
+   char *getSampleJSON();
    bool  didDailyUpdate();
 
 private:
    void  saveLastSample();
-   bool  shouldSendDailyUpdate();
    void  updateEmon();
-   void  sendUpdate();
+   bool  shouldSendDailyUpdate();
+   void  sendDailyUpdate();
 
    TemperatureModule *m_tempModule;
    PowerModule       *m_powerModule;
