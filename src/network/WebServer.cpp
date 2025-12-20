@@ -26,6 +26,93 @@
 #include "src/userio/UserIO.h"
 #include "Networking.h"
 
+const char status_html[] = R"rawliteral(
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HP Monitor - Live</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --card-bg: #2d2d2d;
+            --text-main: #e0e0e0;
+            --accent: #00adb5;
+        }
+        body { font-family: sans-serif; background: var(--bg-color); color: var(--text-main); margin: 20px; }
+        .container { max-width: 500px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--accent); padding-bottom: 10px; margin-bottom: 20px; }
+        .card { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #3d3d3d; }
+        .row:last-child { border-bottom: none; }
+        .label { color: #aaa; font-size: 0.9em; }
+        .value { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.1em; color: var(--accent); }
+        #status { font-size: 0.7em; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+        .online { background: #1b5e20; }
+        .offline { background: #b71c1c; }
+        .status-dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h3>THERMAL LIVE</h3>
+            <span id="status" class="offline">Offline</span>
+        </div>
+
+        <div class="card">
+            <div class="row">
+                <span class="label">Updated</span>
+                <span class="value" id="time">--:--:--</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="row"><span class="label">HP Flow</span><span class="value" id="hp-flow">--.-</span></div>
+            <div class="row"><span class="label">HP Return</span><span class="value" id="hp-return">--.-</span></div>
+        </div>
+
+        <div class="card">
+            <div class="row">
+                <span class="label">Silent Mode</span>
+                <span><span id="silent-dot" class="status-dot" style="background:gray"></span><span class="value" id="silent-on">---</span></span>
+            </div>
+            <div class="row"><span class="label">Inlet</span><span class="value" id="inlet">--.-</span></div>
+            <div class="row"><span class="label">Outlet</span><span class="value" id="outlet">--.-</span></div>
+        </div>
+    </div>
+
+    <script>
+        const source = new EventSource('/telemetry');
+        const status = document.getElementById('status');
+
+        source.onopen = () => { status.innerText = "Online"; status.className = "online"; };
+        source.onerror = () => { status.innerText = "Offline"; status.className = "offline"; };
+
+        source.onmessage = (e) => {
+            try {
+                const d = JSON.parse(e.data);
+
+                document.getElementById('time').innerText = d.time;
+                document.getElementById('hp-flow').innerText = d.temperatures["HP Flow"] ?? "--";
+                document.getElementById('hp-return').innerText = d.temperatures["HP Return"] ?? "--";
+                document.getElementById('inlet').innerText = d.LG.inlet ?? "--";
+                document.getElementById('outlet').innerText = d.LG.outlet ?? "--";
+
+                const silentOn = d.LG["silent-on"];
+                document.getElementById('silent-on').innerText = silentOn ? "ON" : "OFF";
+                document.getElementById('silent-dot').style.backgroundColor = silentOn ? "#4caf50" : "#f44336";
+
+            } catch (err) { console.error("Parse error", err); }
+        };
+    </script>
+</body>
+</html>
+)rawliteral";
+
+
+
 // this will be executing on the second CPU core, so probably hazards with
 // SPIFFS here - should probably mutex it
 
@@ -446,7 +533,8 @@ void notFound(AsyncWebServerRequest *request)
 
 WebServer::WebServer( Networking *networking )
         : m_webServer( nullptr ),
-          m_events( nullptr ),
+          m_otaEvents( nullptr ),
+          m_statusEvents( nullptr ),
           m_networking( networking ),
           m_hiddenPage(),
           m_downloadFile()
@@ -484,7 +572,8 @@ WebServer::~WebServer()
 {
    PW_DEBUG( "~WebServer()" );
 
-   delete m_events;
+   delete m_otaEvents;
+   delete m_statusEvents;
    delete m_webServer;
 }
 
@@ -553,12 +642,24 @@ void WebServer::initialise()
 int updatePos;
 int buffs;
 
+void WebServer::updateClients( const char *data )
+{
+   if ( m_statusEvents )
+   {
+      PW_MSG( "SSE update to web clients" );
+      m_statusEvents->send( data,NULL,millis() );
+   }
+}
+
 void WebServer::setupAsyncServer()
 {
    m_webServer = new AsyncWebServer( 80 );
 
-   m_events = new AsyncEventSource("/events");
-   m_webServer->addHandler(m_events);
+   m_otaEvents = new AsyncEventSource( "/events" );
+   m_webServer->addHandler( m_otaEvents );
+
+   m_statusEvents = new AsyncEventSource( "/telemetry" );
+   m_webServer->addHandler( m_statusEvents );
 
    m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
@@ -602,7 +703,7 @@ void WebServer::setupAsyncServer()
             m_networking->setUpdateProgress(0, filename, false);
 
             // Reset UI via SSE
-            m_events->send( "0", "ota_progress", millis() );
+            m_otaEvents->send( "0", "ota_progress", millis() );
 
             // Start the internal Flash update process
             startedOk = Update.begin( UPDATE_SIZE_UNKNOWN,U_FLASH );
@@ -614,7 +715,7 @@ void WebServer::setupAsyncServer()
             m_networking->setUpdateProgress( -1, filename, false );
             Networking::releaseNetworkMutex();
             // Signal failure to the UI immediately
-            m_events->send( "failed:Could not begin update", "ota_state", millis() );
+            m_otaEvents->send( "failed:Could not begin update", "ota_state", millis() );
             return;
          }
       }
@@ -649,7 +750,7 @@ void WebServer::setupAsyncServer()
                   int progress = (index + packetOffset) * 100 / totalSize;
                   char progMsg[8];
                   sprintf( progMsg, "%d", progress );
-                  m_events->send( progMsg, "ota_progress", millis() );
+                  m_otaEvents->send( progMsg, "ota_progress", millis() );
                }
                m_networking->setUpdateProgress( index + packetOffset, filename, false );
             }
@@ -667,8 +768,8 @@ void WebServer::setupAsyncServer()
             if (Update.end(true))
             {
                // SUCCESS: Tell the browser to start its reboot countdown
-               m_events->send( "100", "ota_progress", millis() );
-               m_events->send( "reboot", "ota_state", millis() );
+               m_otaEvents->send( "100", "ota_progress", millis() );
+               m_otaEvents->send( "reboot", "ota_state", millis() );
                m_networking->setUpdateProgress(index + len, filename, true);
                PW_MSG( "OTA Success. Total written: %d bytes", (buffs * scratchBufferSize) + updatePos );
             }
@@ -677,7 +778,7 @@ void WebServer::setupAsyncServer()
                // FAILURE: Send the specific error message to the browser
                String errorStr = Update.errorString();
                String sseFailMsg = "failed:" + (errorStr.length() ? errorStr : "Flash Error");
-               m_events->send( sseFailMsg.c_str(), "ota_state", millis() );
+               m_otaEvents->send( sseFailMsg.c_str(), "ota_state", millis() );
 
                m_networking->setUpdateProgress(-1, filename, true);
                PW_ERROR( "OTA Failed %s",errorStr.c_str() );
@@ -870,7 +971,7 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/runtimeinfo", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-   getRunTimeInfo();
+      getRunTimeInfo();
 
       debugSensorNameMap();
 
@@ -899,7 +1000,12 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/json", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      Measurement *measurement = Measurement::instance();
+      if(!request->authenticate(http_username, http_password))
+      {
+         return request->requestAuthentication();
+      }
+
+     Measurement *measurement = Measurement::instance();
       bool sent = false;
 
       if ( measurement )
@@ -918,6 +1024,15 @@ void WebServer::setupAsyncServer()
       {
          request->send( 500,"text/plain","JSON Generation Failed" );
       }
+   });
+
+   m_webServer->on("/status", HTTP_GET, [this](AsyncWebServerRequest *request)
+   {
+      if(!request->authenticate(http_username, http_password))
+      {
+         return request->requestAuthentication();
+      }
+      request->send( 200,"text/html",status_html );
    });
 
    m_webServer->onNotFound(notFound);

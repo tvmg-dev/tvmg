@@ -7,6 +7,7 @@
 #include "Measurement.h"
 #include "Storage.h"
 #include "src/network/Networking.h"
+#include "src/network/WebServer.h"
 
 #define INVALID_UPDATE_HOUR  25
 
@@ -250,9 +251,17 @@ void  Measurement::takeSample( void )
       }
 
       updateEmon();
-      char *json = getSampleJSON();
-      free( json );
 
+      WebServer *server = m_networking->getWebServer();
+      if ( server )
+      {
+         char *json = getSampleJSON();
+         if ( json )
+         {
+            server->updateClients( json );
+            free( json );
+         }
+      }
 
       if ( shouldSendDailyUpdate() )
       {

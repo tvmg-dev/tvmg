@@ -11,6 +11,7 @@ public:
    WebServer( Networking *networking );
    ~WebServer();
    void initialise();
+   void updateClients( const char *data );
 
 private:
    void generateOptionsSection();
@@ -18,7 +19,8 @@ private:
    void handleCheckbox( const String &item,const String &state );
 
    AsyncWebServer    *m_webServer;
-   AsyncEventSource  *m_events;
+   AsyncEventSource  *m_otaEvents;
+   AsyncEventSource  *m_statusEvents;
    Networking        *m_networking;
    String            m_hiddenPage;
    File              m_downloadFile;
