@@ -351,7 +351,7 @@ void  Measurement::updateEmon()
 #define CJSON_ADD_NUM( obj,name,val,isValid ) \
 do { \
    cJSON *node = nullptr; \
-   if ( isValid ) \
+   if ( isValid && !std::isnan(val) && !std::isinf(val) ) \
    { \
       char buf[ 16 ]; \
       snprintf( buf,sizeof(buf),"%.1f",val ); \
@@ -437,7 +437,8 @@ char * Measurement::getSampleJSON()
       {
          const HeatMeterSensor &sensor = m_lastSample.m_heatMeterSensors[ i ];
          const char *name = getSensorName( HEATMETER,sensor.m_id ).c_str();
-         bool isValid = (sensor.m_power == HM_POWER_ERROR );
+
+         bool isValid = (sensor.m_power != HM_POWER_ERROR );
 
          CJSON_CHECK_PTR( child = cJSON_AddObjectToObject( parent,name ) );
 
@@ -456,9 +457,23 @@ char * Measurement::getSampleJSON()
       for ( int i = 0; i < m_lastSample.m_lgRegisters.size(); i++ )
       {
          const LGRegister &lgReg = m_lastSample.m_lgRegisters[ i ];
-         const char *name = getSensorName( HEATMETER,lgReg.m_id ).c_str();
+         const char *name = getSensorName( HEATPUMP,lgReg.m_id ).c_str();
 
-         CJSON_ADD_NUM( parent,name,lgReg.m_value,true );
+         if ( lgReg.m_type == COIL || lgReg.m_type == DISCRETE )
+         {
+            if ( lgReg.m_value > 0 )
+            {
+               CJSON_CHECK_PTR( cJSON_AddTrueToObject( parent,name ) );
+            }
+            else
+            {
+               CJSON_CHECK_PTR( cJSON_AddFalseToObject( parent,name ) );
+            }
+         }
+         else
+         {
+            CJSON_ADD_NUM( parent,name,lgReg.m_value,true );
+         }
       }
    }
 
@@ -473,6 +488,7 @@ exit:
    }
 
    cJSON_Delete(root);
+
    return( jsonString );
 }
 

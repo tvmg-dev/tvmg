@@ -908,7 +908,7 @@ void WebServer::setupAsyncServer()
 
          if ( json )
          {
-            request->send( 200,"application/json",json);
+            request->send( 200,"application/json",json );
             free( json );
             sent = true;
          }

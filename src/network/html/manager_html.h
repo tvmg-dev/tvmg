@@ -42,7 +42,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
    .progress-wrapper { width: 100%%; background-color: #eee; border-radius: 4px; margin: 6px 0; display: none; overflow: hidden; border: 1px solid #ddd; }
    .progress-bar { width: 0%%; height: 16px; background-color: #4CAF50; text-align: center; color: white; line-height: 16px; transition: width 0.3s ease; font-size: 10px; }
 
-   .spinner { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%%; width: 12px; height: 12px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 5px; }
+   .spinner { border: 2px solid #f3f3f3; border-top: 2px solid #4caf50; border-radius: 50%%; width: 12px; height: 12px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-left: 5px; }
    @keyframes spin { 0%% { transform: rotate(0deg); } 100%% { transform: rotate(360deg); } }
   </style>
 
@@ -104,7 +104,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
    <h2>ThermaV Monitor</h2>
 
    <fieldset>
-    <legend>System Status</legend>
+    <legend>Gadget Status</legend>
     <table>
      <tr><td colspan="2">Version: %VERSION%</td><td colspan="2">%UPTIME%</td></tr>
      <tr>
@@ -141,7 +141,7 @@ const char manager_html[] PROGMEM = R"rawliteral(
    </fieldset>
 
    <fieldset>
-    <legend>System Controls</legend>
+    <legend>Gadget Controls</legend>
     <div class="form-row">
      <span class="form-label">Restart Device</span>
      <form method="POST" action="/reboot"><input type="submit" value="Restart"></form>
