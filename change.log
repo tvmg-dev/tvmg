@@ -1,3 +1,8 @@
+v25.12.08 - HTML format for LG event log, sent in email and new page
+            available from the webserver.
+          - New SSE events for future realtime view of updates.
+          - Further CSS changes for look and feel/consistency.
+          - LG event log limited to 480 events/day (protect flash).
 v25.12.07 - New look and feel and improved client HTML/Javascript for a
             more coherrent experience and a more modern look.
             Fix SD daily update (file not starting at the update time).
