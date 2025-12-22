@@ -92,8 +92,16 @@ const char* emailHeader = R"raw(
 <meta charset='UTF-8'>
 <style>
   table { border-collapse: collapse; width: 100%; max-width: 900px; font-family: sans-serif; }
-  th { background-color: #444; color: white; padding: 8px; text-align: center; font-size: 12px; }
-  td { font-size: 13px; }
+  th { background-color: #444; color: white; padding: 8px; text-align: center; font-size: 11px; text-transform: uppercase; }
+  td { font-size: 13px; padding: 4px; border-bottom: 1px solid #eee; text-align: center; }
+  .m { font-weight: bold; color: white; border-radius: 3px; display: block; padding: 2px 0; text-transform: uppercase; font-size: 11px; }
+  .m-off  { background-color: #777777; }
+  .m-heat { background-color: #4CAF50; }
+  .m-dhw  { background-color: #FF9800; }
+  .m-ai   { background-color: #9C27B0; }
+  .cp-on  { color: #E65100; font-weight: bold; }
+  .f      { opacity: 0.2; font-style: normal; }
+  .f-on   { opacity: 1; }
 </style>
 </head>
 <body>
@@ -101,15 +109,7 @@ const char* emailHeader = R"raw(
  <table>
   <thead>
    <tr>
-    <th>Time</th>
-    <th>Mode</th>
-    <th>Compressor</th>
-    <th>In/Out</th>
-    <th>Target</th>
-    <th>DHW/Target</th>
-    <th>Outdoor</th>
-    <th>Flags</th>
-    <th>Error</th>
+    <th>Time</th><th>Mode</th><th>Comp</th><th>In/Out</th><th>Target</th><th>DHW/Tgt</th><th>Outdoor</th><th>Flags</th><th>Err</th>
    </tr>
   </thead>
   <tbody>
@@ -739,19 +739,22 @@ void  LGHeatPump::writeStatusToHTML()
    localtime_r( &m_currentStatus.m_time,&timeInfo );
    strftime( timeBuff,sizeof(timeBuff),"%H:%M:%S",&timeInfo );
 
+   const char* compressorClass = (m_currentStatus.m_isCompressorOn) ? "cp-on" : "";
+   const char* compressorText =  (m_currentStatus.m_isCompressorOn) ? "ON" : "OFF";
+
    String modeText = "OFF";
-   String modeColour = "#777777";
+   const char* modeClass = "m m-off";
 
    if ( m_currentStatus.m_isDHW )
    {
-      modeColour = "#ff9800";
+      modeClass = "m m-dhw";
       modeText = "DHW";
    }
    else if ( m_currentStatus.m_isHeating )
    {
       if ( m_currentStatus.m_operatingMode == 3 )
       {
-         modeColour = "#692381";
+         modeClass = "m m-ai";
          if ( m_currentStatus.m_wcOffset == 0 )
          {
             modeText = "AI";
@@ -767,48 +770,35 @@ void  LGHeatPump::writeStatusToHTML()
       }
       else
       {
-         modeColour = "#D50000";
+         modeClass = "m m-heat";
          modeText = "HEAT";
       }
    }
 
    const char* rowTemplate =
-      "<tr style='border-bottom:1px solid #ddd; background-color:#ffffff;'>"
-       "<td style='padding:4px; font-family:monospace;'>%s</td>"
-       "<td style='padding:4px; background-color:%s; color:#fff; font-weight:bold; text-align:center; border-radius:2px;'>%s</td>"
-       "<td style='padding:4px; color:%s; font-weight:bold; text-align:center;'>%s</td>"
-       "<td style='padding:4px; text-align:center;'>%.1f/%.1f</td>" // In/Out
-       "<td style='padding:4px; text-align:center;'>%.1f</td>"      // Target
-       "<td style='padding:4px; text-align:center;'>%.1f/%.1f</td>" // DHW Cur/Target
-       "<td style='padding:4px; text-align:center;'>%.1f</td>"      // Outdoor
-       "<td style='padding:4px; text-align:center;'>"
-         "<span style='opacity:1'>%s</span><span style='opacity:%s'>❄️</span>"
-         "<span style='opacity:%s'>⚡</span><span style='opacity:%s'>☣️</span></td>"
-       "<td style='padding:4px; text-align:center;'>%d</td>"       // Error
-      "</tr>\n";
-
-   String compColour = "#E65100";
-   String compText = "ON";
-
-   if ( !m_currentStatus.m_isCompressorOn )
-   {
-      compColour = "#999999";
-      compText = "OFF";
-   }
+       "<tr>"
+       "<td>%s</td>"
+       "<td><span class='%s'>%s</span></td>"
+       "<td class='%s'>%s</td>"
+       "<td>%.1f/%.1f</td>"
+       "<td>%.1f</td>"
+       "<td>%.1f/%.1f</td>"
+       "<td>%.1f</td>"
+       "<td><i class='f %s'>🔇</i><i class='f %s'>❄️</i><i class='f %s'>⚡</i><i class='f %s'>☣️</i></td>"
+       "<td>%d</td>"
+       "</tr>\n";
 
    snprintf( htmlRow,sizeof(htmlRow),rowTemplate,
-                  timeBuff,
-                  modeColour, modeText,
-                  compColour,compText,
-                  m_currentStatus.m_inlet * 0.1,m_currentStatus.m_outlet * 0.1,
-                  m_currentStatus.m_heatingTarget * 0.1,
-                  m_currentStatus.m_dhw * 0.1,m_currentStatus.m_dhwTarget * 0.1,
-                  m_currentStatus.m_oat * 0.1,
-                  m_currentStatus.m_isSilent ? "🔇":"🔈",
-                  m_currentStatus.m_isDefrost ? "1":"0.2",
-                  m_currentStatus.m_isImmersion ? "1":"0.2",
-                  m_currentStatus.m_isLegionella ? "1":"0.2",
-                  m_currentStatus.m_error );
+       timeBuff, modeClass, modeText.c_str(), compressorClass, compressorText,
+       m_currentStatus.m_inlet * 0.1,m_currentStatus.m_outlet * 0.1,
+       m_currentStatus.m_heatingTarget * 0.1,
+       m_currentStatus.m_dhw * 0.1,m_currentStatus.m_dhwTarget * 0.1,
+       m_currentStatus.m_oat * 0.1,
+       m_currentStatus.m_isSilent ? "f-on" : "",
+       m_currentStatus.m_isDefrost ? "f-on" : "",
+       m_currentStatus.m_isImmersion ? "f-on" : "",
+       m_currentStatus.m_isLegionella ? "f-on" : "",
+       m_currentStatus.m_error );
 
 #if 0
    PW_DEBUG( "%s",htmlRow );

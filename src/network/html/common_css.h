@@ -58,6 +58,8 @@ const char common_css[] PROGMEM = R"rawliteral(
   .mode-heat  { background-color: #4CAF50 !important; }
   .mode-dhw   { background-color: #FF9800 !important; }
   .mode-ai    { background-color: #8E24AA !important; }
+  .f { opacity: 0.2; font-style: normal; display: inline-block; margin: 0 1px; }
+  .f-on { opacity: 1 !important; }
   .cp-on      { color: #E65100 !important; font-weight: bold; }
   .time { font-family: monospace; font-weight: bold; color: #111; }
   .mode-cell { font-size: 10px; font-weight: bold; text-align: center; border-radius: 3px; padding: 3px 0; color: white; text-transform: uppercase; }

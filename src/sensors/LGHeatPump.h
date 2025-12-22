@@ -12,7 +12,7 @@
 #define  LGREGISTER_SCAN_LOG  "/registers.txt"
 #define  LGMODBUS_LOG         "/lgmodbus.txt"
 #define  LGSTATUS_LOG_HTML    "/lgstatus.html"
-#define  LGSTATUS_YESTERDAY   "/lgstatusold.html"
+#define  LGSTATUS_YESTERDAY   "/lgstatus2.html"
 #define  LGREGISTERS_LOG      "/lgreg.txt"
 
 #define  LGHEATPUMP_SENSOR_NAME  "LGHEATPUMP"

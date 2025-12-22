@@ -34,7 +34,7 @@ const char history_html[] PROGMEM = R"rawliteral(
             const upd = document.getElementById('last-upd');
             try {
                 const [y, t] = await Promise.all([
-                    fetch('/lgstatusold.html').then(r => r.ok ? r.text() : ""),
+                    fetch('/lgstatus2.html').then(r => r.ok ? r.text() : ""),
                     fetch('/lgstatus.html').then(r => r.ok ? r.text() : "")
                 ]);
 
