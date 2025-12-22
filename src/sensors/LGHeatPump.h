@@ -11,7 +11,8 @@
 
 #define  LGREGISTER_SCAN_LOG  "/registers.txt"
 #define  LGMODBUS_LOG         "/lgmodbus.txt"
-#define  LGSTATUS_LOG         "/lgstatus.txt"
+#define  LGSTATUS_LOG_HTML    "/lgstatus.html"
+#define  LGSTATUS_YESTERDAY   "/lgstatusold.html"
 #define  LGREGISTERS_LOG      "/lgreg.txt"
 
 #define  LGHEATPUMP_SENSOR_NAME  "LGHEATPUMP"
@@ -108,7 +109,7 @@ struct LGStatus {
    int16_t  m_wcOffset;
    int16_t  m_dhwTarget;
 
-   int16_t  m_heatingMode;
+   int16_t  m_operatingMode;
    bool     m_extWaterPumpOn;
    bool     m_isCompressorOn;
    bool     m_isHeating;
@@ -130,6 +131,7 @@ public:
    bool  isAvailable();
    bool  isLogging();
    void  resetEventLog();
+   void  finaliseHTML();
    void  sample();
    LGRegister *readNextSensor( uint8_t index );
    int8_t getRegisterIndex( uint32_t parameter );
@@ -147,6 +149,8 @@ private:
    float_t  convertR32PressureToTemp( float_t pressure );
    bool  valueChanged( uint32_t parameter );
    void  updateStatus();
+   void  writeStatusToHTML();
+
 
    LGRegister     *m_registers;
    LGStatus       m_currentStatus;

@@ -205,7 +205,7 @@ void  handleTouch1()
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName() );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG,true );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG_HTML,true );
 }
 
 void  handleTouch2()
@@ -708,10 +708,10 @@ void handleDataLogs()
 
    // Send the LG event log if available
 
-   if ( config->getSPIFFS()->exists( LGSTATUS_LOG ) )
+   if ( config->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
    {
       networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "LG Event Log","Event Log",LGSTATUS_LOG,true );
+                        "LG Event Log html","Event Log",LGSTATUS_LOG_HTML,true );
    }
 
    if ( SD.exists ( DEBUG_LOG ) )

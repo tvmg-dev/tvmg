@@ -18,6 +18,8 @@
 #include "html/edit_html.h"
 #include "html/manager_html.h"
 #include "html/reboot_html.h"
+#include "html/history_html.h"
+#include "html/common_css.h"
 
 #include "src/config/Config.h"
 #include "src/core/utils.h"
@@ -110,8 +112,6 @@ const char status_html[] = R"rawliteral(
 </body>
 </html>
 )rawliteral";
-
-
 
 // this will be executing on the second CPU core, so probably hazards with
 // SPIFFS here - should probably mutex it
@@ -354,6 +354,11 @@ void uploadFile(AsyncWebServerRequest *request, String filename, size_t index, u
 
 String processor(const String& var)
 {
+   if(var == "STYLE")
+   {
+      return( String( common_css ) );
+   }
+
    if(var == "VERSION")
    {
       return( String( k_versionStr ) );
@@ -651,6 +656,8 @@ void WebServer::updateClients( const char *data )
    }
 }
 
+// --- The Server Handlers ---
+
 void WebServer::setupAsyncServer()
 {
    m_webServer = new AsyncWebServer( 80 );
@@ -660,6 +667,9 @@ void WebServer::setupAsyncServer()
 
    m_statusEvents = new AsyncEventSource( "/telemetry" );
    m_webServer->addHandler( m_statusEvents );
+
+   m_webServer->serveStatic( LGSTATUS_LOG_HTML,SPIFFS,LGSTATUS_LOG_HTML );
+   m_webServer->serveStatic( LGSTATUS_YESTERDAY,SPIFFS,LGSTATUS_YESTERDAY );
 
    m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
@@ -1033,6 +1043,15 @@ void WebServer::setupAsyncServer()
          return request->requestAuthentication();
       }
       request->send( 200,"text/html",status_html );
+   });
+
+   m_webServer->on("/history", HTTP_GET, [this](AsyncWebServerRequest *request)
+   {
+      if(!request->authenticate(http_username, http_password))
+      {
+         return request->requestAuthentication();
+      }
+      request->send_P(200, "text/html", history_html,processor);
    });
 
    m_webServer->onNotFound(notFound);

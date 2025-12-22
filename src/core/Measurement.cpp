@@ -621,12 +621,17 @@ void  Measurement::sendDailyUpdate()
    updateStr += commsStr;
    updateStr += "\n\n";
 
-   // Send LG data if we have it, otherwise simple email
-   if ( Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG ) )
+   // Send LG data if we have it (finalise the HTML first), otherwise simple email
+   if ( m_heatPump && Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG_HTML ) )
    {
-      if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG,true ) )
+      m_heatPump->finaliseHTML();
+
+      if ( m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG_HTML,true ) )
       {
-         Config::instance()->getSPIFFS()->remove( LGSTATUS_LOG );
+         // remove yesterday's and we rename current status to yesterday's.
+
+         Config::instance()->getSPIFFS()->remove( LGSTATUS_YESTERDAY );
+         Config::instance()->getSPIFFS()->rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
       }
    }
    else
