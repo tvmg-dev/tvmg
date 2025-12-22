@@ -1,4 +1,4 @@
-const char history_html[] = R"raw(
+const char history_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html lang="en">
 <head>
     <title>ThermaV Event Log</title>
@@ -11,15 +11,20 @@ const char history_html[] = R"raw(
         <div class="header-nav">
             <a href="/manager" class="nav-btn">&larr; Manager</a>
             <h2>ThermaV Event Log</h2>
-            <div style="width:85px"></div> </div>
-
+            <div style="width:85px"></div>
+        </div>
         <fieldset>
             <legend>System Activity (Latest First)</legend>
-            <div id="log-target">
-                <div class="loader">Accessing log files...</div>
-            </div>
-        </fieldset>
 
+            <div class="log-row" style="font-weight:bold; color:#666; font-size:10px; border-bottom:2px solid #ccc; text-transform:uppercase;">
+                <div>Time</div>
+                <div style="text-align:center;">Mode</div>
+                <div class="cp-col" style="text-align:center;">CP</div>
+                <div style="grid-column: span 6; text-align:center;">System Data & Errors</div>
+            </div>
+
+            <div id="log-target"><div class="loader">Accessing log files...</div></div>
+        </fieldset>
         <div id="last-upd">Initializing...</div>
     </div>
 
@@ -28,7 +33,6 @@ const char history_html[] = R"raw(
             const target = document.getElementById('log-target');
             const upd = document.getElementById('last-upd');
             try {
-                // Fetching the files based on your SPIFFS structure
                 const [y, t] = await Promise.all([
                     fetch('/lgstatusold.html').then(r => r.ok ? r.text() : ""),
                     fetch('/lgstatus.html').then(r => r.ok ? r.text() : "")
@@ -40,37 +44,36 @@ const char history_html[] = R"raw(
 
                 rows.forEach(row => {
                     const td = row.querySelectorAll('td');
-                    // Target exactly 9 columns:
-                    // [0]Time [1]Mode [2]CP [3]In/Out [4]Tgt [5]DHW/Tgt [6]Air [7]Flags [8]Err
                     if (td.length === 9) {
                         const r = document.createElement('div');
                         r.className = 'log-row';
 
-                        const time = td[0].innerText;
-                        const modeTxt = td[1].innerText;
-                        const modeBg  = td[1].style.backgroundColor;
-                        const cpState = td[2].innerText.trim();
-                        const ioTemps = td[3].innerText;
-                        const hTgt    = td[4].innerText;
-                        const dhwData = td[5].innerText;
-                        const airTemp = td[6].innerText;
-                        const flags   = td[7].innerHTML;
-                        const errCode = td[8].innerText.trim();
+                        const rawMode = td[1].innerText.trim().toUpperCase();
+                        const rawCP   = td[2].innerText.trim().toUpperCase();
+                        const rawErr  = td[8].innerText.trim();
 
-                        const hasError = errCode !== "0";
+                        // Logic: Explicit checks for fixed strings, default everything else to AI
+                        let modeClass = "mode-ai";
+                        if (rawMode === "OFF") {
+                            modeClass = "mode-off";
+                        } else if (rawMode === "HEAT") {
+                            modeClass = "mode-heat";
+                        } else if (rawMode === "DHW") {
+                            modeClass = "mode-dhw";
+                        }
+
+                        const cpClass = (rawCP === 'ON') ? 'cp-on' : '';
 
                         r.innerHTML = `
-                            <div class="time">${time}</div>
-                            <div class="mode-cell" style="background:${modeBg || '#777'}">${modeTxt}</div>
-                            <div class="cp-col" style="text-align:center; font-weight:bold; color:${cpState==='ON'?'#4CAF50':'#999'}">${cpState}</div>
-
-                            <div><span class="label">Inlet/Outlet</span><span class="val-unit">${ioTemps}</span></div>
-                            <div><span class="label">Target</span><span class="val-unit">${hTgt}</span></div>
-                            <div><span class="label">DHW/Target</span><span class="val-unit">${dhwData}</span></div>
-                            <div class="outdoor-col"><span class="label">Outdoor</span><span class="val-unit">${airTemp}</span></div>
-
-                            <div class="flags">${flags}</div>
-                            <div class="err-cell ${hasError ? 'err-active' : 'err-none'}">${errCode}</div>
+                         <div class="time">${td[0].innerText}</div>
+                         <div class="mode-cell ${modeClass}">${td[1].innerText}</div>
+                         <div class="cp-col ${cpClass}" style="text-align:center;">${td[2].innerText}</div>
+                         <div><span class="label">Inlet/Outlet</span><span class="val-unit">${td[3].innerText}</span></div>
+                         <div><span class="label">Target</span><span class="val-unit">${td[4].innerText}</span></div>
+                         <div><span class="label">DHW/Target</span><span class="val-unit">${td[5].innerText}</span></div>
+                         <div class="outdoor-col"><span class="label">Outdoor</span><span class="val-unit">${td[6].innerText}</span></div>
+                         <div class="flags">${td[7].innerHTML}</div>
+                         <div class="err-cell ${rawErr !== "0" ? 'err-active' : 'err-none'}">${rawErr}</div>
                         `;
                         fragment.appendChild(r);
                     }
@@ -87,11 +90,9 @@ const char history_html[] = R"raw(
                 target.innerHTML = '<div class="loader">Log retrieval failed.</div>';
             }
         }
-
         loadLogs();
-        setInterval(loadLogs, 30000); // Auto-refresh every 30s
+        setInterval(loadLogs, 30000);
     </script>
 </body>
 </html>
-)raw";
-
+)rawliteral";

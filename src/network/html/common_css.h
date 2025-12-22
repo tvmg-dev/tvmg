@@ -54,6 +54,11 @@ const char common_css[] PROGMEM = R"rawliteral(
       display: grid; grid-template-columns: 85px 70px 50px 90px 70px 90px 60px 1fr 45px;
       align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #eee;
   }
+  .mode-off   { background-color: #777777 !important; }
+  .mode-heat  { background-color: #4CAF50 !important; }
+  .mode-dhw   { background-color: #FF9800 !important; }
+  .mode-ai    { background-color: #8E24AA !important; }
+  .cp-on      { color: #E65100 !important; font-weight: bold; }
   .time { font-family: monospace; font-weight: bold; color: #111; }
   .mode-cell { font-size: 10px; font-weight: bold; text-align: center; border-radius: 3px; padding: 3px 0; color: white; text-transform: uppercase; }
   .val-unit { font-weight: 600; color: #111; font-family: monospace; }

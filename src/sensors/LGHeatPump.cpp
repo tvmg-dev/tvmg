@@ -742,11 +742,16 @@ void  LGHeatPump::writeStatusToHTML()
    String modeText = "OFF";
    String modeColour = "#777777";
 
-   if ( m_currentStatus.m_isHeating )
+   if ( m_currentStatus.m_isDHW )
    {
-      modeColour = "#4caf50";
+      modeColour = "#ff9800";
+      modeText = "DHW";
+   }
+   else if ( m_currentStatus.m_isHeating )
+   {
       if ( m_currentStatus.m_operatingMode == 3 )
       {
+         modeColour = "#692381";
          if ( m_currentStatus.m_wcOffset == 0 )
          {
             modeText = "AI";
@@ -762,13 +767,9 @@ void  LGHeatPump::writeStatusToHTML()
       }
       else
       {
+         modeColour = "#D50000";
          modeText = "HEAT";
       }
-   }
-   else if ( m_currentStatus.m_isDHW )
-   {
-      modeColour = "#ff9800";
-      modeText = "DHW";
    }
 
    const char* rowTemplate =
@@ -786,7 +787,7 @@ void  LGHeatPump::writeStatusToHTML()
        "<td style='padding:4px; text-align:center;'>%d</td>"       // Error
       "</tr>\n";
 
-   String compColour = "#03a9f4";
+   String compColour = "#E65100";
    String compText = "ON";
 
    if ( !m_currentStatus.m_isCompressorOn )
