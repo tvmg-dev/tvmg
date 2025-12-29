@@ -183,10 +183,7 @@ void  Storage::setNetworking( Networking *network )
 
    if ( boardHasSDCard() && ! m_storageOk )
    {
-      char subject[ 128 ];
-      snprintf( subject,128,"HP Monitoring : %s - SD Card Init Fault",m_networking->getLocalMDNSName().c_str() );
-
-      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"No message" );
+      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Monitoring Storage Failure","SD Card Initialisation Fault" );
    }
 }
 
@@ -201,6 +198,7 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
 
    bool   currentFileExists = false;
    struct tm timeInfo;
+   static bool haveSkippedFirstSample = false;
    char   fileName[ MAX_FILENAME + 1 ];
 
    localtime_r( &sample.m_sampleTime,&timeInfo );
@@ -273,10 +271,10 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
 
          if ( isNewFile )
          {
-            snprintf( line,128,",%s",getSensorName( THERM,sensor.m_id ).c_str() );
+            snprintf( line,sizeof(line),",%s",getSensorName( THERM,sensor.m_id ).c_str() );
             hdrString += line;
          }
-         snprintf( line,128,",%.1f",sensor.m_temp );
+         snprintf( line,sizeof(line),",%.1f",sensor.m_temp );
          dataString += line;
       }
 
@@ -287,10 +285,10 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
          if ( isNewFile )
          {
             const char *name = getSensorName( POWER,sensor.m_id ).c_str();
-            snprintf( line,128,",%s (power),%s (energy)",name,name );
+            snprintf( line,sizeof(line),",%s (power),%s (energy)",name,name );
             hdrString += line;
          }
-         snprintf( line,128,",%.1f,%.1f",sensor.m_power,sensor.m_energy );
+         snprintf( line,sizeof(line),",%.1f,%.1f",sensor.m_power,sensor.m_energy );
          dataString += line;
       }
 
@@ -301,10 +299,10 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
          if ( isNewFile )
          {
             const char *name = getSensorName( SHELLYPM,sensor.m_id ).c_str();
-            snprintf( line,128,",%s (power),%s (energy)",name,name );
+            snprintf( line,sizeof(line),",%s (power),%s (energy)",name,name );
             hdrString += line;
          }
-         snprintf( line,128,",%.1f,%.1f",sensor.m_power,sensor.m_energy );
+         snprintf( line,sizeof(line),",%.1f,%.1f",sensor.m_power,sensor.m_energy );
          dataString += line;
       }
 
@@ -314,10 +312,10 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
 
          if ( isNewFile )
          {
-            snprintf( line,128,",%s",getSensorName( HEATPUMP,lgReg.m_id ).c_str() );
+            snprintf( line,sizeof(line),",%s",getSensorName( HEATPUMP,lgReg.m_id ).c_str() );
             hdrString += line;
          }
-         snprintf( line,128,",%.1f",lgReg.m_value );
+         snprintf( line,sizeof(line),",%.1f",lgReg.m_value );
          dataString += line;
       }
 
@@ -327,17 +325,25 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
          m_storageOk = file.println( hdrString.c_str() );
       }
 
-      PW_MSG( "store %s",dataString.c_str() );
-      m_storageOk = file.println( dataString.c_str() );
+      // We ignore the first sample following a reboot as it is most likely
+      // incomplete, would be better to use sensor's valid flag
+
+      if ( !haveSkippedFirstSample )
+      {
+         haveSkippedFirstSample = true;
+         PW_MSG( "skip first sample" );
+      }
+      else
+      {
+         PW_MSG( "store %s",dataString.c_str() );
+         m_storageOk = file.println( dataString.c_str() );
+      }
       file.close();
    }
 
    if ( ! m_storageOk && m_networking )
    {
-      char subject[ 128 ];
-      snprintf( subject,128,"HP Monitoring : %s - Storage Failure",m_networking->getLocalMDNSName().c_str() );
-
-      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,"Preventing further writes" );
+      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Monitoring Storage Failure","Preventing further writes" );
 
       PW_ERROR( "Storage failure" );
    }

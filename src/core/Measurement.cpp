@@ -626,7 +626,7 @@ void  Measurement::sendDailyUpdate()
    {
       m_heatPump->finaliseHTML();
 
-      if ( m_networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG_HTML,true ) )
+      if ( m_networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG_HTML ) )
       {
          // remove yesterday's and we rename current status to yesterday's.
 
