@@ -202,10 +202,10 @@ void  handleTouch1()
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString );
 
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName() );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG_HTML,true );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName(),true );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG,true );
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG,true );
+   networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG_HTML );
 }
 
 void  handleTouch2()
@@ -667,7 +667,7 @@ void handleBootEmail( const String &rebootStr )
 
 void handleDataLogs()
 {
-   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
+   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 || GET_REGISTRY_INT( NO_BOOT_EMAILS ) == 1 )
    {
       PW_MSG( "Not sending logging data (on boot) emails" );
       return;
@@ -678,7 +678,7 @@ void handleDataLogs()
    if ( SD.exists( LGREGISTER_SCAN_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "HP Modbus Registers","Modbus regs",LGREGISTER_SCAN_LOG ) )
+                        "HP Modbus Registers","Modbus regs",LGREGISTER_SCAN_LOG,true ) )
       {
          SD.remove( LGREGISTER_SCAN_LOG);
       }
@@ -687,7 +687,7 @@ void handleDataLogs()
    if ( SD.exists( LGMODBUS_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "HP Modbus Log","Modbus Logs",LGMODBUS_LOG ) )
+                        "HP Modbus Log","Modbus Logs",LGMODBUS_LOG,true ) )
       {
          SD.remove( LGMODBUS_LOG );
       }
@@ -696,7 +696,7 @@ void handleDataLogs()
    if ( SD.exists( LGREGISTERS_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG ) )
+                        "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG,true ) )
       {
          if ( lgThermaV && lgThermaV->isLogging() )
          {
@@ -710,14 +710,14 @@ void handleDataLogs()
 
    if ( config->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
    {
-      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "LG Event Log html","Event Log",LGSTATUS_LOG_HTML,true );
+      networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "LG Event Log","Event Log",LGSTATUS_LOG_HTML );
    }
 
    if ( SD.exists ( DEBUG_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "Debug log","Debug Logs",DEBUG_LOG ) )
+                        "Debug log","Debug Logs",DEBUG_LOG,true ) )
       {
          if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 )
          {
@@ -919,6 +919,28 @@ bool isNetworkOk()
 
 #define LOOP_PERIOD_MS     5000
 
+bool  loopTestRequired = false;
+
+void  loopTest()
+{
+#if 0
+
+   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data","/20251225.dat" );
+//   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Sensor Data","Sensors","/sensors.dat",true );
+
+   extern char *padHtmlLine( const char *src );
+
+   PW_DEBUG( "%s",padHtmlLine( "hello world" ) );
+   PW_DEBUG( "%s",padHtmlLine( "      hello world" ) );
+   PW_DEBUG( "%s",padHtmlLine( "1234567890                                              at the end of 72" ) );
+   PW_DEBUG( "%s",padHtmlLine( "1234567890                                              at the end of 72 and more" ) );
+   PW_DEBUG( "%s",padHtmlLine( "1234567890                                        a bit" ) );
+#endif
+
+   handleTouch1();
+
+}
+
 void loop(void)
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
@@ -1013,6 +1035,13 @@ void loop(void)
       didDailyUpdate = false;
    }
    END_TIMING;
+
+   // run any debugging test, setup by webserver for picking up in the loop
+   if ( loopTestRequired )
+   {
+      loopTest();
+      loopTestRequired = false;
+   }
 
    // our target MS is our original millis at entry of this loop, plus
    // our sampling delay

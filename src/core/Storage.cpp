@@ -218,13 +218,13 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
       {
          char subject[ 128 ];
 
-         m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Daily Data","Today's Final Results",m_currentFileName,false );
+         m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Daily Data","Today's Final Results",m_currentFileName,true );
 
          if ( SD.exists( DEBUG_LOG ) )
          {
             if ( GET_REGISTRY_INT( SEND_DAILY_DEBUG ) == 1 )
             {
-               m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG,false );
+               m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG,true );
             }
 
             if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 )

@@ -1,0 +1,370 @@
+diff --git a/src/ReadyMail.h b/src/ReadyMail.h
+index b87caa6..c0ab56e 100644
+--- a/src/ReadyMail.h
++++ b/src/ReadyMail.h
+@@ -16,6 +16,12 @@
+ #define READYMAIL_USE_STRSEP_IMPL
+ #endif
+ 
++#if !defined(READYMAIL_OPTIMISED)
++#define MAX_LINE_LEN 76
++#else
++#define MAX_LINE_LEN READYMAIL_EXTERNAL_BUFF_SIZE
++#endif
++
+ #include <array>
+ #include <vector>
+ #include <algorithm>
+@@ -55,8 +61,6 @@
+ 
+ #endif
+ 
+-#define MAX_LINE_LEN 76
+-
+ #define TCP_CLIENT_ERROR_INITIALIZE -1
+ #define TCP_CLIENT_ERROR_CONNECTION -2
+ #define TCP_CLIENT_ERROR_NOT_CONNECTED -3
+@@ -249,4 +253,4 @@ namespace ReadyMailCallbackNS
+ #include "smtp/SMTPClient.h"
+ #endif
+ 
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/src/core/ReadyCodec.h b/src/core/ReadyCodec.h
+index ea08231..6299106 100644
+--- a/src/core/ReadyCodec.h
++++ b/src/core/ReadyCodec.h
+@@ -20,7 +20,9 @@ enum src_data_type
+     src_data_file
+ };
+ 
+-// msg data source reader context 
++#if !defined(READYMAIL_OPTIMISED)
++
++// msg data source reader context
+ // that provides the Stream interfaces
+ struct src_data_ctx
+ {
+@@ -91,6 +93,132 @@ public:
+     }
+ };
+ 
++#elif !defined(ENABLE_FS)
++   #error "Must have FS enabled for optimised file caching"
++#else
++//----------------------------------------------------------------------
++
++// Implement a caching mechanism.  this is using a single buffer for all
++// src_data_ctx instances so is not thread safe !  We are not using malloc
++// to avoid heap fragmentation so we have predictable memory usage.
++
++#define RD_CACHE_SIZE   2048
++uint8_t fileCache[ RD_CACHE_SIZE ];
++
++struct src_data_ctx
++{
++public:
++    const char *str = nullptr;
++#if defined(ENABLE_FS)
++    File fs;
++    int cacheLen = 0;           // Actual number of bytes read into the cache
++    int cacheBaseIndex = 0;     // The file-wide index where the current cache starts
++#endif
++    src_data_type type = src_data_string;
++    bool valid = false, cid = false, nonascii = false;
++    size_t srcSize = 0;
++    char c = 0;
++    int index = 0;
++    bool available()
++    {
++       return index < (int) srcSize;
++    }
++    size_t size()
++    {
++       if ( !srcSize )
++       {
++         if (type <= src_data_static)
++            srcSize = strlen( str );
++         else if ( fs )
++            srcSize = fs.size();
++       }
++       return srcSize;
++    }
++
++char read() {
++    if (!available()) return 0;
++
++    if (type <= src_data_static) {
++        return str[index++]; // Standard string behavior
++    }
++
++    if (type == src_data_file && fs) {
++        // If the current index is outside the window we have in RAM...
++        if (index < cacheBaseIndex || index >= (cacheBaseIndex + cacheLen)) {
++            int pos = fs.position();
++            // Align physical file to our logical index
++            if (pos != (size_t)index) {
++                fs.seek(index);
++            }
++
++            cacheBaseIndex = index; // This is the new start of our window
++            cacheLen = fs.read(fileCache, RD_CACHE_SIZE);
++
++            if (cacheLen <= 0)
++            {
++               return 0;
++            }
++        }
++
++        // Return the byte from the cache based on the offset from the start of the window
++        uint8_t val = fileCache[index - cacheBaseIndex];
++        index++; // Increment the public pointer
++        return (char)val;
++    }
++
++    return 0;
++}
++
++   // PW new method
++   size_t read(uint8_t *buf, size_t len)
++   {
++       if (!valid || !buf || len == 0) return 0;
++
++       size_t toRead = 0;
++       size_t s = size();
++
++       if (type <= src_data_static)
++       {
++           // Calculate remaining bytes in string
++           if ((size_t)index < s)
++           {
++               toRead = s - index;
++               if (toRead > len) toRead = len;
++               memcpy(buf, str + index, toRead);
++               index += toRead;
++               return toRead;
++           }
++       }
++       else if (fs)
++       {
++          size_t numRead = fs.read(buf, len);
++          if ( numRead > 0 )
++          {
++            index += numRead;
++          }
++
++          return numRead;
++       }
++       return 0;
++   }
++
++    void close()
++    {
++      if (type == src_data_file && fs)
++         fs.close();
++      cacheBaseIndex = 0;
++      cacheLen = 0;
++      index = 0;
++    }
++
++    void seek(int index)
++    {
++       this->index = index;
++    }
++};
++//----------------------------------------------------------------------
++#endif
++
+ static const unsigned char rd_b64_map[65] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+ 
+ static void __attribute__((used)) sys_yield()
+@@ -363,6 +491,7 @@ out:
+ 
+ // msg data source checking 
+ // for cid (inline attachment) and non-ascii (encoding applicable)
++#if !defined(READYMAIL_OPTIMISED)
+ static void rd_src_check(src_data_ctx &src)
+ {
+     char c[4];
+@@ -388,6 +517,49 @@ static void rd_src_check(src_data_ctx &src)
+     }
+     src.close();
+ }
++#elif defined(READYMAIL_OPTIMISED) && defined(ENABLE_SMTP)
++
++extern uint8_t scratchBuffer[];
++
++static void rd_src_check(src_data_ctx &src)
++{
++    uint8_t *buf = scratchBuffer;
++    if (!buf) return;
++
++    uint32_t window = 0;
++    size_t total = src.size();
++    size_t readCount = 0;
++
++    while (readCount < total && src.available())
++    {
++        int toRead = (total - readCount > MAX_LINE_LEN) ? MAX_LINE_LEN : (total - readCount);
++        int len = src.read(buf, toRead);
++        if (len <= 0) break;
++
++        for (int i = 0; i < len; i++)
++        {
++            // 1. Bitwise Non-ASCII check
++            if (buf[i] & 0x80) src.nonascii = true;
++
++            // 2. Sliding window for "cid:" (0x6369643A)
++            window = (window << 8) | buf[i];
++            if (window == 0x6369643A) src.cid = true;
++
++            // 3. Check for early exit condition
++            if (src.cid && src.nonascii) break;
++        }
++
++        readCount += len;
++
++        // Break the outer while loop if flags are found
++        if (src.cid && src.nonascii) break;
++    }
++
++    src.close();
++}
++
++#endif
++
+ 
+ // quoted-printable and base64 encoder
+ static String rd_qb_encode_chunk(src_data_ctx &src, int &index, int mode, bool flowed, int max_len, String &softbreak_buf, std::vector<int> &softbreak_index)
+@@ -684,4 +856,4 @@ static int rd_dec_latin1_utf8(unsigned char *out, int *outlen, const unsigned ch
+ 
+ #endif
+ #endif
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/src/smtp/Common.h b/src/smtp/Common.h
+index ce1be79..f791b28 100644
+--- a/src/smtp/Common.h
++++ b/src/smtp/Common.h
+@@ -587,4 +587,4 @@ namespace ReadyMailSMTP
+ 
+ }
+ #endif
+-#endif
+\ No newline at end of file
++#endif
+diff --git a/src/smtp/SMTPSend.h b/src/smtp/SMTPSend.h
+index 727c36e..1774c19 100644
+--- a/src/smtp/SMTPSend.h
++++ b/src/smtp/SMTPSend.h
+@@ -266,6 +266,14 @@ namespace ReadyMailSMTP
+ 
+         bool sendBodyData(SMTPMessage &msg)
+         {
++#if defined(READYMAIL_EXTRA_DEBUG) && defined(ENABLE_DEBUG)
++            {
++                String dbg( "sendBodyData " );
++                int x = msg.send_state;
++                dbg += String( x );
++                setDebug( dbg );
++            }
++#endif
+             switch (msg.send_state)
+             {
+             case smtp_send_state_body_data:
+@@ -289,8 +297,12 @@ namespace ReadyMailSMTP
+             case smtp_send_state_body_type_1:
+             case smtp_send_state_body_type_5_1:
+             case smtp_send_state_body_type_5P_1:
++#if !defined(READYMAIL_OPTIMISED)
+                 return sendTextMessage(msg, 0 /* text or html */, msg.html.content.length() > 0, false);
+-
++#else
++                // Fix to allow html file only message body
++                return sendTextMessage(msg, 0 /* text or html */, msg.html.src.valid, false);
++#endif
+             case smtp_send_state_body_type_2:  // mixed
+             case smtp_send_state_body_type_2P: // mixed
+             case smtp_send_state_body_type_3:  // mixed
+@@ -537,7 +549,18 @@ namespace ReadyMailSMTP
+                 rd_print_to(ct_prop, 250, "; charset=\"%s\";%s%s", html ? msg.html.charSet.c_str() : msg.text.charSet.c_str(), html ? "" : (msg.text.flowed ? " format=\"flowed\"; delsp=\"yes\";" : ""), msg.html.embed.enable ? (html ? " Name=\"msg.html\";" : " Name=\"msg.txt\";") : "");
+ #if defined(ENABLE_FS)
+                 if ((html ? msg.html.src.type : msg.text.src.type) == src_data_file)
++                {
+                     msg.openFileRead(html);
++#if defined(READYMAIL_OPTIMISED)
++                    if ( !msg.file_opened )
++                    {
++#if defined(ENABLE_DEBUG)
++                       setDebug( "failed to open file" );
++#endif
++                       return setError(__func__, TCP_CLIENT_ERROR_SEND_DATA);
++                    }
++#endif
++                }
+ #endif
+                 setContentTypeHeader(buf, msg.content_types[content_type_index].boundary, html ? msg.html.content_type.c_str() : msg.text.content_type.c_str(), ct_prop, msg.getEnc(html ? msg.html.xenc : msg.text.xenc), embed ? (embed_inline ? "inline" : "attachment") : "", html ? msg.html.embed.filename : msg.text.embed.filename, 0, html ? msg.html.embed.filename : msg.text.embed.filename, embed_inline ? getRandomUID() : "");
+ 
+@@ -642,6 +665,16 @@ namespace ReadyMailSMTP
+                             cAttach(msg).data_size = msg.file.size();
+                             msg.file_opened = true;
+                         }
++#if defined(READYMAIL_OPTIMISED)
++                        // We abort if we fail to open the file
++                        else
++                        {
++#if defined(ENABLE_DEBUG)
++                           setDebug( "failed to open attachment" );
++#endif
++                           return setError(__func__, TCP_CLIENT_ERROR_SEND_DATA);
++                        }
++#endif
+                     }
+ #endif
+                     if (cAttach(msg).data_size > 0)
+@@ -751,12 +784,24 @@ namespace ReadyMailSMTP
+ #endif
+                 validateAttEnc(cAttach(msg), available);
+ 
++#if !defined(READYMAIL_OPTIMISED)
+                 int chunkSize = cAttach(msg).content_encoding != cAttach(msg).transfer_encoding ? 57 : MAX_LINE_LEN;
+-
++#else
++                // as we're likely base64 encoding then we have 4 characters per 3 bytes in our source buffer
++                // and we need to keep below 998 characters for email, so we can source 748 bytes, but the encoder
++                // needs to encode 3 bytes (to 4) so divisible by 12, i.e. 744 bytes.
++                int chunkSize = cAttach(msg).content_encoding != cAttach(msg).transfer_encoding ? 744 : MAX_LINE_LEN;
++#endif
+                 int toSend = available > chunkSize ? chunkSize : available;
++
+                 if (toSend)
+                 {
++#if !defined(READYMAIL_OPTIMISED)
+                     uint8_t *readBuf = rd_mem<uint8_t *>(toSend + 1, true);
++#else
++                    uint8_t *readBuf = scratchBuffer;
++#endif
++
+ #if defined(ENABLE_FS)
+                     int read = cAttach(msg).attach_file.callback ? msg.file.read(readBuf, toSend) : readBlob(msg, readBuf, toSend);
+ #else
+@@ -779,7 +824,10 @@ namespace ReadyMailSMTP
+                     else
+                         buf = rd_cast<const char *>(readBuf);
+ 
++#if !defined(READYMAIL_OPTIMISED)
+                     rd_free(&readBuf);
++#endif
++
+                     buf += "\r\n";
+ 
+                     if (!sendBuffer(buf))
+@@ -1105,4 +1153,4 @@ namespace ReadyMailSMTP
+     };
+ }
+ #endif
+-#endif
+\ No newline at end of file
++#endif

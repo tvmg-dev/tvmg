@@ -20,6 +20,12 @@
 uint8_t  scratchBuffer[ 4096 ];
 int      scratchBufferSize = sizeof( scratchBuffer );
 
+// The ReadyMail buffer needs some padding so can't be the full size of the
+// scratch buffer
+
+static_assert(READYMAIL_EXTERNAL_BUFF_SIZE <= sizeof(scratchBuffer) - 32, "ReadyMail buffer too large");
+
+
 //----------------------------------------------------------------------
 
 bool isBootSerialEnabled = true;
@@ -357,8 +363,8 @@ TaskStatus_t taskStatusArray[ MAX_TASKS ];
 
 void getRunTimeInfo()
 {
-    volatile UBaseType_t numTasks;
-    unsigned long ulTotalRunTime, ulStatsAsPercentage;
+   volatile UBaseType_t numTasks;
+   unsigned long ulTotalRunTime, ulStatsAsPercentage;
 
    // Some memory info
 

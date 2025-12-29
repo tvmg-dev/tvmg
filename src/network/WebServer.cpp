@@ -982,8 +982,11 @@ void WebServer::setupAsyncServer()
    m_webServer->on("/runtimeinfo", HTTP_POST, [](AsyncWebServerRequest *request)
    {
       getRunTimeInfo();
-
       debugSensorNameMap();
+
+      extern bool loopTestRequired;
+
+      loopTestRequired = true;
 
       request->send(204);
    });
@@ -1079,6 +1082,7 @@ void  WebServer::handleCheckbox( const String &item,const String &state )
    else if ( item == "udpdebug" )
    {
       setUdpDebugState( (active ? DEBUG_ON : DEBUG_OFF ) );
+
    }
 
    generateOptionsSection();

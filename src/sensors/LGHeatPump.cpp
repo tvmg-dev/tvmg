@@ -731,7 +731,63 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
    return hasChanged;
 }
 
-void  LGHeatPump::writeStatusToHTML()
+#define  PADDED_HTML_LINE_LEN 300
+char paddedHtml[ PADDED_HTML_LINE_LEN + 1 ];
+#include <string.h>
+#include <stdio.h>   // only if you need snprintf for error cases
+
+const char *padHtmlLine( const char *src )
+{
+   if ( !src )
+   {
+      return nullptr;
+   }
+
+   char *dest = paddedHtml;
+
+   const char *prefix  = "<!--";
+   const char *suffix  = "--></tr>\n";
+
+   const size_t prefixLen = 4;
+   const size_t suffixLen = 9;
+   const size_t fixedLen  = prefixLen + suffixLen;
+
+   size_t srcLen = strlen(src);
+
+   // Not enough space ?
+   if ( srcLen > PADDED_HTML_LINE_LEN - fixedLen )
+   {
+      PW_WARN( "HTML Line too large" );
+      return src;
+   }
+
+   // Pad with spaces
+   size_t spacesNeeded = PADDED_HTML_LINE_LEN - srcLen - fixedLen;
+
+   // Original, then prefix
+   memcpy( dest,src,srcLen );
+   size_t pos = srcLen;
+   memcpy( dest + pos,prefix,prefixLen );
+   pos += prefixLen;
+
+   // Fill spaces
+   memset( dest + pos,' ',spacesNeeded );
+   pos += spacesNeeded;
+
+   // 4. Close comment + null terminate
+   memcpy(dest + pos, suffix, suffixLen);
+   pos += suffixLen;
+   dest[pos] = '\0';
+
+   if ( pos != PADDED_HTML_LINE_LEN )
+   {
+      PW_ERROR( "Oops - error in html processing %d",pos );
+   }
+
+   return dest;
+}
+
+void  LGHeatPump::writeStatusToHtml()
 {
    char  timeBuff[ 16 ];
    struct tm timeInfo;
@@ -786,7 +842,7 @@ void  LGHeatPump::writeStatusToHTML()
        "<td>%.1f</td>"
        "<td><i class='f %s'>🔇</i><i class='f %s'>❄️</i><i class='f %s'>⚡</i><i class='f %s'>☣️</i></td>"
        "<td>%d</td>"
-       "</tr>\n";
+       "</tr>";
 
    snprintf( htmlRow,sizeof(htmlRow),rowTemplate,
        timeBuff, modeClass, modeText.c_str(), compressorClass, compressorText,
@@ -821,7 +877,8 @@ void  LGHeatPump::writeStatusToHTML()
          file.println( emailHeader );
       }
 
-      file.println( htmlRow );
+      const uint8_t *html = reinterpret_cast<const uint8_t *>(padHtmlLine( htmlRow ));
+      file.write( html,PADDED_HTML_LINE_LEN );
       file.close();
    }
 }
@@ -907,7 +964,7 @@ void  LGHeatPump::updateStatus()
 
       PW_MSG( "LG events: %u",m_currentStatus.m_updates );
 
-      writeStatusToHTML();
+      writeStatusToHtml();
    }
 }
 

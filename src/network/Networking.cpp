@@ -1,10 +1,17 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
-#include <EMailSender.h>
 #include <esp_wifi.h>
-
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+
+#include <SD.h>
+#include <FS.h>
+
+#define ENABLE_SMTP
+//#define ENABLE_DEBUG
+#define ENABLE_FS
+
+#include <ReadyMail.h>
 
 #include "src/core/utils.h"
 #include "src/core/Measurement.h"
@@ -215,26 +222,65 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 //----------------------------------------------------------------------
 // Emailer class
 
+// RAII for the network mutex where we take the network mutex and release
+// the web client
+
+struct NetworkMutexGuard
+{
+   NetworkMutexGuard( int ms )
+   {
+      isTaken = Networking::takeNetworkMutex( ms );
+      if ( isTaken )
+      {
+         Networking::releaseWebClient();
+      }
+   }
+
+   ~NetworkMutexGuard() { if ( isTaken ) Networking::releaseNetworkMutex(); }
+
+   bool isTaken;
+};
+
+using namespace ReadyMailCallbackNS;
+File myFile;
+
 class Emailer
 {
 public:
-   Emailer( Networking *networking );
+   Emailer();
    ~Emailer();
 
-   void initialise();
+   void initialise( const String &mdnsName );
    bool sendEmail( const char *recipient,const char *subject,const String &msg );
-   bool sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSPIFFS );
+   bool sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD );
+   bool sendEmailWithFileAsBody( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD );
 
 private:
-   String      m_ipDesc;
-   EMailSender *m_sender;
-   Networking  *m_networking;
+   static void fileCallbackForSPIFFS(File &file, const char *path, readymail_file_operating_mode mode);
+   static void fileCallbackForSD(File &file, const char *path, readymail_file_operating_mode mode);
+
+   String   setupConnection( const NetworkMutexGuard &guard,const char *recipient,const char *subject,SMTPMessage *smtpMsg );
+   void     closeConnection();
+
+   String   getNameFromEMailAddress( const String &recipient );
+
+   WiFiClientSecure  *sslClient;
+   SMTPClient        *smtp;
+   String            m_host;
+   String            m_account;
+   String            m_password;
+   String            m_sender;
+   int               m_port;
 };
 
-Emailer::Emailer( Networking *networking )
-       : m_ipDesc(),
-         m_sender( nullptr ),
-         m_networking( networking )
+Emailer::Emailer()
+       : sslClient( nullptr ),
+         smtp( nullptr ),
+         m_host(),
+         m_account(),
+         m_password(),
+         m_sender(),
+         m_port( 465 )
 {
    PW_DEBUG( "Emailer::Emailer()" );
 }
@@ -242,150 +288,327 @@ Emailer::Emailer( Networking *networking )
 Emailer::~Emailer()
 {
    PW_DEBUG( "Emailer::~Emailer()" );
-
-   delete m_sender;
 }
 
-void  Emailer::initialise()
+void  Emailer::initialise( const String &mdnsName )
 {
    PW_MSG( "Emailer initialise" );
 
-   char host[ MAX_VALUE_LENGTH ];
-   char account[ MAX_VALUE_LENGTH ],password[ MAX_VALUE_LENGTH ];
-   int  port;
+   m_host = String( GET_REGISTRY_STRING( SMTP_HOST ) );
+   m_port = GET_REGISTRY_INT( SMTP_PORT );
+   m_account = String( GET_REGISTRY_STRING( ACCOUNT_EMAIL ) );
+   m_password = String( GET_REGISTRY_STRING( ACCOUNT_PASSWORD ) );
+   m_sender = mdnsName;
 
-   strcpy( host,GET_REGISTRY_STRING( SMTP_HOST ) );
-   port = GET_REGISTRY_INT( SMTP_PORT );
-   strcpy( account,GET_REGISTRY_STRING( ACCOUNT_EMAIL ) );
-   strcpy( password,GET_REGISTRY_STRING( ACCOUNT_PASSWORD ) );
+   PW_DEBUG( "Email : Host %s [%d] - %s %s",m_host,m_port,m_account,m_password );
+}
 
-   PW_DEBUG( "Email : Host %s [%d] - %s %s",host,port,account,password );
+void Emailer::fileCallbackForSPIFFS(File &file, const char *path, readymail_file_operating_mode mode)
+{
+   bool isValid = false;
 
-   m_sender = new EMailSender( account,password,account,"HeatPump",host,port );
+   PW_DEBUG( "SPIFFS File callback %s %d",path,mode );
 
-   // Setup IP descriptor
-
-   m_ipDesc = String( account );
-
-   int   lastAmper = m_ipDesc.lastIndexOf( '@' ) + 1;
-
-   if ( lastAmper < m_ipDesc.length() )
+   switch (mode)
    {
-      m_ipDesc = m_ipDesc.substring( lastAmper );
-      PW_DEBUG( "Email public IP Desc. %s",m_ipDesc.c_str() );
+      case readymail_file_mode_open_read:
+         file.close();
+         myFile.close();
+         if ( SPIFFS.exists( path ) )
+         {
+            myFile = SPIFFS.open( path,FILE_OPEN_MODE_READ );
 
-      m_sender->setPublicIpDescriptor( m_ipDesc.c_str() );
+            if ( myFile && myFile.size() )
+            {
+                  isValid = true;
+                  file = myFile;
+
+            }
+         }
+
+         if ( !isValid )
+         {
+            PW_ERROR( "SPIFFS File callback failed %s %d",path,mode );
+         }
+         else
+         {
+            PW_DEBUG( "SPIFFS File callback ok %s %d",path,mode );
+         }
+         break;
+      default:
+         PW_WARN( "Igoring non-read calls from ReadyMail on %s",path );
+         break;
    }
+}
+
+void Emailer::fileCallbackForSD(File &file, const char *path, readymail_file_operating_mode mode)
+{
+   bool isValid = false;
+
+   PW_DEBUG( "SD File callback %s %d",path,mode );
+
+   switch (mode)
+   {
+      case readymail_file_mode_open_read:
+         file.close();
+         myFile.close();
+         if ( SD.exists( path ) )
+         {
+            myFile = SD.open( path,FILE_OPEN_MODE_READ );
+
+            if ( myFile && myFile.size() )
+            {
+                  isValid = true;
+                  file = myFile;
+
+            }
+         }
+
+         if ( !isValid )
+         {
+            PW_ERROR( "SD File callback failed %s %d",path,mode );
+         }
+         else
+         {
+            PW_DEBUG( "SD File callback ok %s %d",path,mode );
+         }
+         break;
+      default:
+         PW_WARN( "Igoring non-read calls from ReadyMail on %s",path );
+         break;
+   }
+}
+
+String   Emailer::getNameFromEMailAddress( const String &recipient )
+{
+   int atIndex = recipient.indexOf('@');
+
+   if ( atIndex != -1 )
+   {
+      return( recipient.substring( 0,atIndex ) );
+   }
+   return String();
+}
+
+void smtpCb(SMTPStatus status)
+{
+    if (status.progress.available)
+        PW_DEBUG("ReadyMail[smtp][%d] Uploading file %s, %d %% completed\n", status.state,
+                         status.progress.filename.c_str(), status.progress.value);
+    else
+        PW_DEBUG("ReadyMail[smtp][%d]%s\n", status.state, status.text.c_str());
+}
+
+String   Emailer::setupConnection( const NetworkMutexGuard &guard,const char *recipient,const char *subject,SMTPMessage *smtpMsg )
+{
+   String sendString;
+
+   if ( guard.isTaken )
+   {
+      START_TIMING( (String( "Connecting to " ) + m_host) );
+      sslClient = new WiFiClientSecure;
+      if ( !sslClient )
+      {
+         PW_ERROR( "Failed to create WiFiClientSecure" );
+      }
+      else
+      {
+         sslClient->setInsecure();
+         smtp = new SMTPClient(*sslClient);
+
+         if ( !smtp )
+         {
+            PW_ERROR( "Failed to create SMTPClient" );
+            delete sslClient;
+            sslClient = nullptr;
+         }
+         else if ( !smtp->connect( m_host,m_port,smtpCb ) )
+         {
+            PW_ERROR( "Failed to connect to %s (port %d)",m_host.c_str(),m_port );
+         }
+         else if ( !smtp->authenticate( m_account,m_password, readymail_auth_password) )
+         {
+            PW_ERROR( "Failed to authenticate with %s (password 5s)",m_account.c_str(),m_password.c_str() );
+         }
+         else
+         {
+            smtpMsg->headers.add( rfc822_from, m_sender + " <"+ m_account + ">" );
+            smtpMsg->headers.add( rfc822_to, getNameFromEMailAddress( recipient ) + " <" + recipient + ">" );
+            smtpMsg->headers.add( rfc822_subject,subject );
+
+            sendString.reserve( 128 );
+            sendString = "Send email 'SUBJECT' to RECIPIENT";
+            sendString.replace( "SUBJECT",subject );
+            sendString.replace( "RECIPIENT",getNameFromEMailAddress( recipient ) );
+
+            PW_DEBUG( sendString.c_str() );
+
+         }
+      }
+      END_TIMING;
+   }
+
+   if ( !sendString.length() )
+   {
+      closeConnection();
+   }
+
+   return sendString;
+}
+
+void Emailer::closeConnection()
+{
+   if ( smtp )
+   {
+      smtp->stop();
+   }
+
+   delete smtp;
+   delete sslClient;
+
+   smtp = nullptr;
+   sslClient = nullptr;
 }
 
 bool Emailer::sendEmail( const char *recipient,const char *subject,const String &msg )
 {
-   if ( m_sender && Networking::takeNetworkMutex( EMAIL_ACQUIRE_MUTEX_MS ) == 1 )
+   NetworkMutexGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
+   SMTPMessage smtpMsg;
+   bool sentOk = false;
+
+   String logMsg = setupConnection( guard,recipient,subject,&smtpMsg );
+   if ( logMsg.length() )
    {
-      // Release the web-client before we go onto send the message
+      START_TIMING( logMsg );
 
-      Networking::releaseWebClient();
-
-      EMailSender::EMailMessage message;
-      String newSubject = m_networking->getLocalMDNSName() + " : " + String( subject );
-
-      message.subject = newSubject;
-      message.message = msg.c_str();
-      message.mime = "text/plain";
-
-      PW_MSG( "Sending to %s [%s]",recipient,subject );
-
-      EMailSender::Response resp;
-
-      resp = m_sender->send( recipient,message );
-
-      if ( !resp.status )
+      smtpMsg.text.body( msg );
+      if ( smtp->send( smtpMsg ) )
       {
-         PW_WARN( "Failed to send email %s, %s", resp.code.c_str(),resp.desc.c_str() );
+         PW_MSG( "%s - success",logMsg.c_str() );
+         sentOk = true;
+      }
+      else
+      {
+         PW_ERROR("%s - failed",logMsg.c_str() );
       }
 
-      Networking::releaseNetworkMutex();
+      END_TIMING;
 
-      return resp.status;
+      closeConnection();
    }
 
-   return false;
+   return sentOk;
 }
 
-bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSPIFFS )
+bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD )
 {
-   char buff[ 128 ];
-   snprintf( buff,sizeof(buff),"Sending to %s [%s]",recipient,subject );
-
-   START_TIMING( buff );
-
-   if ( fileName )
+   if ( !recipient || !subject || !fileName )
    {
-      PW_MSG( "  attachment %s",fileName );
+      return false;
    }
 
-   if ( m_sender && Networking::takeNetworkMutex( EMAIL_ACQUIRE_MUTEX_MS ) == 1 )
+   if ( !(fromSD ? SD.exists( fileName ) : SPIFFS.exists( fileName )) )
    {
-      // Release the web-client before we go onto send the message
+      PW_WARN( "%s doesn't exist",fileName );
+      return false;
+   }
 
-      Networking::releaseWebClient();
+   NetworkMutexGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
+   SMTPMessage smtpMsg;
+   bool sentOk = false;
 
-      EMailSender::EMailMessage message;
-      EMailSender::FileDescriptior fileDescriptor[ 1 ];
+   String connectMsg = setupConnection( guard,recipient,subject,&smtpMsg );
+   if ( connectMsg.length() )
+   {
+      String logMsg = connectMsg + ", sending " + fileName;
+      START_TIMING( logMsg );
 
-      if ( fileName[ 0 ] == '/' )
+      smtpMsg.text.body( msg );
+
+      Attachment attachment;
+      attachment.filename = fileName;           // name in the email header, strip leading '/'
+      attachment.filename.remove( 0,fileName[ 0 ] == '/' ? 1 : 0 );
+      attachment.mime = "text/plain";
+      attachment.name = attachment.filename;    // what the file will be shown as
+
+      if ( fromSD )
       {
-         fileDescriptor[ 0 ].filename = &fileName[ 1 ];
+         attachment.attach_file.callback = fileCallbackForSD;
       }
       else
       {
-         fileDescriptor[ 0 ].filename = fileName;
+         attachment.attach_file.callback = fileCallbackForSPIFFS;
       }
 
-      fileDescriptor[ 0 ].url = fileName;
-      fileDescriptor[ 0 ].mime = "text/plain";
-      fileDescriptor[ 0 ].encode64 = false;
-      if ( fromSPIFFS )
+      attachment.attach_file.path = fileName;
+      smtpMsg.attachments.add(attachment, attach_type_attachment);
+
+      if ( smtp->send( smtpMsg ) )
       {
-         fileDescriptor[ 0 ].storageType = EMailSender::EMAIL_STORAGE_TYPE_SPIFFS;
+         PW_MSG( "%s - success",logMsg.c_str() );
+         sentOk = true;
       }
       else
       {
-         fileDescriptor[ 0 ].storageType = EMailSender::EMAIL_STORAGE_TYPE_SD;
-         if ( ! SD.exists( fileName ) )
-         {
-            PW_WARN( "%s doesn't exist, not sending email",fileName );
-            Networking::releaseNetworkMutex();
-
-            return false;
-         }
+         PW_ERROR("%s - failed",logMsg.c_str() );
       }
 
-      EMailSender::Attachments attachments = { 1, fileDescriptor };
+      END_TIMING;
 
-      String newSubject = m_networking->getLocalMDNSName() + " : " + String( subject );
-
-      message.subject = newSubject;
-      message.message = msg;
-      message.mime = "text/plain";
-
-      EMailSender::Response resp;
-
-      resp = m_sender->send( recipient,message,attachments );
-
-      if ( !resp.status )
-      {
-         PW_WARN( "Failed to send email %s, %s", resp.code.c_str(),resp.desc.c_str() );
-      }
-
-      Networking::releaseNetworkMutex();
-
-      return resp.status;
+      closeConnection();
    }
 
-   END_TIMING;
+   return sentOk;
+}
 
-   return false;
+bool Emailer::sendEmailWithFileAsBody( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD )
+{
+   if ( !recipient || !subject || !fileName )
+   {
+      return false;
+   }
+
+   if ( !(fromSD ? SD.exists( fileName ) : SPIFFS.exists( fileName )) )
+   {
+      PW_WARN( "%s doesn't exist",fileName );
+      return false;
+   }
+
+   NetworkMutexGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
+   SMTPMessage smtpMsg;
+   bool sentOk = false;
+
+   String connectMsg = setupConnection( guard,recipient,subject,&smtpMsg );
+   if ( connectMsg.length() )
+   {
+      String logMsg = connectMsg + ", sending " + fileName;
+      START_TIMING( logMsg );
+
+      if ( fromSD )
+      {
+         smtpMsg.html.body( fileName,fileCallbackForSD );
+      }
+      else
+      {
+         smtpMsg.html.body( fileName,fileCallbackForSPIFFS );
+      }
+
+      if ( smtp->send( smtpMsg ) )
+      {
+         PW_MSG( "%s - success",logMsg.c_str() );
+         sentOk = true;
+      }
+      else
+      {
+         PW_ERROR("%s - failed",logMsg.c_str() );
+      }
+
+      END_TIMING;
+
+      closeConnection();
+   }
+
+   return sentOk;
 }
 
 //----------------------------------------------------------------------
@@ -450,7 +673,7 @@ bool Networking::startAccessPoint()
 {
    String SSID( "ThermaV-Monitor" );
 
-   m_status.mdnsName = String( "tvm-init" );
+   m_status.mdnsName = String( "tvmg-init" );
 
    WiFi.disconnect();
 
@@ -567,8 +790,8 @@ void Networking::initialise()
 
    // We have connected network, so we can have the emailer
 
-   m_emailer = new Emailer( this );
-   m_emailer->initialise();
+   m_emailer = new Emailer();
+   m_emailer->initialise( GET_REGISTRY_STRING( MDNS_NAME ) );
 
    // And now for the emoncms client...
 
@@ -730,7 +953,7 @@ bool Networking::sendEmail( const char *recipient,const char *subject,const Stri
    return false;
 }
 
-bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSPIFFS )
+bool Networking::sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD )
 {
    if ( !m_willSendEmails )
    {
@@ -740,7 +963,22 @@ bool Networking::sendEmailWithAttachment( const char *recipient,const char *subj
 
    if ( m_emailer )
    {
-      return m_emailer->sendEmailWithAttachment( recipient,subject,msg,fileName,fromSPIFFS );
+      return m_emailer->sendEmailWithAttachment( recipient,subject,msg,fileName,fromSD );
+   }
+   return false;
+}
+
+bool Networking::sendEmailWithFileAsBody( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD )
+{
+   if ( !m_willSendEmails )
+   {
+      PW_DEBUG( "Not sending email %s",subject );
+      return true;
+   }
+
+   if ( m_emailer )
+   {
+      return m_emailer->sendEmailWithFileAsBody( recipient,subject,msg,fileName,fromSD );
    }
    return false;
 }

@@ -149,7 +149,7 @@ private:
    float_t  convertR32PressureToTemp( float_t pressure );
    bool  valueChanged( uint32_t parameter );
    void  updateStatus();
-   void  writeStatusToHTML();
+   void  writeStatusToHtml();
 
 
    LGRegister     *m_registers;
