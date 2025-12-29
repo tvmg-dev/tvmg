@@ -1,3 +1,5 @@
+v25.12.12 - Fix incorrect FS type for LG daily email
+          - Avoid first sample returning garbage data
 v25.12.11 - Switch to ReadyMail library, fix html LG event entries
             With this library we can send the HTML LG event log as email
             body, and clients such as gmail & outlook may then display
