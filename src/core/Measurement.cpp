@@ -625,14 +625,12 @@ void  Measurement::sendDailyUpdate()
    if ( m_heatPump && Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG_HTML ) )
    {
       m_heatPump->finaliseHTML();
+      m_networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG_HTML );
 
-      if ( m_networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG_HTML ) )
-      {
-         // remove yesterday's and we rename current status to yesterday's.
+      // remove yesterday's and we rename current status to yesterday's.
 
-         Config::instance()->getSPIFFS()->remove( LGSTATUS_YESTERDAY );
-         Config::instance()->getSPIFFS()->rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
-      }
+      Config::instance()->getSPIFFS()->remove( LGSTATUS_YESTERDAY );
+      Config::instance()->getSPIFFS()->rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
    }
    else
    {

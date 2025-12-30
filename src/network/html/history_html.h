@@ -16,12 +16,17 @@ const char history_html[] PROGMEM = R"rawliteral(
         <fieldset>
             <legend>System Activity (Latest First)</legend>
 
-            <div class="log-row" style="font-weight:bold; color:#666; font-size:10px; border-bottom:2px solid #ccc; text-transform:uppercase;">
-                <div>Time</div>
-                <div style="text-align:center;">Mode</div>
-                <div class="cp-col" style="text-align:center;">CP</div>
-                <div style="grid-column: span 6; text-align:center;">System Data & Errors</div>
-            </div>
+        <div class="log-row" style="font-weight:bold; color:#666; font-size:10px; border-bottom:2px solid #ccc; text-transform:uppercase;">
+            <div>Time</div>
+            <div style="text-align:center;">Mode</div>
+            <div class="cp-col" style="text-align:center;">CP</div>
+            <div>Inlet/Outlet</div>
+            <div>Target</div>
+            <div>DHW/Target</div>
+            <div class="outdoor-col">Outdoor</div>
+            <div style="text-align:center;">Flags</div>
+            <div style="text-align:center;">Err</div>
+        </div>
 
             <div id="log-target"><div class="loader">Accessing log files...</div></div>
         </fieldset>
@@ -64,17 +69,17 @@ const char history_html[] PROGMEM = R"rawliteral(
 
                         const cpClass = (rawCP === 'ON') ? 'cp-on' : '';
 
-                        r.innerHTML = `
-                         <div class="time">${td[0].innerText}</div>
-                         <div class="mode-cell ${modeClass}">${td[1].innerText}</div>
-                         <div class="cp-col ${cpClass}" style="text-align:center;">${td[2].innerText}</div>
-                         <div><span class="label">Inlet/Outlet</span><span class="val-unit">${td[3].innerText}</span></div>
-                         <div><span class="label">Target</span><span class="val-unit">${td[4].innerText}</span></div>
-                         <div><span class="label">DHW/Target</span><span class="val-unit">${td[5].innerText}</span></div>
-                         <div class="outdoor-col"><span class="label">Outdoor</span><span class="val-unit">${td[6].innerText}</span></div>
-                         <div class="flags">${td[7].innerHTML}</div>
-                         <div class="err-cell ${rawErr !== "0" ? 'err-active' : 'err-none'}">${rawErr}</div>
-                        `;
+r.innerHTML = `
+    <div class="time">${td[0].innerText}</div>
+    <div class="mode-cell ${modeClass}">${td[1].innerText}</div>
+    <div class="cp-col ${cpClass}" style="text-align:center;">${td[2].innerText}</div>
+    <div><span class="val-unit">${td[3].innerText}</span></div>
+    <div><span class="val-unit">${td[4].innerText}</span></div>
+    <div><span class="val-unit">${td[5].innerText}</span></div>
+    <div class="outdoor-col"><span class="val-unit">${td[6].innerText}</span></div>
+    <div class="flags" style="text-align:center;">${td[7].innerHTML}</div>
+    <div class="err-cell ${rawErr !== "0" ? 'err-active' : 'err-none'}">${rawErr}</div>
+`;
                         fragment.appendChild(r);
                     }
                 });
