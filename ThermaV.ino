@@ -205,7 +205,7 @@ void  handleTouch1()
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName(),true );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG,true );
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG,true );
-   networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log","Event log",LGSTATUS_LOG_HTML );
+   networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log",LGSTATUS_LOG_HTML );
 }
 
 void  handleTouch2()
@@ -711,7 +711,7 @@ void handleDataLogs()
    if ( config->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
    {
       networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "LG Event Log","Event Log",LGSTATUS_LOG_HTML );
+                        "LG Event Log",LGSTATUS_LOG_HTML );
    }
 
    if ( SD.exists ( DEBUG_LOG ) )
@@ -927,18 +927,11 @@ void  loopTest()
 
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data","/20251225.dat" );
 //   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Sensor Data","Sensors","/sensors.dat",true );
-
-   extern char *padHtmlLine( const char *src );
-
-   PW_DEBUG( "%s",padHtmlLine( "hello world" ) );
-   PW_DEBUG( "%s",padHtmlLine( "      hello world" ) );
-   PW_DEBUG( "%s",padHtmlLine( "1234567890                                              at the end of 72" ) );
-   PW_DEBUG( "%s",padHtmlLine( "1234567890                                              at the end of 72 and more" ) );
-   PW_DEBUG( "%s",padHtmlLine( "1234567890                                        a bit" ) );
+   handleTouch1();
 #endif
 
-   handleTouch1();
-
+   LGHeatPump lg( nullptr );
+   lg.initialise();
 }
 
 void loop(void)

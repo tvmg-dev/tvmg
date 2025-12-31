@@ -1,3 +1,6 @@
+v25.12.14 - LG event log processing improvements, 600 events per log,
+            add new CSS for error conditions.
+            Defensive closure of File's used by ReadyMail sending.
 v25.12.13 - Rotate LG logs on daily update irrespective of email state.
           - Remove labels from each row of the current event view.
 v25.12.12 - Fix incorrect FS type for LG daily email.

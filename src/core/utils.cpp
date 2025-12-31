@@ -17,14 +17,7 @@
 
 //----------------------------------------------------------------------
 
-uint8_t  scratchBuffer[ 4096 ];
-int      scratchBufferSize = sizeof( scratchBuffer );
-
-// The ReadyMail buffer needs some padding so can't be the full size of the
-// scratch buffer
-
-static_assert(READYMAIL_EXTERNAL_BUFF_SIZE <= sizeof(scratchBuffer) - 32, "ReadyMail buffer too large");
-
+uint8_t  scratchBuffer[ SCRATCH_BUFFER_SIZE ];
 
 //----------------------------------------------------------------------
 
@@ -104,7 +97,7 @@ void  replaceSpiffsFile( const String &origFile,const String &newFile )
          PW_MSG( "Replacing %s with %s",origFile,newFile );
 
          int count;
-         while( ( count = ipFile.read( scratchBuffer,scratchBufferSize ) ) > 0 )
+         while( ( count = ipFile.read( scratchBuffer,SCRATCH_BUFFER_SIZE ) ) > 0 )
          {
             PW_DEBUG( "from %s read %d",newFile,count );
             opFile.write( scratchBuffer,count );

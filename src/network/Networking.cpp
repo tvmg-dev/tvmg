@@ -222,6 +222,15 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 //----------------------------------------------------------------------
 // Emailer class
 
+// The ReadyMail buffer needs some padding so can't be the full size of the
+// scratch buffer
+
+static_assert(READYMAIL_EXTERNAL_BUFF_SIZE <= SCRATCH_BUFFER_SIZE - 32, "ReadyMail buffer too large");
+
+// Need a global file as used across callbacks as reference
+
+File readyMailFile;
+
 // RAII for the network mutex where we take the network mutex and release
 // the web client
 
@@ -236,13 +245,12 @@ struct NetworkMutexGuard
       }
    }
 
-   ~NetworkMutexGuard() { if ( isTaken ) Networking::releaseNetworkMutex(); }
+   ~NetworkMutexGuard() { if ( isTaken ) Networking::releaseNetworkMutex(); readyMailFile.close(); }
 
    bool isTaken;
 };
 
 using namespace ReadyMailCallbackNS;
-File myFile;
 
 class Emailer
 {
@@ -253,7 +261,7 @@ public:
    void initialise( const String &mdnsName );
    bool sendEmail( const char *recipient,const char *subject,const String &msg );
    bool sendEmailWithAttachment( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD );
-   bool sendEmailWithFileAsBody( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD );
+   bool sendEmailWithFileAsBody( const char *recipient,const char *subject,const char *fileName,bool fromSD );
 
 private:
    static void fileCallbackForSPIFFS(File &file, const char *path, readymail_file_operating_mode mode);
@@ -313,15 +321,15 @@ void Emailer::fileCallbackForSPIFFS(File &file, const char *path, readymail_file
    {
       case readymail_file_mode_open_read:
          file.close();
-         myFile.close();
+         readyMailFile.close();
          if ( SPIFFS.exists( path ) )
          {
-            myFile = SPIFFS.open( path,FILE_OPEN_MODE_READ );
+            readyMailFile = SPIFFS.open( path,FILE_OPEN_MODE_READ );
 
-            if ( myFile && myFile.size() )
+            if ( readyMailFile && readyMailFile.size() )
             {
                   isValid = true;
-                  file = myFile;
+                  file = readyMailFile;
 
             }
          }
@@ -351,15 +359,15 @@ void Emailer::fileCallbackForSD(File &file, const char *path, readymail_file_ope
    {
       case readymail_file_mode_open_read:
          file.close();
-         myFile.close();
+         readyMailFile.close();
          if ( SD.exists( path ) )
          {
-            myFile = SD.open( path,FILE_OPEN_MODE_READ );
+            readyMailFile = SD.open( path,FILE_OPEN_MODE_READ );
 
-            if ( myFile && myFile.size() )
+            if ( readyMailFile && readyMailFile.size() )
             {
                   isValid = true;
-                  file = myFile;
+                  file = readyMailFile;
 
             }
          }
@@ -561,7 +569,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
    return sentOk;
 }
 
-bool Emailer::sendEmailWithFileAsBody( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD )
+bool Emailer::sendEmailWithFileAsBody( const char *recipient,const char *subject,const char *fileName,bool fromSD )
 {
    if ( !recipient || !subject || !fileName )
    {
@@ -968,7 +976,7 @@ bool Networking::sendEmailWithAttachment( const char *recipient,const char *subj
    return false;
 }
 
-bool Networking::sendEmailWithFileAsBody( const char *recipient,const char *subject,const String &msg,const char *fileName,bool fromSD )
+bool Networking::sendEmailWithFileAsBody( const char *recipient,const char *subject,const char *fileName,bool fromSD )
 {
    if ( !m_willSendEmails )
    {
@@ -978,7 +986,7 @@ bool Networking::sendEmailWithFileAsBody( const char *recipient,const char *subj
 
    if ( m_emailer )
    {
-      return m_emailer->sendEmailWithFileAsBody( recipient,subject,msg,fileName,fromSD );
+      return m_emailer->sendEmailWithFileAsBody( recipient,subject,fileName,fromSD );
    }
    return false;
 }

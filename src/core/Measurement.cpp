@@ -607,35 +607,38 @@ void  Measurement::sendDailyUpdate()
       commsStr += line;
    }
 
-   m_dailyUpdated = true;
    String updateStr;
 
-   char subject[ 64 ];
-
-   snprintf( subject,sizeof(subject),"Daily Update : %s [%s]",m_networking->getLocalMDNSName().c_str(),m_networking->getIPAddress().c_str() );
    snprintf( line,sizeof(line),"Version : %s\n\n",k_versionStr );
-
    updateStr += line;
    updateStr += thermometerStr;
    updateStr += powerStr;
    updateStr += commsStr;
    updateStr += "\n\n";
 
-   // Send LG data if we have it (finalise the HTML first), otherwise simple email
-   if ( m_heatPump && Config::instance()->getSPIFFS()->exists ( LGSTATUS_LOG_HTML ) )
+   m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Daily Update",updateStr );
+
+   // Now send the LG event log if we have it (finalise the HTML first)
+
+   if ( m_heatPump && Config::instance()->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
    {
       m_heatPump->finaliseHTML();
-      m_networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr,LGSTATUS_LOG_HTML );
-
-      // remove yesterday's and we rename current status to yesterday's.
-
-      Config::instance()->getSPIFFS()->remove( LGSTATUS_YESTERDAY );
-      Config::instance()->getSPIFFS()->rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
+      m_networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log",LGSTATUS_LOG_HTML );
    }
-   else
+   // remove yesterday's and we rename current status to yesterday's.
+
+   if ( !Config::instance()->getSPIFFS()->remove( LGSTATUS_YESTERDAY ) )
    {
-      m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),subject,updateStr );
+      PW_WARN( "Failed to remove %s",LGSTATUS_YESTERDAY );
    }
+
+   delay( 200 );
+   if ( !Config::instance()->getSPIFFS()->rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY ) )
+   {
+      PW_WARN( "Failed to rename %s to %s",LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
+   }
+
+   m_dailyUpdated = true;
 }
 
 bool  Measurement::didDailyUpdate()

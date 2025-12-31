@@ -65,21 +65,23 @@ const char history_html[] PROGMEM = R"rawliteral(
                             modeClass = "mode-heat";
                         } else if (rawMode === "DHW") {
                             modeClass = "mode-dhw";
+                        } else if (rawMode === "ERROR") {
+                            modeClass = "mode-error";
                         }
 
                         const cpClass = (rawCP === 'ON') ? 'cp-on' : '';
 
-r.innerHTML = `
-    <div class="time">${td[0].innerText}</div>
-    <div class="mode-cell ${modeClass}">${td[1].innerText}</div>
-    <div class="cp-col ${cpClass}" style="text-align:center;">${td[2].innerText}</div>
-    <div><span class="val-unit">${td[3].innerText}</span></div>
-    <div><span class="val-unit">${td[4].innerText}</span></div>
-    <div><span class="val-unit">${td[5].innerText}</span></div>
-    <div class="outdoor-col"><span class="val-unit">${td[6].innerText}</span></div>
-    <div class="flags" style="text-align:center;">${td[7].innerHTML}</div>
-    <div class="err-cell ${rawErr !== "0" ? 'err-active' : 'err-none'}">${rawErr}</div>
-`;
+                        r.innerHTML = `
+                            <div class="time">${td[0].innerText}</div>
+                            <div class="mode-cell ${modeClass}">${td[1].innerText}</div>
+                            <div class="cp-col ${cpClass}" style="text-align:center;">${td[2].innerText}</div>
+                            <div><span class="val-unit">${td[3].innerText}</span></div>
+                            <div><span class="val-unit">${td[4].innerText}</span></div>
+                            <div><span class="val-unit">${td[5].innerText}</span></div>
+                            <div class="outdoor-col"><span class="val-unit">${td[6].innerText}</span></div>
+                            <div class="flags" style="text-align:center;">${td[7].innerHTML}</div>
+                            <div class="err-cell ${rawErr !== "0" ? 'err-active' : 'err-none'}">${rawErr}</div>
+                        `;
                         fragment.appendChild(r);
                     }
                 });

@@ -12,8 +12,8 @@
 // General buffer - also used by the external email sender library
 // this is used to try and keep RAM usage to a minimum
 
+#define SCRATCH_BUFFER_SIZE   4096
 extern  uint8_t   scratchBuffer[];
-extern  int       scratchBufferSize;
 
 //----------------------------------------------------------------------
 // Usage info

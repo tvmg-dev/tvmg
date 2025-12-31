@@ -310,7 +310,7 @@ String readFile(fs::FS *fs, const char * path)
    }
 
    int count;
-   while( ( count = file.read( scratchBuffer,scratchBufferSize ) ) > 0 )
+   while( ( count = file.read( scratchBuffer,SCRATCH_BUFFER_SIZE ) ) > 0 )
    {
       for ( int i = 0; i < count; i++ )
       {
@@ -738,7 +738,7 @@ void WebServer::setupAsyncServer()
 
          while (remainingInPacket > 0)
          {
-            size_t spaceInBuffer = scratchBufferSize - updatePos;
+            size_t spaceInBuffer = SCRATCH_BUFFER_SIZE - updatePos;
             size_t canCopy = (remainingInPacket < spaceInBuffer) ? remainingInPacket : spaceInBuffer;
 
             memcpy( &scratchBuffer[updatePos], &data[packetOffset], canCopy );
@@ -748,9 +748,9 @@ void WebServer::setupAsyncServer()
             remainingInPacket -= canCopy;
 
             // When scratchBuffer is full, write it to Flash
-            if (updatePos == scratchBufferSize)
+            if (updatePos == SCRATCH_BUFFER_SIZE)
             {
-               Update.write(scratchBuffer, scratchBufferSize);
+               Update.write(scratchBuffer, SCRATCH_BUFFER_SIZE);
                buffs++;
                updatePos = 0;
 
@@ -781,7 +781,7 @@ void WebServer::setupAsyncServer()
                m_otaEvents->send( "100", "ota_progress", millis() );
                m_otaEvents->send( "reboot", "ota_state", millis() );
                m_networking->setUpdateProgress(index + len, filename, true);
-               PW_MSG( "OTA Success. Total written: %d bytes", (buffs * scratchBufferSize) + updatePos );
+               PW_MSG( "OTA Success. Total written: %d bytes", (buffs * SCRATCH_BUFFER_SIZE) + updatePos );
             }
             else
             {

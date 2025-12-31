@@ -150,7 +150,7 @@ private:
    bool  valueChanged( uint32_t parameter );
    void  updateStatus();
    void  writeStatusToHtml();
-
+   const uint8_t *padHtmlLine( const uint8_t *src );
 
    LGRegister     *m_registers;
    LGStatus       m_currentStatus;
