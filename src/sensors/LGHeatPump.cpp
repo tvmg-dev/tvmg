@@ -921,7 +921,7 @@ void LGHeatPump::finaliseHTML()
 void  LGHeatPump::updateStatus()
 {
    bool  updateState = false;
-   bool  addHeader = false;
+   bool  firstEvent = false;
 
    // Check conditions for updating, if its the first update (if no time is
    // set of the current status) then we get the current state always.
@@ -929,6 +929,7 @@ void  LGHeatPump::updateStatus()
    if ( !m_currentStatus.m_time )
    {
       updateState = true;
+      firstEvent = true;
    }
    else
    {
@@ -973,6 +974,8 @@ void  LGHeatPump::updateStatus()
    }
    else
    {
+      time( &m_currentStatus.m_time );
+
       m_currentStatus.m_isCompressorOn = getRawValue( COMPRESSOR_STATUS );
       m_currentStatus.m_error = getRawValue( ERROR_CODE );
       m_currentStatus.m_inlet = getRawValue( INLET_TEMP );
@@ -993,17 +996,19 @@ void  LGHeatPump::updateStatus()
       m_currentStatus.m_isSilent = getRawValue( SILENT_STATUS );
       m_currentStatus.m_isDefrost = getRawValue( DEFROST_STATUS );
 
-      // if time set then we write out, otherwise it must be the first
-      // sample after rebooting
+      // if first event we ignore it as we just establish the base status
+      // otherwise write out
 
-      if ( m_currentStatus.m_time )
+      if ( firstEvent )
+      {
+         PW_MSG( "Ignoring first LG event" );
+      }
+      else
       {
          m_currentStatus.m_updates++;
          PW_MSG( "LG events: %u",m_currentStatus.m_updates );
          writeStatusToHtml();
       }
-
-      time( &m_currentStatus.m_time );
    }
 }
 

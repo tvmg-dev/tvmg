@@ -1,3 +1,4 @@
+v26.01.01 - Fix LG event log timestamps
 v25.12.14 - LG event log processing improvements, 600 events per log,
             add new CSS for error conditions.
             Defensive closure of File's used by ReadyMail sending.

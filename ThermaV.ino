@@ -662,17 +662,10 @@ void handleBootEmail( const String &rebootStr )
 }
 
 // ---------------------------------------------------------------------
-// send any data logs during bootup (if enabled) and remove logs if the
-// mail sent successfully.
+// send any data logs
 
 void handleDataLogs()
 {
-   if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 || GET_REGISTRY_INT( NO_BOOT_EMAILS ) == 1 )
-   {
-      PW_MSG( "Not sending logging data (on boot) emails" );
-      return;
-   }
-
    // Send register scan logs, modbus log and lg registers read so far, removing after sending
 
    if ( SD.exists( LGREGISTER_SCAN_LOG ) )
@@ -706,14 +699,6 @@ void handleDataLogs()
       }
    }
 
-   // Send the LG event log if available
-
-   if ( config->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
-   {
-      networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "LG Event Log",LGSTATUS_LOG_HTML );
-   }
-
    if ( SD.exists ( DEBUG_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
@@ -724,6 +709,12 @@ void handleDataLogs()
             SD.remove( DEBUG_LOG );
          }
       }
+   }
+
+   if ( config->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
+   {
+      networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "LG Event Log",LGSTATUS_LOG_HTML );
    }
 }
 
@@ -841,10 +832,9 @@ void setup( void )
    initialiseMeasurement();
    setupTouch();
 
-   // Perhaps send startup email, and data logs
+   // Perhaps send startup email
 
    handleBootEmail( rebootReason );
-   handleDataLogs();
 
    // Any debug tests
 
@@ -930,8 +920,7 @@ void  loopTest()
    handleTouch1();
 #endif
 
-   LGHeatPump lg( nullptr );
-   lg.initialise();
+   handleDataLogs();
 }
 
 void loop(void)
