@@ -121,16 +121,16 @@ HardwareConfig WaveshareLCD =
 
 HardwareConfig ESP32S3Gadget =
 {
-   -1,            // OneWireGPIO
-   -1,            // ModBusSerial
-   -1,            // ModBusBaudRate
-   -1,            // ModBusSerialFormat
-   -1,            // ModBusRxGPIO
-   -1,            // ModBusTxGPIO
-   -1,            // ModBusMsgDelay
-   -1,            // ModBus485EnGPIO
-   -1,             // OLEDClkGPIO
-   -1,             // OLEDDataGPIO
+   10,            // OneWireGPIO
+   1,            // ModBusSerial
+   9600,          // ModBusBaudRate
+   SERIAL_8N1,    // ModBusSerialFormat
+   18,            // ModBusRxGPIO
+   17,            // ModBusTxGPIO
+   50,            // ModBusMsgDelay
+   15,            // ModBus485EnGPIO
+   -1,            // OLEDClkGPIO
+   -1,            // OLEDDataGPIO
    -1,            // TouchButton1
    -1,            // TouchButton2
    -1,            // PWM GPIO

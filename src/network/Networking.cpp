@@ -308,7 +308,7 @@ void  Emailer::initialise( const String &mdnsName )
    m_password = String( GET_REGISTRY_STRING( ACCOUNT_PASSWORD ) );
    m_sender = mdnsName;
 
-   PW_DEBUG( "Email : Host %s [%d] - %s %s",m_host,m_port,m_account,m_password );
+   PW_DEBUG( "Email : Host %s [%d] - %s %s",m_host,m_port,m_account.c_str(),m_password.c_str() );
 }
 
 void Emailer::fileCallbackForSPIFFS(File &file, const char *path, readymail_file_operating_mode mode)
@@ -757,8 +757,8 @@ void Networking::initialise()
    esp_wifi_get_mac( WIFI_IF_STA,mac );
 
    hostName += "-";
-   hostName += String( mac[ 4 ],HEX );
-   hostName += String( mac[ 5 ],HEX );
+   snprintf( line,sizeof(line),"%02x%02x",mac[ 4 ],mac[ 5 ] );
+   hostName += line;
 
    PW_MSG( "Set hostname %s",hostName.c_str() );
    if ( !WiFi.hostname( hostName ) )
