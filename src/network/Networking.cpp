@@ -7,10 +7,11 @@
 #include <SD.h>
 #include <FS.h>
 
-#define ENABLE_SMTP
+// For ReadyMail configuration
 //#define ENABLE_DEBUG
+#define ENABLE_SMTP
 #define ENABLE_FS
-
+#define READYMAIL_TIME_SOURCE time(nullptr)
 #include <ReadyMail.h>
 
 #include "src/core/utils.h"
