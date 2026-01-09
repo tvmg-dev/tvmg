@@ -133,7 +133,7 @@ HardwareConfig ESP32S3Gadget =
    -1,            // OLEDDataGPIO
    -1,            // TouchButton1
    -1,            // TouchButton2
-   -1,            // PWM GPIO
+   4,            // PWM GPIO
    false          // has SD card
 };
 

@@ -716,6 +716,12 @@ void handleDataLogs()
       networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                         "LG Event Log",LGSTATUS_LOG_HTML );
    }
+   if ( config->getSPIFFS()->exists( LGREGISTERS_LOG ) )
+   {
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG );
+   }
+
 }
 
 // ---------------------------------------------------------------------

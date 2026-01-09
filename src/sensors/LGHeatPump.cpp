@@ -511,6 +511,8 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
    return true;
 }
 
+#define MAX_LGREG_FILE_SIZE   (1024 * 250)
+
 void  LGHeatPump::getLGData()
 {
    PW_MSG( "GetLGData" );
@@ -586,11 +588,11 @@ void  LGHeatPump::getLGData()
       {
          String lgSample;
 
-         File file = SD.open( LGREGISTERS_LOG,FILE_APPEND );
-         if ( file )
+         File file = Config::instance()->getSPIFFS()->open( LGREGISTERS_LOG,FILE_APPEND );
+         if ( file && file.size() < MAX_LGREG_FILE_SIZE )
          {
             START_TIMING( "Write LG data" );
-            char buff[ 80 ];
+            char buff[ 32 ];
             for ( int i = 0; i < m_numRegisters; i++ )
             {
                LGRegister *reg = &m_registers[ i ];
@@ -600,16 +602,16 @@ void  LGHeatPump::getLGData()
                   continue;
                }
 
-               snprintf( buff,80,"%d,%d,%d\n",reg->m_type,reg->m_address,reg->m_rawValue );
+               snprintf( buff,sizeof(buff),"%c%d,%u,%d",(i == 0 ? '\n' : ','),reg->m_type,reg->m_address,reg->m_rawValue );
                lgSample += buff;
-
             }
 
             file.print( lgSample );
-            file.close();
 
             END_TIMING;
          }
+
+         file.close();
       }
 
       // lets zero the flow rate if returned 5 l/min from LG

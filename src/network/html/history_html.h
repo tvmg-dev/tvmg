@@ -37,10 +37,11 @@ const char history_html[] PROGMEM = R"rawliteral(
         async function loadLogs() {
             const target = document.getElementById('log-target');
             const upd = document.getElementById('last-upd');
+            const nocache = "?t=" + new Date().getTime();
             try {
                 const [y, t] = await Promise.all([
-                    fetch('/lgstatus2.html').then(r => r.ok ? r.text() : ""),
-                    fetch('/lgstatus.html').then(r => r.ok ? r.text() : "")
+                    fetch('/lgstatus2.html' + nocache).then(r => r.ok ? r.text() : ""),
+                    fetch('/lgstatus.html' + nocache).then(r => r.ok ? r.text() : "")
                 ]);
 
                 const doc = new DOMParser().parseFromString(`<div>${y}${t}</div>`, 'text/html');
