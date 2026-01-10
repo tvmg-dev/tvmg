@@ -28,7 +28,7 @@ PowerModule::PowerModule( ModbusMaster *modbus )
 
    cJSON *root = getAllSensorJSON();
 
-   if ( root && isSensorRequired( POWER_SENSOR_NAME ) )
+   if ( modbus && root && isSensorRequired( POWER_SENSOR_NAME ) )
    {
       cJSON *sensor;
       cJSON_ArrayForEach( sensor,root )
@@ -83,7 +83,7 @@ void PowerModule::initialise()
 {
    if ( !m_modbus )
    {
-      PW_DEBUG( "PowerModule::initialise() - no modbus, fake" );
+      PW_DEBUG( "PowerModule::initialise() - no modbus" );
    }
 }
 

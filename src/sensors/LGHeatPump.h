@@ -141,6 +141,7 @@ private:
    void  getLGData();
    bool  getContiguousRange( ModbusType type,uint8_t *start,uint8_t *end );
    bool  getModbusData( ModbusType type,uint8_t start,uint8_t end );
+   void  logModbusRegisters();
    void  dumpData();
    bool  getStatus( uint32_t parameter,bool *state );
    bool  getValue( uint32_t parameter,float_t *value );

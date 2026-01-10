@@ -16,6 +16,8 @@ static ModbusMaster *s_master = nullptr;
 static uint16_t     s_modbusAddress = 32;
 
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
+#define MAX_LGREG_FILE_SIZE         (1024 * 250)      // limit size of modbus register sample file
+#define LGREG_FILE_LINE_SIZE        320               // each line of the above file padded length
 
 // R32 refrigerant - pressure to temperature lookup, interpolate
 // pressures read from LG to temperature equivalents
@@ -511,7 +513,69 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
    return true;
 }
 
-#define MAX_LGREG_FILE_SIZE   (1024 * 250)
+void LGHeatPump::logModbusRegisters()
+{
+   if ( m_logRegisters )
+   {
+      const int paddedSize = LGREG_FILE_LINE_SIZE;
+      String lgSample;
+      bool   firstWrite = true;
+
+      lgSample.reserve( paddedSize );
+
+      File file = Config::instance()->getSPIFFS()->open( LGREGISTERS_LOG,FILE_APPEND );
+      if ( file && file.size() < MAX_LGREG_FILE_SIZE )
+      {
+         START_TIMING( "Write LG data" );
+         char buff[ 32 ];
+         for ( int i = 0; i < m_numRegisters; i++ )
+         {
+            LGRegister *reg = &m_registers[ i ];
+
+            if ( reg->m_type == CALCULATED )
+            {
+               continue;
+            }
+
+            if ( firstWrite )
+            {
+               firstWrite = false;
+            }
+            else
+            {
+               lgSample += ',';
+            }
+
+            snprintf( buff,sizeof(buff),"%d,%u,%d",reg->m_type,reg->m_address,reg->m_rawValue );
+            lgSample += buff;
+         }
+
+         lgSample += ",5,";
+
+         int currentLen = lgSample.length();
+         int paddingNeeded = (paddedSize - 1) - currentLen;  // account for newline
+
+         if ( paddingNeeded > 0 )
+         {
+            for (int i = 0; i < paddingNeeded; i++)
+            {
+               lgSample += 'x';
+            }
+         }
+         else if ( paddingNeeded < 0 )
+         {
+            PW_WARN( "Sample length %d exceeds target %d",currentLen,paddedSize );
+         }
+
+         lgSample += '\n';
+         file.print( lgSample );
+
+         END_TIMING;
+      }
+
+      file.close();
+   }
+}
 
 void  LGHeatPump::getLGData()
 {
@@ -582,37 +646,7 @@ void  LGHeatPump::getLGData()
 
       m_currentStatus.m_modbusError = false;
 
-      // log to file temporarily if enabled
-
-      if ( m_logRegisters )
-      {
-         String lgSample;
-
-         File file = Config::instance()->getSPIFFS()->open( LGREGISTERS_LOG,FILE_APPEND );
-         if ( file && file.size() < MAX_LGREG_FILE_SIZE )
-         {
-            START_TIMING( "Write LG data" );
-            char buff[ 32 ];
-            for ( int i = 0; i < m_numRegisters; i++ )
-            {
-               LGRegister *reg = &m_registers[ i ];
-
-               if ( reg->m_type == CALCULATED )
-               {
-                  continue;
-               }
-
-               snprintf( buff,sizeof(buff),"%c%d,%u,%d",(i == 0 ? '\n' : ','),reg->m_type,reg->m_address,reg->m_rawValue );
-               lgSample += buff;
-            }
-
-            file.print( lgSample );
-
-            END_TIMING;
-         }
-
-         file.close();
-      }
+      logModbusRegisters();
 
       // lets zero the flow rate if returned 5 l/min from LG
       {

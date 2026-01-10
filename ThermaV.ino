@@ -15,16 +15,19 @@
 #include "src/sensors/PowerModule.h"
 #include "src/sensors/HeatMeter.h"
 #include "src/sensors/ShellyPM.h"
+#include "src/sensors/LGHeatPump.h"
+#include "src/sensors/LGHeatPumpSim.h"
 
 #include "src/userio/UserIO.h"
 
 #include "src/network/Networking.h"
 #include "src/network/WebServer.h"
-#include "src/sensors/LGHeatPump.h"
+
 #include "src/network/ModbusTCP.h"
 
 // ---------------------------------------------------------------------
 
+HardwareSerial    *hwSerial = nullptr;
 ModbusMaster      *modbusMaster = nullptr;
 TemperatureModule *tempModule = nullptr;
 PowerModule       *powerModule = nullptr;
@@ -37,6 +40,7 @@ Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
 LGHeatPump        *lgThermaV = nullptr;
+LGHeatPumpSimulator  *lgSimulator = nullptr;
 
 // Amount of time we can have the network mutex held before the loop()
 // can proceed.  If this is exceeded then will reboot.
@@ -261,6 +265,11 @@ void  configureModBus()
 {
    PW_DEBUG( "Checking for MODBUSTCP" );
 
+   // modbus has a few types here.
+   //    Using modbus TCP to act as modbus master
+   //    Using RS485 transceiver to act as modbus master
+   //    Using RS485 transceiver to act as a slave to emulate devices
+
    if ( isSensorRequired( MODBUSTCP_SENSOR_NAME ) > 0 )
    {
       modbusTCP = new ModbusTCP();
@@ -299,32 +308,41 @@ void  configureModBus()
       }
       else
       {
-         PW_MSG( "Creating new modbus master with h/w serial" );
-         modbusMaster = new ModbusMaster;
-         HardwareSerial *serial = new HardwareSerial( hwConfig->ModBusSerial );
+         PW_MSG( "Creating new modbus with h/w serial" );
+         hwSerial = new HardwareSerial( hwConfig->ModBusSerial );
 
-         PW_MSG( "Starting MODBUS port %u",hwConfig->ModBusSerial );
+         PW_MSG( "Starting serial port %u",hwConfig->ModBusSerial );
          PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
 
-         // If enabled setup the MAX3485 device, need to set the device enable high for transmit to slaves
-         // and low for receive.  The ModbusMaster has callbacks to facilitate that.
-         // The waveshare LCD doesn't have enable/disable for the bus and uses the logic level of the
-         // transmit pin to enable tx or rx mode of the SP3485EN using bias resistors to pull AB signals
-         // to vcc/gnd if in rx mode.
+         hwSerial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
 
-         if ( hwConfig->ModBus485EnGPIO != -1 )
+         // Are we simulating the LG, i.e. acting as a slave, if so we can't
+         // be a master.
+
+         if ( isSensorRequired( LGHEATPUMPSIM_SENSOR_NAME ) )
          {
-            pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
-            modbusMaster->preTransmission( modbusPreTransmission );
-            modbusMaster->postTransmission( modbusPostTransmission );
-
-            // Pull the enable low to set to listening mode
-
-            modbusPostTransmission();
+            PW_MSG( "LG Sim required, so modbus master not allowed" );
          }
+         else
+         {
+            PW_MSG( "Creating modbus Master" );
+            modbusMaster = new ModbusMaster;
+            // If enabled setup the MAX3485 device, need to set the device enable high for transmit to slaves
+            // and low for receive.  The ModbusMaster has callbacks to facilitate that.
 
-         serial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
-         modbusMaster->begin( 1, *serial );
+            if ( hwConfig->ModBus485EnGPIO != -1 )
+            {
+               pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
+               modbusMaster->preTransmission( modbusPreTransmission );
+               modbusMaster->postTransmission( modbusPostTransmission );
+
+               // Pull the enable low to set to listening mode
+
+               modbusPostTransmission();
+            }
+
+            modbusMaster->begin( 1, *hwSerial );
+         }
       }
    }
 }
@@ -559,9 +577,20 @@ void  initialiseMeasurement()
    shellyPowerModule->initialise();
 
    // Instantiate the heat pump collecting module if active and we have
-   // a valid modbus
+   // a valid modbus only if we're not acting as an LG simulator
 
-   if ( isSensorRequired( LGHEATPUMP_SENSOR_NAME ) && modbusMaster )
+   if ( isSensorRequired( LGHEATPUMPSIM_SENSOR_NAME ) && hwSerial )
+   {
+      lgSimulator = new LGHeatPumpSimulator( hwSerial );
+
+      lgSimulator->initialise();
+      if ( !lgSimulator )
+      {
+         delete lgSimulator;
+         lgSimulator = nullptr;
+      }
+   }
+   else if ( isSensorRequired( LGHEATPUMP_SENSOR_NAME ) && modbusMaster )
    {
       lgThermaV = new LGHeatPump( modbusMaster );
 
@@ -1025,10 +1054,17 @@ void loop(void)
    END_TIMING;
 
    // run any debugging test, setup by webserver for picking up in the loop
+
    if ( loopTestRequired )
    {
       loopTest();
       loopTestRequired = false;
+   }
+
+   // If we have an heat pump simulator then perform housekeeping
+   if ( lgSimulator )
+   {
+      lgSimulator->heartbeat();
    }
 
    // our target MS is our original millis at entry of this loop, plus

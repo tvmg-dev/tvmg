@@ -1018,7 +1018,7 @@ void WebServer::setupAsyncServer()
          return request->requestAuthentication();
       }
 
-     Measurement *measurement = Measurement::instance();
+      Measurement *measurement = Measurement::instance();
       bool sent = false;
 
       if ( measurement )
