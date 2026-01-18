@@ -122,7 +122,7 @@ HardwareConfig WaveshareLCD =
 HardwareConfig ESP32S3Gadget =
 {
    10,            // OneWireGPIO
-   1,            // ModBusSerial
+   1,             // ModBusSerial - use port 1 for real serial
    9600,          // ModBusBaudRate
    SERIAL_8N1,    // ModBusSerialFormat
    18,            // ModBusRxGPIO
@@ -133,7 +133,7 @@ HardwareConfig ESP32S3Gadget =
    -1,            // OLEDDataGPIO
    -1,            // TouchButton1
    -1,            // TouchButton2
-   4,            // PWM GPIO
+   4,             // PWM GPIO
    false          // has SD card
 };
 
@@ -210,6 +210,14 @@ void  selectHardware()
       hwConfig = &ESP32S3Gadget;
    }
 #endif
+
+   // If we have a modbus enable then bring it low as soon as possible.
+
+   if ( hwConfig->ModBus485EnGPIO != -1 )
+   {
+      pinMode( hwConfig->ModBus485EnGPIO,OUTPUT );
+      digitalWrite( hwConfig->ModBus485EnGPIO,0 );
+   }
 }
 
 bool  boardHasSDCard()
