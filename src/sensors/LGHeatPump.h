@@ -167,6 +167,8 @@ private:
 
    std::map<uint32_t,uint8_t> m_registerMap;    // map of register address to m_registers[] index
    bool           m_logRegisters;               // whether writing registers to a file
+   int16_t        m_lastHeatingTarget;          // for glitch protection
+   int16_t        m_lastDhwTarget;              // for glitch protection
 };
 
 #endif

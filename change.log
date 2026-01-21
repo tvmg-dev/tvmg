@@ -1,5 +1,9 @@
+v26.01.04 - Try to avoid glitches in DHW and target temperature data for
+            series 3.  There has to be 2 successive samples with the
+            same sample value for the register to be read successfully.
+          - Pull any RS485 enable low as early as possible during boot.
 v26.01.03 - Fix live LG event view - force data reload via dummy parameter.
-            Support LG modbus event replay for testing.
+          - Support LG modbus event replay for testing.
             Requires additional library for modbus slave, modbus-esp8266.
 v26.01.02 - Fix the Date field when sending email
 v26.01.01 - Fix LG event log timestamps

@@ -178,7 +178,9 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_millisLastAquisition( -LG_MIN_SAMPLING_PERIOD_MS ),
      m_currentKW( 0 ),
      m_flowRateWhenNotHeating( 0 ),
-     m_logRegisters( false )
+     m_logRegisters( false ),
+     m_lastHeatingTarget( -9999 ),
+     m_lastDhwTarget( -9999 )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
@@ -201,7 +203,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
             s_modbusAddress = m_modbusAddress;
             m_flowRateWhenNotHeating = getIntFromcJSON( sensor,"flowInNotHeating",0 );
 
-            if ( series == 4 )
+            if ( series == 4 || series == 3 )
             {
                m_series = series;
             }
@@ -372,6 +374,7 @@ void LGHeatPump::sample()
       START_TIMING( "LG Sample" );
 
       getLGData();
+
       m_millisLastAquisition = millis();
 
       END_TIMING;
@@ -499,12 +502,42 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
    }
    else
    {
-      for ( int i = 0; i < numRegs; i++ )
+      for (int i = 0; i < numRegs; i++)
       {
-         m_registers[ start + i ].m_rawValue = static_cast<int16_t>(m_modbus->getResponseBuffer( i ));
-         m_registers[ start + i ].m_value = m_registers[ start + i ].m_rawValue * m_registers[ start + i ].m_scalingFactor;
-         dbg += " ";
-         dbg += String( m_registers[ start + i ].m_value );
+         LGRegister *reg = &m_registers[ start + i ];
+         if (!reg)
+         {
+            continue;
+         }
+
+         int16_t raw = (int16_t) m_modbus->getResponseBuffer( i );
+
+         uint32_t address = (type == HOLDING ? MB_HOLDING : MB_INPUTR) + reg->m_address + 1;
+
+         // Filter glitches for series 3 LG's, Target Temp registers
+         if ( m_series != 4 && (address == TARGET_TEMP || address == DHW_TARGET_TEMP) )
+         {
+            int16_t &prev = (address == TARGET_TEMP) ? m_lastHeatingTarget : m_lastDhwTarget;
+
+            PW_DEBUG( "Series 3: Checking reg %u prev %d new %d",address,prev,raw );
+
+            // On first sample (time == 0), we allow the update and store the baseline.
+            // On subsequent samples, if raw != prev, we update 'prev' but skip the register update.
+            if ( m_currentStatus.m_time != 0 && raw != prev )
+            {
+               prev = raw;
+               PW_DEBUG( "Series 3: Change detected for LG register %u",address );
+               continue;
+            }
+
+            PW_DEBUG( "Series 3: Store and set to %d",raw );
+
+            prev = raw;
+         }
+
+         reg->m_rawValue = raw;
+         reg->m_value = reg->m_rawValue * reg->m_scalingFactor;
+         dbg += " " + String(reg->m_value);
       }
    }
 
