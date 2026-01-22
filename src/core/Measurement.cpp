@@ -205,7 +205,7 @@ void  Measurement::takeSample( void )
          }
       }
 
-      PW_MSG( "Read %d of %d LG registers",regsOk,i - 1 );
+      PW_MSG( "%d of %d LG registers ok",regsOk,i - 1 );
    }
    else if ( sensorIndex == 3 && m_heatMeterModule )
    {

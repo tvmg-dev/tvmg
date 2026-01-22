@@ -265,10 +265,12 @@ void  configureModBus()
 {
    PW_DEBUG( "Checking for MODBUSTCP" );
 
-   // modbus has a few types here.
-   //    Using modbus TCP to act as modbus master
-   //    Using RS485 transceiver to act as modbus master
-   //    Using RS485 transceiver to act as a slave to emulate devices
+   // modbus has a few types here - and the selected type depends on the following
+   // order preference (determined by configured sensors
+   //
+   //    1. Modbus TCP to act as modbus master
+   //    2. RS485 transceiver to act as a slave to emulate devices
+   //    3. RS485 transceiver to act as modbus master
 
    if ( isSensorRequired( MODBUSTCP_SENSOR_NAME ) > 0 )
    {
