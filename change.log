@@ -1,3 +1,9 @@
+v26.01.05 - Following testing on series 3 new invalid target temperature
+            filtering provided (using invalidTarget and logInvalidEvents
+            items for the LG heatpump JSON).
+          - Fix background tint in live event view on error reports.
+          - Error 0x8000 is an invalid LG data detected.
+          - Fix lack on header on very first LG event log.
 v26.01.04 - Try to avoid glitches in DHW and target temperature data for
             series 3.  There has to be 2 successive samples with the
             same sample value for the register to be read successfully.
