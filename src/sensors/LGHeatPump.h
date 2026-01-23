@@ -98,7 +98,7 @@ struct LGStatus {
    time_t   m_time;
    uint16_t m_updates;
 
-   int16_t  m_error;
+   uint16_t m_error;
 
    int16_t  m_inlet;
    int16_t  m_outlet;
@@ -167,6 +167,7 @@ private:
 
    std::map<uint32_t,uint8_t> m_registerMap;    // map of register address to m_registers[] index
    bool           m_logRegisters;               // whether writing registers to a file
+   bool           m_logInvalidEvents;           // Log error for invalid events
    int16_t        m_invalidTargetTemp;          // if checking for invalid target temps
 };
 

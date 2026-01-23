@@ -19,6 +19,9 @@ static uint16_t     s_modbusAddress = 32;
 #define MAX_LGREG_FILE_SIZE         (1024 * 250)      // limit size of modbus register sample file
 #define LGREG_FILE_LINE_SIZE        320               // each line of the above file padded length
 
+#define LG_INVALID_VALUE            -9999
+#define LG_INVALID_VALUE_ERROR      0x8000
+
 // R32 refrigerant - pressure to temperature lookup, interpolate
 // pressures read from LG to temperature equivalents
 
@@ -179,6 +182,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_currentKW( 0 ),
      m_flowRateWhenNotHeating( 0 ),
      m_logRegisters( false ),
+     m_logInvalidEvents( false ),
      m_invalidTargetTemp( 0 )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
@@ -196,12 +200,13 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 
             strncpy( m_softwareVersion,getStringFromcJSON( sensor,"software" ).c_str(),MAX_LGSOFTWARE_LENGTH );
 
-            m_logRegisters = getIntFromcJSON( sensor,"write",0 );
+            m_logRegisters = getBoolFromcJSON( sensor,"write",true );
             series = getIntFromcJSON( sensor,"series",0 );
             m_modbusAddress = getIntFromcJSON( sensor,"address",0x11 );
             s_modbusAddress = m_modbusAddress;
             m_flowRateWhenNotHeating = getIntFromcJSON( sensor,"flowInNotHeating",0 );
             m_invalidTargetTemp = getIntFromcJSON( sensor,"invalidTarget",0 );
+            m_logInvalidEvents = getBoolFromcJSON( sensor,"logInvalidEvents",true );
 
             if ( series == 4 || series == 3 )
             {
@@ -213,7 +218,8 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
             }
 
             PW_DEBUG( "address %u, write %d series %d",m_modbusAddress,m_logRegisters,series );
-            PW_DEBUG( "flow in !heating %d, invalidTarget %d",m_flowRateWhenNotHeating,m_invalidTargetTemp );
+            PW_DEBUG( "flow in !heating %d, invalidTarget %d, %s invalid events ",m_flowRateWhenNotHeating,
+                                                m_invalidTargetTemp, (m_logInvalidEvents ? "log" : "ignore" ) );
             break;
          }
       }
@@ -788,12 +794,6 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
    LGRegister &lgReg = m_registers[ regIndex ];
    int16_t newValue = lgReg.m_rawValue;
 
-   if ( !lgReg.m_isValid || newValue == -9999 )
-   {
-      PW_DEBUG( "LG: Invalid value for parameter 0x%08x",parameter );
-      return false;
-   }
-
    switch ( parameter )
    {
       case ERROR_CODE: if ( m_currentStatus.m_error != newValue ) { hasChanged = true; }
@@ -826,7 +826,26 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
 
    if ( hasChanged )
    {
-      PW_MSG( "Parameter changed - 0x%x to %d",parameter,newValue );
+      if ( !lgReg.m_isValid || newValue == LG_INVALID_VALUE )
+      {
+         if ( !m_logInvalidEvents )
+         {
+            PW_WARN( "LG: Ignoring invalid value for parameter 0x%08x",parameter );
+            hasChanged = false;
+         }
+         else
+         {
+            PW_DEBUG( "LG setting value error" );
+
+            uint8_t  regIndex = getRegisterIndex( ERROR_CODE );
+            if ( regIndex != -1 )
+            {
+               LGRegister &errReg = m_registers[ regIndex ];
+               errReg.m_rawValue |= LG_INVALID_VALUE_ERROR;
+            }
+         }
+      }
+      PW_MSG( "Parameter changed - 0x%x to %d - %s",parameter,newValue,(lgReg.m_isValid ? "ok" : "nok") );
    }
 
    return hasChanged;
@@ -946,8 +965,19 @@ void  LGHeatPump::writeStatusToHtml()
        "<td>%.1f/%.1f</td>"
        "<td>%.1f</td>"
        "<td><i class='f %s'>🔇</i><i class='f %s'>❄️</i><i class='f %s'>⚡</i><i class='f %s'>☣️</i></td>"
-       "<td>%d</td>"
+       "<td>%s</td>"
        "</tr>";
+
+   char errorDisplay[10];
+   if ( m_currentStatus.m_error == 0 )
+   {
+      strcpy( errorDisplay,"0" );
+   }
+   else
+   {
+      snprintf( errorDisplay,sizeof(errorDisplay),"0x%04x",(uint16_t) m_currentStatus.m_error );
+   }
+
 
    snprintf( reinterpret_cast<char *>(htmlRow),PADDED_HTML_LINE_LEN,rowTemplate,
        timeBuff, modeClass, modeText.c_str(), compressorClass, compressorText,
@@ -959,7 +989,7 @@ void  LGHeatPump::writeStatusToHtml()
        m_currentStatus.m_isDefrost ? "f-on" : "",
        m_currentStatus.m_isImmersion ? "f-on" : "",
        m_currentStatus.m_isLegionella ? "f-on" : "",
-       m_currentStatus.m_error );
+       errorDisplay );
 
    // Add the header if a new file
    bool addHeader = false;
@@ -997,7 +1027,6 @@ void LGHeatPump::finaliseHTML()
 void  LGHeatPump::updateStatus()
 {
    bool  updateState = false;
-   bool  firstEvent = false;
 
    // Check conditions for updating, if its the first update (if no time is
    // set of the current status) then we get the current state always.
@@ -1005,7 +1034,6 @@ void  LGHeatPump::updateStatus()
    if ( !m_currentStatus.m_time )
    {
       updateState = true;
-      firstEvent = true;
    }
    else
    {
@@ -1055,7 +1083,7 @@ void  LGHeatPump::updateStatus()
       time( &m_currentStatus.m_time );
 
       m_currentStatus.m_isCompressorOn = getRawValue( COMPRESSOR_STATUS );
-      m_currentStatus.m_error = getRawValue( ERROR_CODE );
+      m_currentStatus.m_error = (uint16_t) getRawValue( ERROR_CODE );
       m_currentStatus.m_inlet = getRawValue( INLET_TEMP );
       m_currentStatus.m_outlet = getRawValue( OUTLET_TEMP );
       m_currentStatus.m_oat = getRawValue( OUTSIDE_TEMP );
@@ -1074,19 +1102,9 @@ void  LGHeatPump::updateStatus()
       m_currentStatus.m_isSilent = getRawValue( SILENT_STATUS );
       m_currentStatus.m_isDefrost = getRawValue( DEFROST_STATUS );
 
-      // Write out to status unless its the first event in the runtime and we
-      // already have a status file present
-
-      if ( firstEvent && Config::instance()->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
-      {
-         PW_MSG( "Ignoring first LG event" );
-      }
-      else
-      {
-         m_currentStatus.m_updates++;
-         PW_MSG( "LG events: %u",m_currentStatus.m_updates );
-         writeStatusToHtml();
-      }
+      m_currentStatus.m_updates++;
+      PW_MSG( "LG events: %u",m_currentStatus.m_updates );
+      writeStatusToHtml();
    }
 }
 
@@ -1179,7 +1197,7 @@ bool  LGHeatPump::getValue( uint32_t parameter,float_t *value )
 
 int16_t  LGHeatPump::getRawValue( uint32_t parameter )
 {
-   int16_t  value = -9999;
+   int16_t  value = LG_INVALID_VALUE;
 
    std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
@@ -1192,7 +1210,7 @@ int16_t  LGHeatPump::getRawValue( uint32_t parameter )
       LGRegister &lgReg = m_registers[ index ];
 
       value = lgReg.m_rawValue;
-      PW_DEBUG( "HP-Raw: 0x%x:%s:%u",parameter,getSensorName( HEATPUMP,lgReg.m_id ).c_str(),value );
+      PW_DEBUG( "HP-Raw: 0x%x:%s:%u",parameter,getSensorName( HEATPUMP,lgReg.m_id ).c_str(),(int16_t) value );
    }
 
    return value;

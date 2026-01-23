@@ -254,6 +254,19 @@ bool  isSensorRequired( const char *sensorName )
    return isReq;
 }
 
+bool   getBoolFromcJSON( cJSON *node,const char *key, bool defaultValue )
+{
+   bool   value = defaultValue;
+
+   cJSON *obj = cJSON_GetObjectItem( node,key );
+   if ( cJSON_IsBool( obj ) )
+   {
+      value = cJSON_IsTrue( obj );
+   }
+
+   return value;
+}
+
 int   getIntFromcJSON( cJSON *node,const char *key, int defaultValue )
 {
    int   value = defaultValue;

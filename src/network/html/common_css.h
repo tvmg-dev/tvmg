@@ -66,7 +66,7 @@ const char common_css[] PROGMEM = R"rawliteral(
   .mode-cell { font-size: 10px; font-weight: bold; text-align: center; border-radius: 3px; padding: 3px 0; color: white; text-transform: uppercase; }
   .val-unit { font-weight: 600; color: #111; font-family: monospace; }
   .label { display: block; font-size: 8px; color: #999; text-transform: uppercase; margin-bottom: 1px; }
-  .err-active { color: #d32f2f; background: #ffebee; border-radius: 3px; text-align: center; font-weight: bold; }
+  .err-active { color: #d32f2f; border-radius: 3px; text-align: center; font-weight: bold; font-family: monospace }
   .err-none { color: #ddd; text-align: center; }
 
   /* Misc */
