@@ -60,11 +60,11 @@ tmvg_esp32.menu.TMVGadget.external.tmvg.defines=-DEXTERNAL
 
 # The FQDN will have TMVGRevision=v1, the 'version 1' is shown in the menu
 
-tmvg_esp32.menu.TMVGRevision.v1=version 1
+tmvg_esp32.menu.TMVGRevision.v2=version 2
 
-# We have OLED available for this type
+# Using the legacy TMVG_ESP32
 
-tmvg_esp32.build.defines={tmvg.defines} -DOLED_AVAILABLE
+tmvg_esp32.build.defines={tmvg.defines} -DTMVG_ESP32 -DTMVG_SPIFFS -DTMVG_OLED
 
 # Debug selection
 
@@ -96,7 +96,7 @@ pw_wshare.upload.tool=esptool_py
 pw_wshare.upload.tool.default=esptool_py
 pw_wshare.upload.tool.network=esp_ota
 
-pw_wshare.upload.maximum_size=1310720
+pw_wshare.upload.maximum_size=4718592
 
 pw_wshare.upload.maximum_data_size=327680
 pw_wshare.upload.flags=
@@ -125,7 +125,7 @@ pw_wshare.build.flash_freq=80m
 pw_wshare.build.flash_mode=dio
 pw_wshare.build.boot=qio
 pw_wshare.build.boot_freq=80m
-pw_wshare.build.partitions=large_spiffs
+pw_wshare.build.partitions=large_spiffs_16MB
 pw_wshare.build.defines={build.psram_defines} -DPW_LCD=1
 pw_wshare.build.loop_core=
 pw_wshare.build.event_core=
@@ -194,55 +194,6 @@ pw_wshare.menu.UploadMode.cdc=USB-OTG CDC (TinyUSB)
 pw_wshare.menu.UploadMode.cdc.upload.use_1200bps_touch=true
 pw_wshare.menu.UploadMode.cdc.upload.wait_for_upload_port=true
 
-pw_wshare.menu.PartitionScheme.app3M_fat9M_16MB=Default 16M Flash (3MB APP/9.9MB FATFS)
-pw_wshare.menu.PartitionScheme.app3M_fat9M_16MB.build.partitions=app3M_fat9M_16MB
-pw_wshare.menu.PartitionScheme.app3M_fat9M_16MB.upload.maximum_size=3145728
-pw_wshare.menu.PartitionScheme.large_spiffs=Large SPIFFS (4.5MB APP/6.93MB SPIFFS)
-pw_wshare.menu.PartitionScheme.large_spiffs.build.partitions=large_spiffs_16MB
-pw_wshare.menu.PartitionScheme.large_spiffs.upload.maximum_size=4718592
-pw_wshare.menu.PartitionScheme.ota_spiffs_4m=4MB with spiffs (1.2MB APP/1.5MB SPIFFS)
-pw_wshare.menu.PartitionScheme.ota_spiffs_4m.build.partitions=default
-pw_wshare.menu.PartitionScheme.ota_spiffs_4m.upload.maximum_size=1310720
-pw_wshare.menu.PartitionScheme.defaultffat=Default 4MB with ffat (1.2MB APP/1.5MB FATFS)
-pw_wshare.menu.PartitionScheme.defaultffat.build.partitions=default_ffat
-pw_wshare.menu.PartitionScheme.no_ota=No OTA (2MB APP/2MB SPIFFS)
-pw_wshare.menu.PartitionScheme.no_ota.build.partitions=no_ota
-pw_wshare.menu.PartitionScheme.no_ota.upload.maximum_size=2097152
-pw_wshare.menu.PartitionScheme.noota_3g=No OTA (1MB APP/3MB SPIFFS)
-pw_wshare.menu.PartitionScheme.noota_3g.build.partitions=noota_3g
-pw_wshare.menu.PartitionScheme.noota_3g.upload.maximum_size=1048576
-pw_wshare.menu.PartitionScheme.noota_ffat=No OTA (2MB APP/2MB FATFS)
-pw_wshare.menu.PartitionScheme.noota_ffat.build.partitions=noota_ffat
-pw_wshare.menu.PartitionScheme.noota_ffat.upload.maximum_size=2097152
-pw_wshare.menu.PartitionScheme.noota_3gffat=No OTA (1MB APP/3MB FATFS)
-pw_wshare.menu.PartitionScheme.noota_3gffat.build.partitions=noota_3gffat
-pw_wshare.menu.PartitionScheme.noota_3gffat.upload.maximum_size=1048576
-pw_wshare.menu.PartitionScheme.huge_app=Huge APP (3MB No OTA/1MB SPIFFS)
-pw_wshare.menu.PartitionScheme.huge_app.build.partitions=huge_app
-pw_wshare.menu.PartitionScheme.huge_app.upload.maximum_size=3145728
-pw_wshare.menu.PartitionScheme.min_spiffs=Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)
-pw_wshare.menu.PartitionScheme.min_spiffs.build.partitions=min_spiffs
-pw_wshare.menu.PartitionScheme.min_spiffs.upload.maximum_size=1966080
-pw_wshare.menu.PartitionScheme.rainmaker=RainMaker 4MB
-pw_wshare.menu.PartitionScheme.rainmaker.build.partitions=rainmaker
-pw_wshare.menu.PartitionScheme.rainmaker.upload.maximum_size=1966080
-pw_wshare.menu.PartitionScheme.rainmaker_8MB=RainMaker 8MB
-pw_wshare.menu.PartitionScheme.rainmaker_8MB.build.partitions=rainmaker_8MB
-pw_wshare.menu.PartitionScheme.rainmaker_8MB.upload.maximum_size=4116480
-pw_wshare.menu.PartitionScheme.fatflash=16M Flash (2MB APP/12.5MB FATFS)
-pw_wshare.menu.PartitionScheme.fatflash.build.partitions=ffat
-pw_wshare.menu.PartitionScheme.fatflash.upload.maximum_size=2097152
-pw_wshare.menu.PartitionScheme.otanofs=OTA no FS (2MB APP with OTA)
-pw_wshare.menu.PartitionScheme.otanofs.build.custom_partitions=partitions_otanofs_4MB
-pw_wshare.menu.PartitionScheme.otanofs.upload.maximum_size=2031616
-pw_wshare.menu.PartitionScheme.all_app=Max APP (4MB APP no OTA)
-pw_wshare.menu.PartitionScheme.all_app.build.custom_partitions=partitions_all_app_4MB
-pw_wshare.menu.PartitionScheme.all_app.upload.maximum_size=4128768
-
-pw_wshare.menu.PartitionScheme.custom=Custom
-pw_wshare.menu.PartitionScheme.custom.build.partitions=
-pw_wshare.menu.PartitionScheme.custom.upload.maximum_size=16777216
-
 pw_wshare.menu.CPUFreq.240=240MHz (WiFi)
 pw_wshare.menu.CPUFreq.240.build.f_cpu=240000000L
 pw_wshare.menu.CPUFreq.160=160MHz (WiFi)
@@ -288,6 +239,8 @@ pw_wshare.menu.EraseFlash.none=Disabled
 pw_wshare.menu.EraseFlash.none.upload.erase_cmd=
 pw_wshare.menu.EraseFlash.all=Enabled
 pw_wshare.menu.EraseFlash.all.upload.erase_cmd=-e
+
+pw_wshare.build.defines={tmvg.defines} -DTMVG_WAVESHARE_LCDB -DTMVG_LITTLEFS
 
 ##############################################################
 
@@ -361,7 +314,10 @@ tmvg_esp32s3.menu.DebugLevel.verbose.build.code_debug=5
 
 # The FQDN will have TMVGRevision=v1, the 'version 1' is shown in the menu
 
-tmvg_esp32s3.menu.TMVGRevision.v2=version 2
+tmvg_esp32s3.menu.TMVGRevision.v3=version 3
 
+# Using the ESP32S3 - has the RS485 transceiver
+
+tmvg_esp32s3.build.defines=-DTMVG_ESP32S3 -DTMVG_RS485 -DTMVG_LITTLEFS
 
 ####################################################################

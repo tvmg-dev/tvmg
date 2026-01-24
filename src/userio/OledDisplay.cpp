@@ -1,4 +1,4 @@
-#ifdef OLED_AVAILABLE
+#ifdef TMVG_OLED
 
 #include <U8g2lib.h>
 

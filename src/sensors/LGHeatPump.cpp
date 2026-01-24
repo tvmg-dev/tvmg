@@ -16,8 +16,13 @@ static ModbusMaster *s_master = nullptr;
 static uint16_t     s_modbusAddress = 32;
 
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
+
+// For writing out registers to spiffs
+
 #define MAX_LGREG_FILE_SIZE         (1024 * 250)      // limit size of modbus register sample file
 #define LGREG_FILE_LINE_SIZE        320               // each line of the above file padded length
+
+// For indicating invalid values internally and for reporting an error in log
 
 #define LG_INVALID_VALUE            -9999
 #define LG_INVALID_VALUE_ERROR      0x8000
@@ -86,8 +91,15 @@ static std::map<float_t,float_t> r32Lookup = {
 // HTML - so we prepend the footer before the 1st write to the log and
 // then we add the footer when we finalise the log prior to sending.
 
+// As SPIFFS only supports ~ 0.75% of space, and it loses a lot in
+// formatting we limit to 140 KB (280 KB from ~ 330 KB total)
+
 #define PADDED_HTML_LINE_LEN  300
-#define MAX_LG_EVENTS         600      // 25 events per hour ~ 180KB
+#ifdef TMVG_SPIFFS
+   #define MAX_LG_EVENTS         480      // 20 events per hour ~ 140KB
+#else
+   #define MAX_LG_EVENTS         600      // 25 events per hour ~ 180KB
+#endif
 #define ERROR_LG_EVENTS_LIMIT (-1)
 
 // We're going to use the scratch buffer for html generation to keep RAM
@@ -998,19 +1010,43 @@ void  LGHeatPump::writeStatusToHtml()
       addHeader = true;
    }
 
-   // output to the file
-
-   File file = Config::instance()->getSPIFFS()->open( LGSTATUS_LOG_HTML,FILE_APPEND );
-   if ( file )
+   int attempts = 3;
+   while ( attempts > 0 )
    {
-      if ( addHeader )
-      {
-         file.println( emailHeader );
-      }
+      // output to the file
 
-      const uint8_t *html = padHtmlLine( htmlRow );
-      file.write( html,PADDED_HTML_LINE_LEN );
-      file.close();
+      File file = Config::instance()->getSPIFFS()->open( LGSTATUS_LOG_HTML,FILE_APPEND );
+      if ( !file )
+      {
+         PW_WARN( "Failed to open %s",LGSTATUS_LOG_HTML );
+      }
+      else
+      {
+         size_t startSize = file.size();
+
+         if ( addHeader )
+         {
+            file.println( emailHeader );
+         }
+
+         const uint8_t *html = padHtmlLine( htmlRow );
+
+         file.write( html,PADDED_HTML_LINE_LEN );
+         size_t newSize = file.position();
+         file.close();
+
+         if ( newSize == startSize )
+         {
+            PW_WARN( "Failed to write to %s %d %d",LGSTATUS_LOG_HTML,startSize,newSize );
+         }
+         else
+         {
+            PW_DEBUG( "Successfully written to %s",LGSTATUS_LOG_HTML );
+            break;
+         }
+
+         attempts--;
+      }
    }
 }
 

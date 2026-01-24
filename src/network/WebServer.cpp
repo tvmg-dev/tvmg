@@ -218,17 +218,16 @@ bool  isHiddenExtension( const String &filename )
 
 String convertFileSize(const size_t bytes)
 {
-   if(bytes < 10240)
+   size_t adjusted = bytes;
+
+   if(adjusted < 10240)
    {
-      return String(bytes) + " B";
+      return String( adjusted ) + " B";
    }
-   else if (bytes < 1048576)
+   else
    {
-      return String(bytes / 1024.0) + " kB";
-   }
-   else if (bytes < 1073741824)
-   {
-      return String(bytes / 1048576.0) + " MB";
+      adjusted += 1023;
+      return String( adjusted / 1024 ) + " kB";
    }
 }
 
@@ -478,7 +477,7 @@ String processor(const String& var)
 
   if(var == "SPIFFS_TOTAL_BYTES")
   {
-    return convertFileSize(s_spiffs->totalBytes());
+     return convertFileSize( 0.75f * s_spiffs->totalBytes() );
   }
 
   if(var == "LISTEN_FILES")

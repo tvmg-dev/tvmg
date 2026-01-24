@@ -197,7 +197,7 @@ void  selectHardware()
       }
    }
 
-#ifdef OLED_AVAILABLE
+#ifdef TMVG_OLED
    if ( !hwConfig )
    {
       PW_MSG( "No board file - default to TNode" );

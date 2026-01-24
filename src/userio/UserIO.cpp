@@ -10,7 +10,7 @@
 #include "src/config/Config.h"
 #include "src/config/hwconfig.h"
 
-#ifndef OLED_AVAILABLE
+#ifndef TMVG_OLED
    #include "LcdDisplay.h"
 #else
    #include "OledDisplay.h"
@@ -100,7 +100,7 @@ UserIO::UserIO()
 {
    PW_MSG( "UserIO Module Startup" );
 
-#ifndef OLED_AVAILABLE
+#ifndef TMVG_OLED
    m_display = new LcdDisplay;
 #else
    m_display = new OledDisplay;
@@ -311,7 +311,7 @@ void  UserIO::showStorage()
 
    fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
    storeLine( 4,"SPIFFS" );
-   snprintf( line,MAX_DISPLAY_COLUMNS,"Used %u of %u KiB",spiffs->usedBytes()/1024, spiffs->totalBytes()/1024 );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"Used %u of %u KiB",spiffs->usedBytes()/1024, (spiffs->totalBytes() * 3) / 4096 );
    storeLine( 5,line );
 
    show( m_currentLines );

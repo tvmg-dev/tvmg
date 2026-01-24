@@ -1,4 +1,4 @@
-#ifndef OLED_AVAILABLE
+#ifndef TMVG_OLED
 
 #include "src/core/utils.h"
 
