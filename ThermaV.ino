@@ -354,7 +354,7 @@ void  configureModBus()
 
 void setupSerial()
 {
-#if !PW_LCD
+#ifdef TMVG_ESP32
    Serial.begin( 115200,SERIAL_8N1 );
 
    // The monitor board has a switch to disable serial as the port is used for

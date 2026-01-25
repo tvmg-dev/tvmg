@@ -126,7 +126,6 @@ pw_wshare.build.flash_mode=dio
 pw_wshare.build.boot=qio
 pw_wshare.build.boot_freq=80m
 pw_wshare.build.partitions=large_spiffs_16MB
-pw_wshare.build.defines={build.psram_defines} -DPW_LCD=1
 pw_wshare.build.loop_core=
 pw_wshare.build.event_core=
 pw_wshare.build.psram_type=qspi
@@ -240,7 +239,9 @@ pw_wshare.menu.EraseFlash.none.upload.erase_cmd=
 pw_wshare.menu.EraseFlash.all=Enabled
 pw_wshare.menu.EraseFlash.all.upload.erase_cmd=-e
 
-pw_wshare.build.defines={tmvg.defines} -DTMVG_WAVESHARE_LCDB -DTMVG_LITTLEFS
+#pw_wshare.build.defines=-DTMVG_WAVESHARE_LCDB -DTMVG_LITTLEFS
+
+pw_wshare.build.defines={build.psram_defines} -DTMVG_WAVESHARE_LCDB -DTMVG_SPIFFS
 
 ##############################################################
 

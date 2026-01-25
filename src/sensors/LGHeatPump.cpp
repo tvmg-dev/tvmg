@@ -194,8 +194,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_currentKW( 0 ),
      m_flowRateWhenNotHeating( 0 ),
      m_logRegisters( false ),
-     m_logInvalidEvents( false ),
-     m_invalidTargetTemp( 0 )
+     m_logHeatingTargetChanges( true )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
@@ -213,12 +212,14 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
             strncpy( m_softwareVersion,getStringFromcJSON( sensor,"software" ).c_str(),MAX_LGSOFTWARE_LENGTH );
 
             m_logRegisters = getBoolFromcJSON( sensor,"write",true );
-            series = getIntFromcJSON( sensor,"series",0 );
+            series = getIntFromcJSON( sensor,"series",4 );
             m_modbusAddress = getIntFromcJSON( sensor,"address",0x11 );
             s_modbusAddress = m_modbusAddress;
             m_flowRateWhenNotHeating = getIntFromcJSON( sensor,"flowInNotHeating",0 );
-            m_invalidTargetTemp = getIntFromcJSON( sensor,"invalidTarget",0 );
-            m_logInvalidEvents = getBoolFromcJSON( sensor,"logInvalidEvents",true );
+
+            // If series 4 then by default log the heating target changes
+            bool defaultLogHeatingTarget = (series == 4 ? true : false);
+            m_logHeatingTargetChanges = getBoolFromcJSON( sensor,"logHeatingTargetChanges",defaultLogHeatingTarget );
 
             if ( series == 4 || series == 3 )
             {
@@ -230,8 +231,8 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
             }
 
             PW_DEBUG( "address %u, write %d series %d",m_modbusAddress,m_logRegisters,series );
-            PW_DEBUG( "flow in !heating %d, invalidTarget %d, %s invalid events ",m_flowRateWhenNotHeating,
-                                                m_invalidTargetTemp, (m_logInvalidEvents ? "log" : "ignore" ) );
+            PW_DEBUG( "flow in !heating %d, %s heating target changes",
+                                    m_flowRateWhenNotHeating,(m_logHeatingTargetChanges ? "log" : "ignore" ) );
             break;
          }
       }
@@ -677,25 +678,6 @@ void  LGHeatPump::getLGData()
 
       logModbusRegisters();
 
-      // The target temperatures may glitch, until more field data it
-      // is impossible to determine how frequent this is - on 1 series 3 unit
-      // the target temp was 20 at times. Use a LG setting to filter out.
-
-      if ( m_invalidTargetTemp > 0 )
-      {
-         uint8_t  regIndex = getRegisterIndex( TARGET_TEMP );
-         if ( regIndex != -1 )
-         {
-            LGRegister &lgReg = m_registers[ regIndex ];
-
-            if ( lgReg.m_rawValue == m_invalidTargetTemp )
-            {
-               PW_WARN( "LG: Invalid target temperature (raw %d)",m_invalidTargetTemp );
-               lgReg.m_isValid = false;
-            }
-         }
-      }
-
       // lets zero the flow rate if returned 5 l/min from LG
       {
          float_t  flowRate = 0;
@@ -812,7 +794,8 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
          break;
       case COMPRESSOR_STATUS: if ( m_currentStatus.m_isCompressorOn != newValue ) { hasChanged = true; }
          break;
-      case TARGET_TEMP: if ( m_currentStatus.m_heatingTarget != newValue ) { hasChanged = true; }
+      case TARGET_TEMP:
+         if ( m_logHeatingTargetChanges && m_currentStatus.m_heatingTarget != newValue ) { hasChanged = true; }
          break;
       case WC_OFFSET_TEMP: if ( m_currentStatus.m_wcOffset != newValue ) { hasChanged = true; }
          break;
@@ -838,25 +821,6 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
 
    if ( hasChanged )
    {
-      if ( !lgReg.m_isValid || newValue == LG_INVALID_VALUE )
-      {
-         if ( !m_logInvalidEvents )
-         {
-            PW_WARN( "LG: Ignoring invalid value for parameter 0x%08x",parameter );
-            hasChanged = false;
-         }
-         else
-         {
-            PW_DEBUG( "LG setting value error" );
-
-            uint8_t  regIndex = getRegisterIndex( ERROR_CODE );
-            if ( regIndex != -1 )
-            {
-               LGRegister &errReg = m_registers[ regIndex ];
-               errReg.m_rawValue |= LG_INVALID_VALUE_ERROR;
-            }
-         }
-      }
       PW_MSG( "Parameter changed - 0x%x to %d - %s",parameter,newValue,(lgReg.m_isValid ? "ok" : "nok") );
    }
 

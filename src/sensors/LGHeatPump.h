@@ -167,8 +167,7 @@ private:
 
    std::map<uint32_t,uint8_t> m_registerMap;    // map of register address to m_registers[] index
    bool           m_logRegisters;               // whether writing registers to a file
-   bool           m_logInvalidEvents;           // Log error for invalid events
-   int16_t        m_invalidTargetTemp;          // if checking for invalid target temps
+   bool           m_logHeatingTargetChanges;    // whether to log heating target changes
 };
 
 #endif
