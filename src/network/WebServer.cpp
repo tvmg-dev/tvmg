@@ -535,6 +535,24 @@ void notFound(AsyncWebServerRequest *request)
   request->send(404, "text/plain", "Page not found");
 }
 
+// We need to release the networking mutex when a GET request for the event
+// logs has completed, so we create a subclass of AsyncFileResponse to do that.
+
+class AsyncFileResponseWithMutex : public AsyncFileResponse
+{
+public:
+   AsyncFileResponseWithMutex( fs::FS &fs,const String& path,const String& contentType )
+            : AsyncFileResponse(fs, path, contentType)
+   {
+   }
+
+   // The destructor is called when the response is finished or the client disconnects
+   virtual ~AsyncFileResponseWithMutex()
+   {
+      Networking::releaseNetworkMutex();
+   }
+};
+
 WebServer::WebServer( Networking *networking )
         : m_webServer( nullptr ),
           m_otaEvents( nullptr ),
@@ -666,9 +684,6 @@ void WebServer::setupAsyncServer()
 
    m_statusEvents = new AsyncEventSource( "/telemetry" );
    m_webServer->addHandler( m_statusEvents );
-
-   m_webServer->serveStatic( LGSTATUS_LOG_HTML,SPIFFS,LGSTATUS_LOG_HTML );
-   m_webServer->serveStatic( LGSTATUS_YESTERDAY,SPIFFS,LGSTATUS_YESTERDAY );
 
    m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
@@ -832,19 +847,6 @@ void WebServer::setupAsyncServer()
          if ( param && ( param->name() == String( param_edit_textarea ) ) )
          {
             PW_DEBUG( "Saving %d bytes to %s",param->value().length(),savePath.c_str() );
-
-#if 0
-            // code to replace CR+LF with just LF
-            char newLineCR[] = { '\n','\r','\0' };
-            char newLine[] = { '\r','\0' };
-
-            String nlCR( newLineCR );
-            String nl( newLine );
-
-            String str = param->value();
-            str.replace( newLineCR,newLine );
-#endif
-
             writeFile( s_spiffs, savePath.c_str(), param->value().c_str() );
          }
       }
@@ -1045,6 +1047,56 @@ void WebServer::setupAsyncServer()
          return request->requestAuthentication();
       }
       request->send( 200,"text/html",status_html );
+   });
+
+   // event logs - we take the network mutex and release in the completion callback
+   // if it doesn't complete the main loop() should timeout on mutex and reboot
+
+   m_webServer->on( LGSTATUS_LOG_HTML,HTTP_GET,[this](AsyncWebServerRequest *request )
+   {
+      PW_DEBUG( "Get %s",LGSTATUS_LOG_HTML );
+      if ( Networking::takeNetworkMutex(10000) == 1 )
+      {
+         AsyncFileResponseWithMutex *response = new AsyncFileResponseWithMutex( SPIFFS,LGSTATUS_LOG_HTML,"text/html" );
+
+        if ( response->code() == 404 )
+        {
+            delete response;
+            Networking::releaseNetworkMutex();
+            request->send( 404 );
+        } else
+        {
+            // The WebServer takes ownership of the 'response' pointer so will delete it on complete
+            request->send(response);
+        }
+      }
+      else
+      {
+         request->send(503, "text/plain", "Log File Busy");
+      }
+   });
+
+   m_webServer->on( LGSTATUS_YESTERDAY,HTTP_GET,[this](AsyncWebServerRequest *request )
+   {
+      PW_DEBUG( "Get %s",LGSTATUS_YESTERDAY );
+      if ( Networking::takeNetworkMutex(10000) == 1 )
+      {
+         AsyncFileResponseWithMutex *response = new AsyncFileResponseWithMutex( SPIFFS,LGSTATUS_YESTERDAY,"text/html" );
+
+        if ( response->code() == 404 )
+        {
+            delete response;
+            Networking::releaseNetworkMutex();
+            request->send( 404 );
+        } else
+        {
+            request->send(response);
+        }
+      }
+      else
+      {
+         request->send(503, "text/plain", "Rollover Log File Busy");
+      }
    });
 
    m_webServer->on("/history", HTTP_GET, [this](AsyncWebServerRequest *request)

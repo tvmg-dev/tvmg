@@ -1,3 +1,9 @@
+v26.01.08 - Ensure thread safe fetching of event logs for the live view
+            from the manager client.
+v26.01.07 - Replace the invalidTarget processing with a new flag in the
+            LG config, 'logHeatingTargetChanges', that will determine if
+            target temperature changes are recored in the event log.  By
+            default series 3 will not log such events.
 v26.01.06 - Reduce max LG daily log events due to 75% SPIFFS usage.
           - Only display integer byte/KiB values in webserver file list.
 v26.01.05 - Following testing on series 3 new invalid target temperature
