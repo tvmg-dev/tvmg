@@ -1,6 +1,9 @@
 ##############################################################
 ## PW Boards..
 ##
+## Note that the variant field is used to pick up the pins_arduino.h from the
+## associated folder in esp32/hardware/esp32/3.1.0/variants
+##
 ## Add a new custom menu item
 
 menu.TMVGadget=ThermaV Gadget Config
@@ -9,6 +12,9 @@ menu.TMVGRevision=ThermaV Boards Revision
 ##############################################################
 
 tmvg_esp32.name=TMVG ESP32 Gadget
+
+tmvg_esp32.build.tmvgdefs=-DTMVG_PROJECT
+tmvg_esp32.build.tmvgcustom=-DTMVG_ESP32 -DTMVG_SPIFFS -DTMVG_OLED
 
 # Standard options
 
@@ -52,19 +58,15 @@ tmvg_esp32.build.copy_jtag_files=0
 # Menu to select board type, not really necessary
 
 tmvg_esp32.menu.TMVGadget.tnode=TNode
-tmvg_esp32.menu.TMVGadget.tnode.tmvg.defines=-DTNODE
+tmvg_esp32.menu.TMVGadget.tnode.tmvg.subtype=-DTNODE
 tmvg_esp32.menu.TMVGadget.master=master
-tmvg_esp32.menu.TMVGadget.master.tmvg.defines=-DMASTER
+tmvg_esp32.menu.TMVGadget.master.tmvg.subtype=-DMASTER
 tmvg_esp32.menu.TMVGadget.external=external
-tmvg_esp32.menu.TMVGadget.external.tmvg.defines=-DEXTERNAL
+tmvg_esp32.menu.TMVGadget.external.tmvg.subtype=-DEXTERNAL
 
 # The FQDN will have TMVGRevision=v1, the 'version 1' is shown in the menu
 
 tmvg_esp32.menu.TMVGRevision.v2=version 2
-
-# Using the legacy TMVG_ESP32
-
-tmvg_esp32.build.defines={tmvg.defines} -DTMVG_ESP32 -DTMVG_SPIFFS -DTMVG_OLED
 
 # Debug selection
 
@@ -81,171 +83,92 @@ tmvg_esp32.menu.DebugLevel.debug.build.code_debug=4
 tmvg_esp32.menu.DebugLevel.verbose=Verbose
 tmvg_esp32.menu.DebugLevel.verbose.build.code_debug=5
 
+# Using the legacy TMVG_ESP32
+
+tmvg_esp32.build.defines={build.tmvgdefs} {build.tmvgcustom} {tmvg.subtype}
+
 ##############################################################
 
-pw_wshare.name=PW Waveshare LCD
-pw_wshare.vid.0=0x303a
-pw_wshare.pid.0=0x8231
-pw_wshare.upload_port.0.vid=0x303a
-pw_wshare.upload_port.0.pid=0x8231
+tmvg_wsharelcd.name=TMVG Waveshare LCD
+tmvg_wsharelcd.build.tmvgdefs=-DTMVG_PROJECT
+tmvg_wsharelcd.build.tmvgcustom=-DTMVG_WAVESHARE_LCDB -DTMVG_LITTLEFS
 
-pw_wshare.bootloader.tool=esptool_py
-pw_wshare.bootloader.tool.default=esptool_py
+tmvg_wsharelcd.vid.0=0x303a
+tmvg_wsharelcd.pid.0=0x8231
+tmvg_wsharelcd.upload_port.0.vid=0x303a
+tmvg_wsharelcd.upload_port.0.pid=0x8231
 
-pw_wshare.upload.tool=esptool_py
-pw_wshare.upload.tool.default=esptool_py
-pw_wshare.upload.tool.network=esp_ota
+tmvg_wsharelcd.bootloader.tool=esptool_py
+tmvg_wsharelcd.bootloader.tool.default=esptool_py
 
-pw_wshare.upload.maximum_size=4718592
+tmvg_wsharelcd.upload.tool=esptool_py
+tmvg_wsharelcd.upload.tool.default=esptool_py
+tmvg_wsharelcd.upload.tool.network=esp_ota
+tmvg_wsharelcd.upload.maximum_size=4718592
+tmvg_wsharelcd.upload.maximum_data_size=327680
+tmvg_wsharelcd.upload.flags=
+tmvg_wsharelcd.upload.extra_flags=
+tmvg_wsharelcd.upload.use_1200bps_touch=false
+tmvg_wsharelcd.upload.wait_for_upload_port=false
+tmvg_wsharelcd.upload.speed=921600
 
-pw_wshare.upload.maximum_data_size=327680
-pw_wshare.upload.flags=
-pw_wshare.upload.extra_flags=
-pw_wshare.upload.use_1200bps_touch=false
-pw_wshare.upload.wait_for_upload_port=false
+tmvg_wsharelcd.serial.disableDTR=false
+tmvg_wsharelcd.serial.disableRTS=false
 
-pw_wshare.serial.disableDTR=false
-pw_wshare.serial.disableRTS=false
+tmvg_wsharelcd.build.tarch=xtensa
+tmvg_wsharelcd.build.bootloader_addr=0x0
+tmvg_wsharelcd.build.target=esp32s3
+tmvg_wsharelcd.build.mcu=esp32s3
+tmvg_wsharelcd.build.core=esp32
+tmvg_wsharelcd.build.variant=waveshare_esp32_s3_touch_lcd_43b
+tmvg_wsharelcd.build.board=WAVESHARE_ESP32_S3_TOUCH_LCD_43B
 
-pw_wshare.build.tarch=xtensa
-pw_wshare.build.bootloader_addr=0x0
-pw_wshare.build.target=esp32s3
-pw_wshare.build.mcu=esp32s3
-pw_wshare.build.core=esp32
-pw_wshare.build.variant=waveshare_esp32_s3_touch_lcd_43b
-pw_wshare.build.board=WAVESHARE_ESP32_S3_TOUCH_LCD_43B
+tmvg_wsharelcd.build.usb_mode=1
+tmvg_wsharelcd.build.cdc_on_boot=1
+tmvg_wsharelcd.build.msc_on_boot=0
+tmvg_wsharelcd.build.dfu_on_boot=0
+tmvg_wsharelcd.build.f_cpu=240000000L
+tmvg_wsharelcd.build.flash_size=16MB
+tmvg_wsharelcd.build.flash_freq=80m
+tmvg_wsharelcd.build.flash_mode=qio
+tmvg_wsharelcd.build.boot=qio
+tmvg_wsharelcd.build.boot_freq=80m
 
-pw_wshare.build.usb_mode=1
-pw_wshare.build.cdc_on_boot=1
-pw_wshare.build.msc_on_boot=0
-pw_wshare.build.dfu_on_boot=0
-pw_wshare.build.f_cpu=240000000L
-pw_wshare.build.flash_size=16MB
-pw_wshare.build.flash_freq=80m
-pw_wshare.build.flash_mode=dio
-pw_wshare.build.boot=qio
-pw_wshare.build.boot_freq=80m
-pw_wshare.build.partitions=large_spiffs_16MB
-pw_wshare.build.loop_core=
-pw_wshare.build.event_core=
-pw_wshare.build.psram_type=qspi
-pw_wshare.build.memory_type={build.boot}_{build.psram_type}
+tmvg_wsharelcd.build.psram_type=opi
+tmvg_wsharelcd.build.psram_defines=-DBOARD_HAS_PSRAM
+tmvg_wsharelcd.build.memory_type={build.boot}_{build.psram_type}
 
-pw_wshare.menu.PSRAM.enabled=Enabled
-pw_wshare.menu.PSRAM.enabled.build.psram_defines=-DBOARD_HAS_PSRAM
-pw_wshare.menu.PSRAM.enabled.build.psram_type=opi
-pw_wshare.menu.PSRAM.disabled=Disabled
-pw_wshare.menu.PSRAM.disabled.build.psram_defines=
-pw_wshare.menu.PSRAM.disabled.build.psram_type=qspi
+tmvg_wsharelcd.build.partitions=large_spiffs_16MB
 
-## menu.PETE=Willow Options
-## pw_wshare.menu.PETE.disabled=Disabled
-## pw_wshare.menu.PETE.disabled.build.defines=-DBELLE
-## pw_wshare.menu.PETE.enabled=Enabled
-## pw_wshare.menu.PETE.enabled.build.defines=-DWILLOW
+tmvg_wsharelcd.build.loop_core=-DARDUINO_RUNNING_CORE=1
+tmvg_wsharelcd.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
+
+tmvg_wsharelcd.menu.DebugLevel.none=None
+tmvg_wsharelcd.menu.DebugLevel.none.build.code_debug=0
+tmvg_wsharelcd.menu.DebugLevel.error=Error
+tmvg_wsharelcd.menu.DebugLevel.error.build.code_debug=1
+tmvg_wsharelcd.menu.DebugLevel.warn=Warn
+tmvg_wsharelcd.menu.DebugLevel.warn.build.code_debug=2
+tmvg_wsharelcd.menu.DebugLevel.info=Info
+tmvg_wsharelcd.menu.DebugLevel.info.build.code_debug=3
+tmvg_wsharelcd.menu.DebugLevel.debug=Debug
+tmvg_wsharelcd.menu.DebugLevel.debug.build.code_debug=4
+tmvg_wsharelcd.menu.DebugLevel.verbose=Verbose
+tmvg_wsharelcd.menu.DebugLevel.verbose.build.code_debug=5
 
 
-pw_wshare.menu.FlashMode.qio=QIO 80MHz
-pw_wshare.menu.FlashMode.qio.build.flash_mode=dio
-pw_wshare.menu.FlashMode.qio.build.boot=qio
-pw_wshare.menu.FlashMode.qio.build.boot_freq=80m
-pw_wshare.menu.FlashMode.qio.build.flash_freq=80m
-pw_wshare.menu.FlashMode.qio120=QIO 120MHz
-pw_wshare.menu.FlashMode.qio120.build.flash_mode=dio
-pw_wshare.menu.FlashMode.qio120.build.boot=qio
-pw_wshare.menu.FlashMode.qio120.build.boot_freq=120m
-pw_wshare.menu.FlashMode.qio120.build.flash_freq=80m
+# The FQDN will have TMVGRevision=v1, the 'version 1' is shown in the menu
 
-pw_wshare.menu.LoopCore.1=Core 1
-pw_wshare.menu.LoopCore.1.build.loop_core=-DARDUINO_RUNNING_CORE=1
-pw_wshare.menu.LoopCore.0=Core 0
-pw_wshare.menu.LoopCore.0.build.loop_core=-DARDUINO_RUNNING_CORE=0
+tmvg_wsharelcd.menu.TMVGRevision.v2=version 2
 
-pw_wshare.menu.EventsCore.1=Core 1
-pw_wshare.menu.EventsCore.1.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
-pw_wshare.menu.EventsCore.0=Core 0
-pw_wshare.menu.EventsCore.0.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=0
-
-pw_wshare.menu.USBMode.hwcdc=Hardware CDC and JTAG
-pw_wshare.menu.USBMode.hwcdc.build.usb_mode=1
-pw_wshare.menu.USBMode.default=USB-OTG (TinyUSB)
-pw_wshare.menu.USBMode.default.build.usb_mode=0
-
-pw_wshare.menu.CDCOnBoot.default=Enabled
-pw_wshare.menu.CDCOnBoot.default.build.cdc_on_boot=1
-pw_wshare.menu.CDCOnBoot.cdc=Disabled
-pw_wshare.menu.CDCOnBoot.cdc.build.cdc_on_boot=0
-
-pw_wshare.menu.MSCOnBoot.default=Disabled
-pw_wshare.menu.MSCOnBoot.default.build.msc_on_boot=0
-pw_wshare.menu.MSCOnBoot.msc=Enabled (Requires USB-OTG Mode)
-pw_wshare.menu.MSCOnBoot.msc.build.msc_on_boot=1
-
-pw_wshare.menu.DFUOnBoot.default=Disabled
-pw_wshare.menu.DFUOnBoot.default.build.dfu_on_boot=0
-pw_wshare.menu.DFUOnBoot.dfu=Enabled (Requires USB-OTG Mode)
-pw_wshare.menu.DFUOnBoot.dfu.build.dfu_on_boot=1
-
-pw_wshare.menu.UploadMode.default=UART0 / Hardware CDC
-pw_wshare.menu.UploadMode.default.upload.use_1200bps_touch=false
-pw_wshare.menu.UploadMode.default.upload.wait_for_upload_port=false
-pw_wshare.menu.UploadMode.cdc=USB-OTG CDC (TinyUSB)
-pw_wshare.menu.UploadMode.cdc.upload.use_1200bps_touch=true
-pw_wshare.menu.UploadMode.cdc.upload.wait_for_upload_port=true
-
-pw_wshare.menu.CPUFreq.240=240MHz (WiFi)
-pw_wshare.menu.CPUFreq.240.build.f_cpu=240000000L
-pw_wshare.menu.CPUFreq.160=160MHz (WiFi)
-pw_wshare.menu.CPUFreq.160.build.f_cpu=160000000L
-pw_wshare.menu.CPUFreq.80=80MHz (WiFi)
-pw_wshare.menu.CPUFreq.80.build.f_cpu=80000000L
-pw_wshare.menu.CPUFreq.40=40MHz
-pw_wshare.menu.CPUFreq.40.build.f_cpu=40000000L
-pw_wshare.menu.CPUFreq.20=20MHz
-pw_wshare.menu.CPUFreq.20.build.f_cpu=20000000L
-pw_wshare.menu.CPUFreq.10=10MHz
-pw_wshare.menu.CPUFreq.10.build.f_cpu=10000000L
-
-pw_wshare.menu.UploadSpeed.921600=921600
-pw_wshare.menu.UploadSpeed.921600.upload.speed=921600
-pw_wshare.menu.UploadSpeed.115200=115200
-pw_wshare.menu.UploadSpeed.115200.upload.speed=115200
-pw_wshare.menu.UploadSpeed.256000.windows=256000
-pw_wshare.menu.UploadSpeed.256000.upload.speed=256000
-pw_wshare.menu.UploadSpeed.230400.windows.upload.speed=256000
-pw_wshare.menu.UploadSpeed.230400=230400
-pw_wshare.menu.UploadSpeed.230400.upload.speed=230400
-pw_wshare.menu.UploadSpeed.460800.linux=460800
-pw_wshare.menu.UploadSpeed.460800.macosx=460800
-pw_wshare.menu.UploadSpeed.460800.upload.speed=460800
-pw_wshare.menu.UploadSpeed.512000.windows=512000
-pw_wshare.menu.UploadSpeed.512000.upload.speed=512000
-
-pw_wshare.menu.DebugLevel.none=None
-pw_wshare.menu.DebugLevel.none.build.code_debug=0
-pw_wshare.menu.DebugLevel.error=Error
-pw_wshare.menu.DebugLevel.error.build.code_debug=1
-pw_wshare.menu.DebugLevel.warn=Warn
-pw_wshare.menu.DebugLevel.warn.build.code_debug=2
-pw_wshare.menu.DebugLevel.info=Info
-pw_wshare.menu.DebugLevel.info.build.code_debug=3
-pw_wshare.menu.DebugLevel.debug=Debug
-pw_wshare.menu.DebugLevel.debug.build.code_debug=4
-pw_wshare.menu.DebugLevel.verbose=Verbose
-pw_wshare.menu.DebugLevel.verbose.build.code_debug=5
-
-pw_wshare.menu.EraseFlash.none=Disabled
-pw_wshare.menu.EraseFlash.none.upload.erase_cmd=
-pw_wshare.menu.EraseFlash.all=Enabled
-pw_wshare.menu.EraseFlash.all.upload.erase_cmd=-e
-
-#pw_wshare.build.defines=-DTMVG_WAVESHARE_LCDB -DTMVG_LITTLEFS
-
-pw_wshare.build.defines={build.psram_defines} -DTMVG_WAVESHARE_LCDB -DTMVG_SPIFFS
+tmvg_wsharelcd.build.defines={build.tmvgdefs} {build.tmvgcustom} {build.psram_defines}
 
 ##############################################################
 
 tmvg_esp32s3.name=TMVG ESP32S3
+
+tmvg_esp32s3.build.tmvgdefs=-DTMVG_PROJECT
+tmvg_esp32s3.build.tmvgcustom=-DTMVG_ESP32S3 -DTMVG_RS485 -DTMVG_LITTLEFS
 
 tmvg_esp32s3.bootloader.tool=esptool_py
 tmvg_esp32s3.bootloader.tool.default=esptool_py
@@ -271,34 +194,27 @@ tmvg_esp32s3.build.target=esp32s3
 tmvg_esp32s3.build.mcu=esp32s3
 tmvg_esp32s3.build.core=esp32
 tmvg_esp32s3.build.variant=esp32s3
-tmvg_esp32s3.build.board=gadgets3
+tmvg_esp32s3.build.board=TMVG_S3
 
 tmvg_esp32s3.build.usb_mode=1
-tmvg_esp32s3.build.cdc_on_boot=0
+tmvg_esp32s3.build.cdc_on_boot=1
 tmvg_esp32s3.build.msc_on_boot=0
 tmvg_esp32s3.build.dfu_on_boot=0
 tmvg_esp32s3.build.f_cpu=240000000L
 tmvg_esp32s3.build.flash_size=16MB
 tmvg_esp32s3.build.flash_freq=80m
-tmvg_esp32s3.build.flash_mode=dio
+tmvg_esp32s3.build.flash_mode=qio
 tmvg_esp32s3.build.boot=qio
 tmvg_esp32s3.build.boot_freq=80m
-tmvg_esp32s3.build.defines={build.psram_defines}
-tmvg_esp32s3.build.psram_type=qspi
+
+tmvg_esp32s3.build.psram_type=opi
+tmvg_esp32s3.build.psram_defines=-DBOARD_HAS_PSRAM
 tmvg_esp32s3.build.memory_type={build.boot}_{build.psram_type}
 
 tmvg_esp32s3.build.partitions=large_spiffs_16MB
 
 tmvg_esp32s3.build.loop_core=-DARDUINO_RUNNING_CORE=1
 tmvg_esp32s3.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
-
-tmvg_esp32s3.build.psram_defines=-DBOARD_HAS_PSRAM
-tmvg_esp32s3.build.psram_type=opi
-
-tmvg_esp32s3.build.zigbee_mode=
-tmvg_esp32s3.build.zigbee_libs=
-
-tmvg_esp32s3.build.copy_jtag_files=0
 
 tmvg_esp32s3.menu.DebugLevel.none=None
 tmvg_esp32s3.menu.DebugLevel.none.build.code_debug=0
@@ -317,8 +233,8 @@ tmvg_esp32s3.menu.DebugLevel.verbose.build.code_debug=5
 
 tmvg_esp32s3.menu.TMVGRevision.v3=version 3
 
-# Using the ESP32S3 - has the RS485 transceiver
-
-tmvg_esp32s3.build.defines=-DTMVG_ESP32S3 -DTMVG_RS485 -DTMVG_LITTLEFS
+tmvg_esp32s3.build.defines={build.tmvgdefs} {build.tmvgcustom} {build.psram_defines}
 
 ####################################################################
+
+#build.common_tmvg_defines=-DPETE=1 -DWILLOW=2

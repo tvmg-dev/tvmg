@@ -1064,7 +1064,10 @@ void WebServer::setupAsyncServer()
             delete response;
             Networking::releaseNetworkMutex();
             request->send( 404 );
-        } else
+
+            PW_WARN( "GET %s failed, 404",LGSTATUS_LOG_HTML );
+        }
+        else
         {
             // The WebServer takes ownership of the 'response' pointer so will delete it on complete
             request->send(response);
@@ -1073,6 +1076,8 @@ void WebServer::setupAsyncServer()
       else
       {
          request->send(503, "text/plain", "Log File Busy");
+
+         PW_WARN( "Can't acquire nw mutex for %s GET",LGSTATUS_LOG_HTML );
       }
    });
 
@@ -1088,7 +1093,10 @@ void WebServer::setupAsyncServer()
             delete response;
             Networking::releaseNetworkMutex();
             request->send( 404 );
-        } else
+
+            PW_WARN( "GET %s failed, 404",LGSTATUS_LOG_HTML );
+        }
+        else
         {
             request->send(response);
         }
@@ -1096,6 +1104,8 @@ void WebServer::setupAsyncServer()
       else
       {
          request->send(503, "text/plain", "Rollover Log File Busy");
+
+         PW_WARN( "Can't acquire nw mutex for %s GET",LGSTATUS_LOG_HTML );
       }
    });
 
