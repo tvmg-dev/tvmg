@@ -128,9 +128,10 @@ tmvg_wsharelcd.build.cdc_on_boot=1
 tmvg_wsharelcd.build.msc_on_boot=0
 tmvg_wsharelcd.build.dfu_on_boot=0
 tmvg_wsharelcd.build.f_cpu=240000000L
+
 tmvg_wsharelcd.build.flash_size=16MB
 tmvg_wsharelcd.build.flash_freq=80m
-tmvg_wsharelcd.build.flash_mode=qio
+tmvg_wsharelcd.build.flash_mode=dio
 tmvg_wsharelcd.build.boot=qio
 tmvg_wsharelcd.build.boot_freq=80m
 
@@ -201,9 +202,10 @@ tmvg_esp32s3.build.cdc_on_boot=1
 tmvg_esp32s3.build.msc_on_boot=0
 tmvg_esp32s3.build.dfu_on_boot=0
 tmvg_esp32s3.build.f_cpu=240000000L
+
 tmvg_esp32s3.build.flash_size=16MB
 tmvg_esp32s3.build.flash_freq=80m
-tmvg_esp32s3.build.flash_mode=qio
+tmvg_esp32s3.build.flash_mode=dio
 tmvg_esp32s3.build.boot=qio
 tmvg_esp32s3.build.boot_freq=80m
 
