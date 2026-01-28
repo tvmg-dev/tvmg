@@ -108,6 +108,7 @@ tmvg_wsharelcd.upload.maximum_size=4718592
 tmvg_wsharelcd.upload.maximum_data_size=327680
 tmvg_wsharelcd.upload.flags=
 tmvg_wsharelcd.upload.extra_flags=
+tmvg_wsharelcd.upload.erase_cmd=
 tmvg_wsharelcd.upload.use_1200bps_touch=false
 tmvg_wsharelcd.upload.wait_for_upload_port=false
 tmvg_wsharelcd.upload.speed=921600

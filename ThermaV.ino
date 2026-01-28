@@ -355,8 +355,6 @@ void  configureModBus()
 void setupSerial()
 {
 #ifdef TMVG_ESP32
-   Serial.begin( 115200,SERIAL_8N1 );
-
    // The monitor board has a switch to disable serial as the port is used for
    // modbus.  This SERIAL_DISABLE_GPIO is the MTDO strapping pin of the ESP32
    // wroom device, which determines whether serial output is enabled on boot.
@@ -374,7 +372,7 @@ void setupSerial()
       setPinsOk = Serial.setPins( ALTERNATE_UART0_RX_GPIO,ALTERNATE_UART0_TX_GPIO );
    }
 
-//   Serial.setDebugOutput(true); from chip-debug-report.cpp
+//   Serial.setDebugOutput(true); // from chip-debug-report.cpp
 
    Serial.begin( 115200,SERIAL_8N1 );
 
@@ -788,7 +786,7 @@ void  handleDebugTests()
 
 // ---------------------------------------------------------------------
 // Conditionally override the ESP's shouldPrintChipDebugReport() so we get a report of
-// the devide info
+// the device info
 
 #if 0
 bool shouldPrintChipDebugReport(void)
