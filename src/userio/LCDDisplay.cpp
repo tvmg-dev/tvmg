@@ -1,4 +1,4 @@
-#ifndef TMVG_OLED
+#ifndef TVMG_OLED
 
 #include "src/core/utils.h"
 

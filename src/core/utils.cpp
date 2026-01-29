@@ -73,25 +73,23 @@ static int   numChars( char findChar,const char *str )
    return num;
 }
 
-void  replaceSpiffsFile( const String &origFile,const String &newFile )
+void  replaceFile( const String &origFile,const String &newFile )
 {
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-
-   if ( !spiffs )
+   if ( !tvmgFileSys )
    {
-      PW_WARN( "No spiffs, can't replace file" );
+      PW_WARN( "No FS, can't replace file" );
       return;
    }
 
    // First remove the original file, then we'll copy from the new file
    // back to the original
 
-   spiffs->remove( origFile );
+   tvmgFileSys.remove( origFile );
 
-   File ipFile = spiffs->open( newFile,"r" );
+   File ipFile = tvmgFileSys.open( newFile,"r" );
    if ( ipFile )
    {
-      File opFile = spiffs->open( origFile,"w" );
+      File opFile = tvmgFileSys.open( origFile,"w" );
       if ( opFile )
       {
          PW_MSG( "Replacing %s with %s",origFile,newFile );
@@ -118,9 +116,7 @@ cJSON *getAllSensorJSON()
 
    if ( iscJSONFileOk( SENSORS_FILENAME ) )
    {
-      fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-
-      File file = spiffs->open( SENSORS_FILENAME,FILE_READ );
+      File file = tvmgFileSys.open( SENSORS_FILENAME,FILE_READ );
       if ( !file )
       {
          PW_WARN( "%s is missing",SENSORS_FILENAME );
@@ -172,15 +168,13 @@ bool  iscJSONFileOk( const String &fileName )
 {
    bool  isOk = false;
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-
-   if ( !spiffs->exists( fileName ) )
+   if ( !tvmgFileSys || !tvmgFileSys.exists( fileName ) )
    {
       PW_WARN( "%s is missing",fileName.c_str() );
       return false;
    }
 
-   File file = spiffs->open( fileName,FILE_READ );
+   File file = tvmgFileSys.open( fileName,FILE_READ );
    if ( !file )
    {
       PW_WARN( "%s failed to open",fileName );

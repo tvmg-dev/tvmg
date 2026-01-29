@@ -265,7 +265,7 @@ public:
    bool sendEmailWithFileAsBody( const char *recipient,const char *subject,const char *fileName,bool fromSD );
 
 private:
-   static void fileCallbackForSPIFFS(File &file, const char *path, readymail_file_operating_mode mode);
+   static void fileCallbackForFS(File &file, const char *path, readymail_file_operating_mode mode);
    static void fileCallbackForSD(File &file, const char *path, readymail_file_operating_mode mode);
 
    String   setupConnection( const NetworkMutexGuard &guard,const char *recipient,const char *subject,SMTPMessage *smtpMsg );
@@ -312,20 +312,20 @@ void  Emailer::initialise( const String &mdnsName )
    PW_DEBUG( "Email : Host %s [%d] - %s %s",m_host,m_port,m_account.c_str(),m_password.c_str() );
 }
 
-void Emailer::fileCallbackForSPIFFS(File &file, const char *path, readymail_file_operating_mode mode)
+void Emailer::fileCallbackForFS(File &file, const char *path, readymail_file_operating_mode mode)
 {
    bool isValid = false;
 
-   PW_DEBUG( "SPIFFS File callback %s %d",path,mode );
+   PW_DEBUG( "FS File callback %s %d",path,mode );
 
    switch (mode)
    {
       case readymail_file_mode_open_read:
          file.close();
          readyMailFile.close();
-         if ( SPIFFS.exists( path ) )
+         if ( tvmgFileSys.exists( path ) )
          {
-            readyMailFile = SPIFFS.open( path,FILE_OPEN_MODE_READ );
+            readyMailFile = tvmgFileSys.open( path,FILE_OPEN_MODE_READ );
 
             if ( readyMailFile && readyMailFile.size() )
             {
@@ -337,11 +337,11 @@ void Emailer::fileCallbackForSPIFFS(File &file, const char *path, readymail_file
 
          if ( !isValid )
          {
-            PW_ERROR( "SPIFFS File callback failed %s %d",path,mode );
+            PW_ERROR( "FS File callback failed %s %d",path,mode );
          }
          else
          {
-            PW_DEBUG( "SPIFFS File callback ok %s %d",path,mode );
+            PW_DEBUG( "FS File callback ok %s %d",path,mode );
          }
          break;
       default:
@@ -516,7 +516,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       return false;
    }
 
-   if ( !(fromSD ? SD.exists( fileName ) : SPIFFS.exists( fileName )) )
+   if ( !(fromSD ? SD.exists( fileName ) : tvmgFileSys.exists( fileName )) )
    {
       PW_WARN( "%s doesn't exist",fileName );
       return false;
@@ -546,7 +546,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       }
       else
       {
-         attachment.attach_file.callback = fileCallbackForSPIFFS;
+         attachment.attach_file.callback = fileCallbackForFS;
       }
 
       attachment.attach_file.path = fileName;
@@ -577,7 +577,7 @@ bool Emailer::sendEmailWithFileAsBody( const char *recipient,const char *subject
       return false;
    }
 
-   if ( !(fromSD ? SD.exists( fileName ) : SPIFFS.exists( fileName )) )
+   if ( !(fromSD ? SD.exists( fileName ) : tvmgFileSys.exists( fileName )) )
    {
       PW_WARN( "%s doesn't exist",fileName );
       return false;
@@ -599,7 +599,7 @@ bool Emailer::sendEmailWithFileAsBody( const char *recipient,const char *subject
       }
       else
       {
-         smtpMsg.html.body( fileName,fileCallbackForSPIFFS );
+         smtpMsg.html.body( fileName,fileCallbackForFS );
       }
 
       if ( smtp->send( smtpMsg ) )

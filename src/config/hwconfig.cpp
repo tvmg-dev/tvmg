@@ -119,7 +119,7 @@ HardwareConfig WaveshareLCD =
    false          // has SD card
 };
 
-HardwareConfig ESP32S3Gadget =
+HardwareConfig ESP32S3Rs485 =
 {
    10,            // OneWireGPIO
    1,             // ModBusSerial - use port 1 for real serial
@@ -137,8 +137,6 @@ HardwareConfig ESP32S3Gadget =
    false          // has SD card
 };
 
-
-
 #define  TNODE_BOARD_FILE     "/tnode.hid"
 #define  MASTER_BOARD_FILE    "/master.hid"
 #define  EXTERNAL_BOARD_FILE  "/external.hid"
@@ -150,54 +148,45 @@ HardwareConfig *hwConfig = nullptr;
 
 void  selectHardware()
 {
-   fs::SPIFFSFS   *spiffs = nullptr;
-
    PW_MSG( "Board selection..." );
-   if ( !Config::instance() )
+
+#if defined(TVMG_WAVESHARE_LCDB)
+   PW_MSG( "Waveshare LCD" );
+   hwConfig = &WaveshareLCD;
+#elif defined(TVMG_ESP32S3) && defined(TVMG_RS485)
+   PW_MSG( "ESP32S3 with RS485" );
+   hwConfig = &ESP32S3Rs485;
+#else
+   // Must be an older ESP32 board - runtime detect based on file
+   // in filesystem
+
+   if ( !Config::instance() || ! tvmgFileSys )
    {
       PW_WARN( "No Config available" );
    }
-   else if ( ! (spiffs = Config::instance()->getSPIFFS() ) )
+   else if ( tvmgFileSys.exists( MASTER_BOARD_FILE ) )
    {
-      PW_WARN( "No SPIFFS" );
+      PW_MSG( "Master Device" );
+      hwConfig = &MasterDevice;
    }
-   else
+   else if ( tvmgFileSys.exists( EXTERNAL_BOARD_FILE ) )
    {
-      spiffs = Config::instance()->getSPIFFS();
-
-      if ( spiffs->exists( WAVESHARE_LCD_FILE ) )
-      {
-         PW_MSG( "Waveshare LCD" );
-         hwConfig = &WaveshareLCD;
-      }
-      else if ( spiffs->exists( MASTER_BOARD_FILE ) )
-      {
-         PW_MSG( "Master Device" );
-         hwConfig = &MasterDevice;
-      }
-      else if ( spiffs->exists( EXTERNAL_BOARD_FILE ) )
-      {
-         PW_MSG( "External Board" );
-         hwConfig = &ExternalBoard;
-      }
-      else if ( spiffs->exists( MONITOR_BOARD_FILE ) )
-      {
-         PW_MSG( "Monitor Board" );
-         hwConfig = &MonitorBoard;
-      }
-      else if ( spiffs->exists( TNODE_BOARD_FILE ) )
-      {
-         PW_MSG( "TNode" );
-         hwConfig = &TemperatureNode;
-      }
-      else if ( spiffs->exists( ESP32S3_FILE ) )
-      {
-         PW_MSG( "ESP32S3" );
-         hwConfig = &ESP32S3Gadget;
-      }
+      PW_MSG( "External Board" );
+      hwConfig = &ExternalBoard;
    }
+   else if ( tvmgFileSys.exists( MONITOR_BOARD_FILE ) )
+   {
+      PW_MSG( "Monitor Board" );
+      hwConfig = &MonitorBoard;
+   }
+   else if ( tvmgFileSys.exists( TNODE_BOARD_FILE ) )
+   {
+      PW_MSG( "TNode" );
+      hwConfig = &TemperatureNode;
+   }
+#endif
 
-#ifdef TMVG_OLED
+#ifdef TVMG_OLED
    if ( !hwConfig )
    {
       PW_MSG( "No board file - default to TNode" );
@@ -207,7 +196,7 @@ void  selectHardware()
    if ( !hwConfig )
    {
       PW_MSG( "No board file - default to ESP32S3" );
-      hwConfig = &ESP32S3Gadget;
+      hwConfig = &ESP32S3Rs485;
    }
 #endif
 

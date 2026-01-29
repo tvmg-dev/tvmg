@@ -627,33 +627,31 @@ void  Measurement::sendDailyUpdate()
 
    // Now send the LG data if we have it (finalise the HTML first)
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-
-   if ( !spiffs )
+   if ( !tvmgFileSys )
    {
-      PW_WARN( "No spiffs" );
+      PW_WARN( "No FS" );
       return;
    }
 
-   if ( m_heatPump && spiffs->exists( LGSTATUS_LOG_HTML ) )
+   if ( m_heatPump && tvmgFileSys.exists( LGSTATUS_LOG_HTML ) )
    {
       m_heatPump->finaliseHTML();
       m_networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log",LGSTATUS_LOG_HTML );
    }
 
    // remove yesterday's and we rename current status to yesterday's.
-   if ( !spiffs->remove( LGSTATUS_YESTERDAY ) )
+   if ( !tvmgFileSys.remove( LGSTATUS_YESTERDAY ) )
    {
       PW_WARN( "Failed to remove %s",LGSTATUS_YESTERDAY );
    }
 
-   if ( !spiffs->rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY ) )
+   if ( !tvmgFileSys.rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY ) )
    {
       PW_WARN( "Failed to rename %s to %s",LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
    }
 
    // Send the register log if it exists
-   if ( spiffs->exists( LGREGISTERS_LOG ) )
+   if ( tvmgFileSys.exists( LGREGISTERS_LOG ) )
    {
       m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                         "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG );

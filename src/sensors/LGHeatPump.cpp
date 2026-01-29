@@ -95,7 +95,7 @@ static std::map<float_t,float_t> r32Lookup = {
 // formatting we limit to 140 KB (280 KB from ~ 330 KB total)
 
 #define PADDED_HTML_LINE_LEN  300
-#ifdef TMVG_SPIFFS
+#ifdef TVMG_SPIFFS
    #define MAX_LG_EVENTS         480      // 20 events per hour ~ 140KB
 #else
    #define MAX_LG_EVENTS         600      // 25 events per hour ~ 180KB
@@ -238,12 +238,11 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
       }
    }
 
-   if ( m_series )
+   if ( m_series && tvmgFileSys )
    {
       // Parse the /lg.dat file for info
 
-      fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-      File file = spiffs->open( "/lg.dat",FILE_READ );
+      File file = tvmgFileSys.open( "/lg.dat",FILE_READ );
       if ( !file )
       {
          PW_WARN( "/lg.dat is missing" );
@@ -332,9 +331,9 @@ void LGHeatPump::initialise()
 
    m_currentStatus.m_updates = 0;
 
-   if ( Config::instance()->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
+   if ( tvmgFileSys.exists( LGSTATUS_LOG_HTML ) )
    {
-      File file = Config::instance()->getSPIFFS()->open( LGSTATUS_LOG_HTML,FILE_APPEND );
+      File file = tvmgFileSys.open( LGSTATUS_LOG_HTML,FILE_APPEND );
       if ( file )
       {
          int size = file.size();
@@ -544,7 +543,7 @@ void LGHeatPump::logModbusRegisters()
 
       lgSample.reserve( paddedSize );
 
-      File file = Config::instance()->getSPIFFS()->open( LGREGISTERS_LOG,FILE_APPEND );
+      File file = tvmgFileSys.open( LGREGISTERS_LOG,FILE_APPEND );
       if ( file && file.size() < MAX_LGREG_FILE_SIZE )
       {
          START_TIMING( "Write LG data" );
@@ -969,7 +968,7 @@ void  LGHeatPump::writeStatusToHtml()
 
    // Add the header if a new file
    bool addHeader = false;
-   if ( ! Config::instance()->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
+   if ( ! tvmgFileSys.exists( LGSTATUS_LOG_HTML ) )
    {
       addHeader = true;
    }
@@ -979,7 +978,7 @@ void  LGHeatPump::writeStatusToHtml()
    {
       // output to the file
 
-      File file = Config::instance()->getSPIFFS()->open( LGSTATUS_LOG_HTML,FILE_APPEND );
+      File file = tvmgFileSys.open( LGSTATUS_LOG_HTML,FILE_APPEND );
       if ( !file )
       {
          PW_WARN( "Failed to open %s",LGSTATUS_LOG_HTML );
@@ -1016,7 +1015,7 @@ void  LGHeatPump::writeStatusToHtml()
 
 void LGHeatPump::finaliseHTML()
 {
-   File file = Config::instance()->getSPIFFS()->open( LGSTATUS_LOG_HTML,FILE_APPEND );
+   File file = tvmgFileSys.open( LGSTATUS_LOG_HTML,FILE_APPEND );
    if ( file )
    {
       char buffer[ sizeof( emailFooterTemplate ) + 16 ];

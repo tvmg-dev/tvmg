@@ -2,7 +2,7 @@ const char manager_html[] = R"rawliteral(
 <!DOCTYPE HTML>
 <html lang="en">
  <head>
-  <title>TMVG Manager</title>
+  <title>TVMG Manager</title>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   %STYLE%
@@ -90,7 +90,7 @@ const char manager_html[] = R"rawliteral(
    </fieldset>
 
    <fieldset>
-    <legend>Filesystem (%SPIFFS_USED_BYTES% / %SPIFFS_TOTAL_BYTES%)</legend>
+    <legend>Filesystem (%FS_USED_BYTES% / %FS_TOTAL_BYTES%)</legend>
     <div style="max-height: 120px; overflow-y: auto; background: #fafafa; border: 1px solid #eee; padding: 4px; border-radius: 3px;">
       %LISTEN_FILES%
     </div>

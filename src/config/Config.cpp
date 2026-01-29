@@ -1,4 +1,5 @@
 #include <Preferences.h>
+
 #include <map>
 #include <rtc.h>
 #include <soc/rtc.h>
@@ -162,36 +163,32 @@ char *getRegistryString( char *key )
 Config::Config( char *fileName )
       : m_isRegistryOk( false ),
         m_wasFastReboot( false ),
-        m_spiffs( &SPIFFS ),
         m_configFileName()
 {
    // Nothing in the registry yet...
 
    Config::numRegistryEntries = 0;
 
-   // Instantiate spiffs for config file
-   if ( !m_spiffs )
-   {
-      PW_ERROR( "No SPIFFS available" );
-   }
-   else
-   {
-      // Start spiffs, may format filesystem if new board
+   // Start FS, may format filesystem if new board - need some thought on this
+   // Alert the user and request a format.
 
-      m_spiffs->begin( true );
-      PW_MSG( "Config():" );
-      PW_MSG( "  SPIFFS : used %d of %d",m_spiffs->usedBytes(),m_spiffs->totalBytes() );
-      PW_MSG( "  Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
-      PW_MSG( "  Firmware %s",k_versionStr );
+   tvmgFileSys.begin( true );
+
+   if ( tvmgFileSys )
+   {
+      PW_MSG( "Filesystem is ok" );
    }
+
+   PW_MSG( "Config():" );
+   PW_MSG( "  FS : used %d of %d",tvmgFileSys.usedBytes(),tvmgFileSys.totalBytes() );
+   PW_MSG( "  Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
+   PW_MSG( "  Firmware %s",k_versionStr );
 
    strncpy( m_configFileName,fileName,MAX_FILENAME );
 }
 
 Config::~Config()
 {
-  m_spiffs->end();
-  delete m_spiffs;
 }
 
 Config   *Config::instance( bool create )
@@ -216,20 +213,15 @@ bool Config::isRegistryAvailable()
    return( m_isRegistryOk );
 }
 
-fs::SPIFFSFS *Config::getSPIFFS()
-{
-   return( m_spiffs );
-}
-
 bool  Config::readRegistryFromFile( void )
 {
-   if ( !m_spiffs )
+   if ( !tvmgFileSys )
    {
-      PW_WARN( "readFromFile() : No SPIFFS !" );
+      PW_WARN( "readFromFile() : No filesystem !" );
       return false;
    }
 
-   File file = m_spiffs->open( m_configFileName,FILE_READ );
+   File file = tvmgFileSys.open( m_configFileName,FILE_READ );
 
    if ( !file )
    {

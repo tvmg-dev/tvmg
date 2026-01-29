@@ -113,11 +113,6 @@ const char status_html[] = R"rawliteral(
 </html>
 )rawliteral";
 
-// this will be executing on the second CPU core, so probably hazards with
-// SPIFFS here - should probably mutex it
-
-static fs::SPIFFSFS *s_spiffs = nullptr;
-
 // Need static here for web page template processing access
 
 static Networking *s_networking = nullptr;
@@ -158,7 +153,7 @@ void resetFS()
    // can't map to any other extension, would need a map somewhere but
    // good enough for now.
 
-   File root = s_spiffs->open( "/" );
+   File root = tvmgFileSys.open( "/" );
 
    while (true)
    {
@@ -176,7 +171,7 @@ void resetFS()
             String newName = fileName;
             newName.replace( DEFAULT_EXTENSION,".dat" );
 
-            replaceSpiffsFile( newName,fileName );
+            replaceFile( newName,fileName );
          }
 
          entry.close();
@@ -231,14 +226,14 @@ String convertFileSize(const size_t bytes)
    }
 }
 
-String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
+String listDir(TVMGFileSystem &fs, const char * dirname, uint8_t levels)
 {
   filesDropdownOptions = "";
   String listenFiles = "<table><tr><th id=\"first_td_th\">Folder: </th><th>";
   listenFiles += dirname;
   listenFiles += "</th></tr>";
 
-  File root = fs->open(dirname);
+  File root = fs.open(dirname);
   String fail = "";
   if(!root)
   {
@@ -269,7 +264,7 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
 
       if(levels)
       {
-        listDir(s_spiffs, file.name(), levels -1);
+        listDir(tvmgFileSys, file.name(), levels -1);
       }
     }
     else
@@ -298,10 +293,10 @@ String listDir(fs::FS *fs, const char * dirname, uint8_t levels)
   return listenFiles;
 }
 
-String readFile(fs::FS *fs, const char * path)
+String readFile(TVMGFileSystem &fs, const char * path)
 {
    String fileContent = "";
-   File file = fs->open(path, "r");
+   File file = fs.open(path, "r");
 
    if(!file || file.isDirectory())
    {
@@ -321,9 +316,9 @@ String readFile(fs::FS *fs, const char * path)
    return fileContent;
 }
 
-void writeFile(fs::FS *fs, const char * path, const char * message)
+void writeFile(TVMGFileSystem &fs, const char * path, const char * message)
 {
-   File file = fs->open(path, "w");
+   File file = fs.open(path, "w");
 
    if(!file)
    {
@@ -338,7 +333,7 @@ void uploadFile(AsyncWebServerRequest *request, String filename, size_t index, u
 {
   if(!index)
   {
-    request->_tempFile = s_spiffs->open("/" + filename, "w");
+    request->_tempFile = tvmgFileSys.open("/" + filename, "w");
   }
   if(len)
   {
@@ -465,24 +460,24 @@ String processor(const String& var)
   {
     return allowedExtensionsForEdit;
   }
-  if(var == "SPIFFS_FREE_BYTES")
+  if(var == "FS_FREE_BYTES")
   {
-    return convertFileSize((s_spiffs->totalBytes() - s_spiffs->usedBytes()));
+    return convertFileSize((tvmgFileSys.totalBytes() - tvmgFileSys.usedBytes()));
   }
 
-  if(var == "SPIFFS_USED_BYTES")
+  if(var == "FS_USED_BYTES")
   {
-    return convertFileSize(s_spiffs->usedBytes());
+    return convertFileSize(tvmgFileSys.usedBytes());
   }
 
-  if(var == "SPIFFS_TOTAL_BYTES")
+  if(var == "FS_TOTAL_BYTES")
   {
-     return convertFileSize( 0.75f * s_spiffs->totalBytes() );
+    return convertFileSize( tvmgFileSys.totalBytes() );
   }
 
   if(var == "LISTEN_FILES")
   {
-    return listDir(s_spiffs, "/", 0);
+    return listDir(tvmgFileSys, "/", 0);
   }
 
   if(var == "EDIT_FILES")
@@ -541,8 +536,8 @@ void notFound(AsyncWebServerRequest *request)
 class AsyncFileResponseWithMutex : public AsyncFileResponse
 {
 public:
-   AsyncFileResponseWithMutex( fs::FS &fs,const String& path,const String& contentType )
-            : AsyncFileResponse(fs, path, contentType)
+   AsyncFileResponseWithMutex( TVMGFileSystem &fs,const String& path,const String& contentType )
+            : AsyncFileResponse(fs.getFS(), path, contentType)
    {
    }
 
@@ -563,31 +558,33 @@ WebServer::WebServer( Networking *networking )
 {
    PW_DEBUG( "WebServer()" );
 
-   Config   *config = Config::instance();
-   s_spiffs = config->getSPIFFS();
-
-   assert( s_spiffs != 0 );
-
-   if ( GET_REGISTRY_INT( SHOW_ALL_FILES ) > 0 )
-   {
-      showAllFiles = true;
-   }
-
    s_networking = m_networking;
 
-   // Assign a random page for debugging if not set in config
-
-   m_hiddenPage = GET_REGISTRY_STRING( HIDDEN_WEB_PAGE );
-   if ( m_hiddenPage.indexOf( "debug" ) == -1 )
+   if ( !tvmgFileSys )
    {
-      randomSeed( analogRead( 0 ) );
-      int   ra = random( 1000000 );
-
-      m_hiddenPage = "/dbg-";
-      m_hiddenPage += String( ra,DEC );
+      PW_ERROR( "No filesystem for webserver" );
    }
+   else
+   {
+      if ( GET_REGISTRY_INT( SHOW_ALL_FILES ) > 0 )
+      {
+         showAllFiles = true;
+      }
 
-   PW_DEBUG( "Debug Page at %s",m_hiddenPage.c_str() );
+      // Assign a random page for debugging if not set in config
+
+      m_hiddenPage = GET_REGISTRY_STRING( HIDDEN_WEB_PAGE );
+      if ( m_hiddenPage.indexOf( "debug" ) == -1 )
+      {
+         randomSeed( analogRead( 0 ) );
+         int   ra = random( 1000000 );
+
+         m_hiddenPage = "/dbg-";
+         m_hiddenPage += String( ra,DEC );
+      }
+
+      PW_DEBUG( "Debug Page at %s",m_hiddenPage.c_str() );
+   }
 }
 
 WebServer::~WebServer()
@@ -830,7 +827,7 @@ void WebServer::setupAsyncServer()
 
       PW_DEBUG( "Editing %s",fileName.c_str() );
       savePath = fileName;
-      textareaContent = readFile(s_spiffs, fileName.c_str());
+      textareaContent = readFile(tvmgFileSys, fileName.c_str());
       request->send_P(200, "text/html", edit_html, processor);
    });
 
@@ -847,7 +844,7 @@ void WebServer::setupAsyncServer()
          if ( param && ( param->name() == String( param_edit_textarea ) ) )
          {
             PW_DEBUG( "Saving %d bytes to %s",param->value().length(),savePath.c_str() );
-            writeFile( s_spiffs, savePath.c_str(), param->value().c_str() );
+            writeFile( tvmgFileSys, savePath.c_str(), param->value().c_str() );
          }
       }
 
@@ -864,7 +861,7 @@ void WebServer::setupAsyncServer()
       String fileName = "/" + request->getParam(param_delete_path)->value();
       PW_DEBUG( "Deleting %s",fileName.c_str() );
 
-      if ( ! s_spiffs->remove(fileName.c_str()) )
+      if ( ! tvmgFileSys.remove(fileName.c_str()) )
       {
          PW_WARN( "Failed to delete %s",fileName.c_str() );
       }
@@ -882,7 +879,7 @@ void WebServer::setupAsyncServer()
       String fileName = "/" + request->getParam(param_download_path)->value();
       PW_DEBUG( "Downloading %s",fileName.c_str() );
 
-      m_downloadFile = s_spiffs->open( fileName,"r" );
+      m_downloadFile = tvmgFileSys.open( fileName,"r" );
 
       AsyncWebServerResponse *response = request->beginChunkedResponse("text/plain", [ & ](uint8_t *buffer, size_t maxLen, size_t index) mutable -> size_t {
 
@@ -1057,7 +1054,7 @@ void WebServer::setupAsyncServer()
       PW_DEBUG( "Get %s",LGSTATUS_LOG_HTML );
       if ( Networking::takeNetworkMutex(10000) == 1 )
       {
-         AsyncFileResponseWithMutex *response = new AsyncFileResponseWithMutex( SPIFFS,LGSTATUS_LOG_HTML,"text/html" );
+         AsyncFileResponseWithMutex *response = new AsyncFileResponseWithMutex( tvmgFileSys,LGSTATUS_LOG_HTML,"text/html" );
 
         if ( response->code() == 404 )
         {
@@ -1086,7 +1083,7 @@ void WebServer::setupAsyncServer()
       PW_DEBUG( "Get %s",LGSTATUS_YESTERDAY );
       if ( Networking::takeNetworkMutex(10000) == 1 )
       {
-         AsyncFileResponseWithMutex *response = new AsyncFileResponseWithMutex( SPIFFS,LGSTATUS_YESTERDAY,"text/html" );
+         AsyncFileResponseWithMutex *response = new AsyncFileResponseWithMutex( tvmgFileSys,LGSTATUS_YESTERDAY,"text/html" );
 
         if ( response->code() == 404 )
         {

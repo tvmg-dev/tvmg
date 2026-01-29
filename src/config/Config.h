@@ -1,9 +1,8 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
-#include <SPIFFS.h>
-
 #include "src/core/utils.h"
+#include "src/core/TVMGFS.h"
 #include "hwconfig.h"
 
 extern const char *k_versionStr;
@@ -68,7 +67,6 @@ public:
 
    void  initialise();
    bool  isRegistryAvailable();
-   fs::SPIFFSFS   *getSPIFFS();
 
    bool    isFactoryReset();
    void    setFactoryReset();
@@ -91,8 +89,6 @@ private:
 
    bool           m_isRegistryOk;
    bool           m_wasFastReboot;
-   fs::SPIFFSFS * m_spiffs;
    char           m_configFileName[ MAX_FILENAME + 1 ];
 };
-
 #endif

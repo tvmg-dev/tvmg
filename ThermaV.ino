@@ -354,7 +354,7 @@ void  configureModBus()
 
 void setupSerial()
 {
-#ifdef TMVG_ESP32
+#ifdef TVMG_ESP32
    // The monitor board has a switch to disable serial as the port is used for
    // modbus.  This SERIAL_DISABLE_GPIO is the MTDO strapping pin of the ESP32
    // wroom device, which determines whether serial output is enabled on boot.
@@ -380,11 +380,30 @@ void setupSerial()
 
    PW_DEBUG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
-#else
-   // should have CDC USB active
+#else    // ESP32S3's
+   // For COM port use on the S3 need CDC disabled
+#if defined(TVMG_WAVESHARE_LCDB)
+
+   #if ARDUINO_USB_CDC_ON_BOOT == 0
+      #error "Should have CDC enabled"
+   #endif
+
+   Serial.begin( 115200 );
+   while( !Serial );
+
+#elif defined(TVMG_ESP32S3) && defined(TVMG_RS485)
+
+   #if ARDUINO_USB_CDC_ON_BOOT == 1
+      #error "Should have CDC disabled"
+   #endif
 
    Serial.begin( 115200 );
    delay( 500 );
+
+#else
+   #error "Unknown serial setup"
+#endif
+
 #endif
 }
 
@@ -740,12 +759,12 @@ void handleDataLogs()
       }
    }
 
-   if ( config->getSPIFFS()->exists( LGSTATUS_LOG_HTML ) )
+   if ( tvmgFileSys.exists( LGSTATUS_LOG_HTML ) )
    {
       networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                         "LG Event Log",LGSTATUS_LOG_HTML );
    }
-   if ( config->getSPIFFS()->exists( LGREGISTERS_LOG ) )
+   if ( tvmgFileSys.exists( LGREGISTERS_LOG ) )
    {
       networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                         "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG );
@@ -804,7 +823,7 @@ void setup( void )
 
    setupSerial();
 
-   // Initialise our configuration, this will create SPIFFS if neeeded but not
+   // Initialise our configuration, this will create the filesystem if neeeded but not
    // the registry, then select the hardware.
 
    config = Config::instance( true );
@@ -965,7 +984,7 @@ void loop(void)
 
    bool  restartRequired = false;
 
-#ifndef TMVG_OLED
+#ifndef TVMG_OLED
    static uint8_t  count = 0;
    uint8_t         brightness = 16;
    if ( count++ % 2 )

@@ -94,11 +94,9 @@ LGHeatPumpSimulator::MaxRegisterAddresses LGHeatPumpSimulator::scanForMaxAddress
 {
    MaxRegisterAddresses mapping;
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-
    File file;
 
-   if ( !spiffs || !(file = spiffs->open( path,FILE_READ)) )
+   if ( !tvmgFileSys || !(file = tvmgFileSys.open( path,FILE_READ)) )
    {
       PW_ERROR( "Failed to open %s",path );
       m_recordIndex = -1;
@@ -201,11 +199,9 @@ LGHeatPumpSimulator::MaxRegisterAddresses LGHeatPumpSimulator::scanForMaxAddress
 
 void LGHeatPumpSimulator::updateModbusFromFile( const char* path )
 {
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-
    File file;
 
-   if ( !spiffs || !(file = spiffs->open( path,FILE_READ)) )
+   if ( !tvmgFileSys || !(file = tvmgFileSys.open( path,FILE_READ)) )
    {
       PW_ERROR( "Failed to open %s",path );
       m_recordIndex = -1;
@@ -293,15 +289,13 @@ void LGHeatPumpSimulator::initialise()
       return;
    }
 
-   fs::SPIFFSFS *spiffs = Config::instance()->getSPIFFS();
-
-   if ( !spiffs )
+   if ( !tvmgFileSys )
    {
-      PW_WARN( "No spiffs, can't simulate LG" );
+      PW_WARN( "No FS, can't simulate LG" );
       return;
    }
 
-   if ( spiffs->exists( LGREGISTERS_LOG ) )
+   if ( tvmgFileSys.exists( LGREGISTERS_LOG ) )
    {
       PW_MSG( "LG register log opened" );
 

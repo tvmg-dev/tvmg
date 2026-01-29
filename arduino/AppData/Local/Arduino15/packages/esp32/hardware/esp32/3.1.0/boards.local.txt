@@ -6,238 +6,236 @@
 ##
 ## Add a new custom menu item
 
-menu.TMVGadget=ThermaV Gadget Config
-menu.TMVGRevision=ThermaV Boards Revision
+menu.TVMGadget=ThermaV Gadget Config
+menu.TVMGRevision=ThermaV Boards Revision
 
 ##############################################################
 
-tmvg_esp32.name=TMVG ESP32 Gadget
-
-tmvg_esp32.build.tmvgdefs=-DTMVG_PROJECT
-tmvg_esp32.build.tmvgcustom=-DTMVG_ESP32 -DTMVG_SPIFFS -DTMVG_OLED
+tvmg_esp32.name=TVMG ESP32 Gadget
+tvmg_esp32.build.tmvgdefs=-DTVMG_PROJECT
+tvmg_esp32.build.tmvgcustom=-DTVMG_ESP32 -DTVMG_SPIFFS -DTVMG_OLED
 
 # Standard options
 
-tmvg_esp32.bootloader.tool=esptool_py
-tmvg_esp32.bootloader.tool.default=esptool_py
+tvmg_esp32.bootloader.tool=esptool_py
+tvmg_esp32.bootloader.tool.default=esptool_py
 
-tmvg_esp32.upload.tool=esptool_py
-tmvg_esp32.upload.tool.default=esptool_py
-tmvg_esp32.upload.tool.network=esp_ota
+tvmg_esp32.upload.tool=esptool_py
+tvmg_esp32.upload.tool.default=esptool_py
+tvmg_esp32.upload.tool.network=esp_ota
+tvmg_esp32.upload.maximum_size=1769472
+tvmg_esp32.upload.maximum_data_size=327680
+tvmg_esp32.upload.flags=
+tvmg_esp32.upload.extra_flags=
+tvmg_esp32.upload.speed=921600
+tvmg_esp32.upload.erase_cmd=
 
-tmvg_esp32.upload.maximum_size=1769472
-tmvg_esp32.upload.maximum_data_size=327680
-tmvg_esp32.upload.flags=
-tmvg_esp32.upload.extra_flags=
-tmvg_esp32.upload.speed=921600
-tmvg_esp32.upload.erase_cmd=
+tvmg_esp32.serial.disableDTR=true
+tvmg_esp32.serial.disableRTS=true
 
-tmvg_esp32.serial.disableDTR=true
-tmvg_esp32.serial.disableRTS=true
+tvmg_esp32.build.tarch=xtensa
+tvmg_esp32.build.bootloader_addr=0x1000
+tvmg_esp32.build.target=esp32
+tvmg_esp32.build.mcu=esp32
+tvmg_esp32.build.core=esp32
+tvmg_esp32.build.variant=esp32
+tvmg_esp32.build.board=gadget1
 
-tmvg_esp32.build.tarch=xtensa
-tmvg_esp32.build.bootloader_addr=0x1000
-tmvg_esp32.build.target=esp32
-tmvg_esp32.build.mcu=esp32
-tmvg_esp32.build.core=esp32
-tmvg_esp32.build.variant=esp32
-tmvg_esp32.build.board=gadget1
+tvmg_esp32.build.f_cpu=240000000L
+tvmg_esp32.build.flash_size=4MB
+tvmg_esp32.build.flash_freq=80m
+tvmg_esp32.build.flash_mode=dio
+tvmg_esp32.build.boot=dio
+tvmg_esp32.build.partitions=4MB_ota_512KB_spiffs
 
-tmvg_esp32.build.f_cpu=240000000L
-tmvg_esp32.build.flash_size=4MB
-tmvg_esp32.build.flash_freq=80m
-tmvg_esp32.build.flash_mode=dio
-tmvg_esp32.build.boot=dio
-tmvg_esp32.build.partitions=4MB_ota_512KB_spiffs
+tvmg_esp32.build.loop_core=-DARDUINO_RUNNING_CORE=1
+tvmg_esp32.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
 
-tmvg_esp32.build.loop_core=-DARDUINO_RUNNING_CORE=1
-tmvg_esp32.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
-
-tmvg_esp32.build.copy_jtag_files=0
+tvmg_esp32.build.copy_jtag_files=0
 
 # Menu to select board type, not really necessary
 
-tmvg_esp32.menu.TMVGadget.tnode=TNode
-tmvg_esp32.menu.TMVGadget.tnode.tmvg.subtype=-DTNODE
-tmvg_esp32.menu.TMVGadget.master=master
-tmvg_esp32.menu.TMVGadget.master.tmvg.subtype=-DMASTER
-tmvg_esp32.menu.TMVGadget.external=external
-tmvg_esp32.menu.TMVGadget.external.tmvg.subtype=-DEXTERNAL
+tvmg_esp32.menu.TVMGadget.tnode=TNode
+tvmg_esp32.menu.TVMGadget.tnode.tmvg.subtype=-DTNODE
+tvmg_esp32.menu.TVMGadget.master=master
+tvmg_esp32.menu.TVMGadget.master.tmvg.subtype=-DMASTER
+tvmg_esp32.menu.TVMGadget.external=external
+tvmg_esp32.menu.TVMGadget.external.tmvg.subtype=-DEXTERNAL
 
-# The FQDN will have TMVGRevision=v1, the 'version 1' is shown in the menu
+# The FQDN will have TVMGRevision=v1, the 'version 1' is shown in the menu
 
-tmvg_esp32.menu.TMVGRevision.v2=version 2
+tvmg_esp32.menu.TVMGRevision.v2=version 2
 
 # Debug selection
 
-tmvg_esp32.menu.DebugLevel.none=None
-tmvg_esp32.menu.DebugLevel.none.build.code_debug=0
-tmvg_esp32.menu.DebugLevel.error=Error
-tmvg_esp32.menu.DebugLevel.error.build.code_debug=1
-tmvg_esp32.menu.DebugLevel.warn=Warn
-tmvg_esp32.menu.DebugLevel.warn.build.code_debug=2
-tmvg_esp32.menu.DebugLevel.info=Info
-tmvg_esp32.menu.DebugLevel.info.build.code_debug=3
-tmvg_esp32.menu.DebugLevel.debug=Debug
-tmvg_esp32.menu.DebugLevel.debug.build.code_debug=4
-tmvg_esp32.menu.DebugLevel.verbose=Verbose
-tmvg_esp32.menu.DebugLevel.verbose.build.code_debug=5
+tvmg_esp32.menu.DebugLevel.none=None
+tvmg_esp32.menu.DebugLevel.none.build.code_debug=0
+tvmg_esp32.menu.DebugLevel.error=Error
+tvmg_esp32.menu.DebugLevel.error.build.code_debug=1
+tvmg_esp32.menu.DebugLevel.warn=Warn
+tvmg_esp32.menu.DebugLevel.warn.build.code_debug=2
+tvmg_esp32.menu.DebugLevel.info=Info
+tvmg_esp32.menu.DebugLevel.info.build.code_debug=3
+tvmg_esp32.menu.DebugLevel.debug=Debug
+tvmg_esp32.menu.DebugLevel.debug.build.code_debug=4
+tvmg_esp32.menu.DebugLevel.verbose=Verbose
+tvmg_esp32.menu.DebugLevel.verbose.build.code_debug=5
 
-# Using the legacy TMVG_ESP32
+# Using the legacy TVMG_ESP32
 
-tmvg_esp32.build.defines={build.tmvgdefs} {build.tmvgcustom} {tmvg.subtype}
-
-##############################################################
-
-tmvg_wsharelcd.name=TMVG Waveshare LCD
-tmvg_wsharelcd.build.tmvgdefs=-DTMVG_PROJECT
-tmvg_wsharelcd.build.tmvgcustom=-DTMVG_WAVESHARE_LCDB -DTMVG_LITTLEFS
-
-tmvg_wsharelcd.vid.0=0x303a
-tmvg_wsharelcd.pid.0=0x8231
-tmvg_wsharelcd.upload_port.0.vid=0x303a
-tmvg_wsharelcd.upload_port.0.pid=0x8231
-
-tmvg_wsharelcd.bootloader.tool=esptool_py
-tmvg_wsharelcd.bootloader.tool.default=esptool_py
-
-tmvg_wsharelcd.upload.tool=esptool_py
-tmvg_wsharelcd.upload.tool.default=esptool_py
-tmvg_wsharelcd.upload.tool.network=esp_ota
-tmvg_wsharelcd.upload.maximum_size=4718592
-tmvg_wsharelcd.upload.maximum_data_size=327680
-tmvg_wsharelcd.upload.flags=
-tmvg_wsharelcd.upload.extra_flags=
-tmvg_wsharelcd.upload.erase_cmd=
-tmvg_wsharelcd.upload.use_1200bps_touch=false
-tmvg_wsharelcd.upload.wait_for_upload_port=false
-tmvg_wsharelcd.upload.speed=921600
-
-tmvg_wsharelcd.serial.disableDTR=false
-tmvg_wsharelcd.serial.disableRTS=false
-
-tmvg_wsharelcd.build.tarch=xtensa
-tmvg_wsharelcd.build.bootloader_addr=0x0
-tmvg_wsharelcd.build.target=esp32s3
-tmvg_wsharelcd.build.mcu=esp32s3
-tmvg_wsharelcd.build.core=esp32
-tmvg_wsharelcd.build.variant=waveshare_esp32_s3_touch_lcd_43b
-tmvg_wsharelcd.build.board=WAVESHARE_ESP32_S3_TOUCH_LCD_43B
-
-tmvg_wsharelcd.build.usb_mode=1
-tmvg_wsharelcd.build.cdc_on_boot=1
-tmvg_wsharelcd.build.msc_on_boot=0
-tmvg_wsharelcd.build.dfu_on_boot=0
-tmvg_wsharelcd.build.f_cpu=240000000L
-
-tmvg_wsharelcd.build.flash_size=16MB
-tmvg_wsharelcd.build.flash_freq=80m
-tmvg_wsharelcd.build.flash_mode=dio
-tmvg_wsharelcd.build.boot=qio
-tmvg_wsharelcd.build.boot_freq=80m
-
-tmvg_wsharelcd.build.psram_type=opi
-tmvg_wsharelcd.build.psram_defines=-DBOARD_HAS_PSRAM
-tmvg_wsharelcd.build.memory_type={build.boot}_{build.psram_type}
-
-tmvg_wsharelcd.build.partitions=large_spiffs_16MB
-
-tmvg_wsharelcd.build.loop_core=-DARDUINO_RUNNING_CORE=1
-tmvg_wsharelcd.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
-
-tmvg_wsharelcd.menu.DebugLevel.none=None
-tmvg_wsharelcd.menu.DebugLevel.none.build.code_debug=0
-tmvg_wsharelcd.menu.DebugLevel.error=Error
-tmvg_wsharelcd.menu.DebugLevel.error.build.code_debug=1
-tmvg_wsharelcd.menu.DebugLevel.warn=Warn
-tmvg_wsharelcd.menu.DebugLevel.warn.build.code_debug=2
-tmvg_wsharelcd.menu.DebugLevel.info=Info
-tmvg_wsharelcd.menu.DebugLevel.info.build.code_debug=3
-tmvg_wsharelcd.menu.DebugLevel.debug=Debug
-tmvg_wsharelcd.menu.DebugLevel.debug.build.code_debug=4
-tmvg_wsharelcd.menu.DebugLevel.verbose=Verbose
-tmvg_wsharelcd.menu.DebugLevel.verbose.build.code_debug=5
-
-
-# The FQDN will have TMVGRevision=v1, the 'version 1' is shown in the menu
-
-tmvg_wsharelcd.menu.TMVGRevision.v2=version 2
-
-tmvg_wsharelcd.build.defines={build.tmvgdefs} {build.tmvgcustom} {build.psram_defines}
+tvmg_esp32.build.defines={build.tmvgdefs} {build.tmvgcustom} {tmvg.subtype}
 
 ##############################################################
 
-tmvg_esp32s3.name=TMVG ESP32S3
+tvmg_wsharelcd.name=TVMG Waveshare LCD
+tvmg_wsharelcd.build.tmvgdefs=-DTVMG_PROJECT
+tvmg_wsharelcd.build.tmvgcustom=-DTVMG_WAVESHARE_LCDB -DTVMG_LITTLEFS
 
-tmvg_esp32s3.build.tmvgdefs=-DTMVG_PROJECT
-tmvg_esp32s3.build.tmvgcustom=-DTMVG_ESP32S3 -DTMVG_RS485 -DTMVG_LITTLEFS
+tvmg_wsharelcd.vid.0=0x303a
+tvmg_wsharelcd.pid.0=0x8231
+tvmg_wsharelcd.upload_port.0.vid=0x303a
+tvmg_wsharelcd.upload_port.0.pid=0x8231
 
-tmvg_esp32s3.bootloader.tool=esptool_py
-tmvg_esp32s3.bootloader.tool.default=esptool_py
+tvmg_wsharelcd.bootloader.tool=esptool_py
+tvmg_wsharelcd.bootloader.tool.default=esptool_py
 
-tmvg_esp32s3.upload.tool=esptool_py
-tmvg_esp32s3.upload.tool.default=esptool_py
-tmvg_esp32s3.upload.tool.network=esp_ota
-tmvg_esp32s3.upload.maximum_size=4718592
-tmvg_esp32s3.upload.maximum_data_size=327680
-tmvg_esp32s3.upload.flags=
-tmvg_esp32s3.upload.extra_flags=
-tmvg_esp32s3.upload.erase_cmd=
-tmvg_esp32s3.upload.use_1200bps_touch=false
-tmvg_esp32s3.upload.wait_for_upload_port=false
-tmvg_esp32s3.upload.speed=921600
+tvmg_wsharelcd.upload.tool=esptool_py
+tvmg_wsharelcd.upload.tool.default=esptool_py
+tvmg_wsharelcd.upload.tool.network=esp_ota
+tvmg_wsharelcd.upload.maximum_size=4718592
+tvmg_wsharelcd.upload.maximum_data_size=327680
+tvmg_wsharelcd.upload.flags=
+tvmg_wsharelcd.upload.extra_flags=
+tvmg_wsharelcd.upload.erase_cmd=
+tvmg_wsharelcd.upload.use_1200bps_touch=false
+tvmg_wsharelcd.upload.wait_for_upload_port=false
+tvmg_wsharelcd.upload.speed=921600
 
-tmvg_esp32s3.serial.disableDTR=false
-tmvg_esp32s3.serial.disableRTS=false
+tvmg_wsharelcd.serial.disableDTR=false
+tvmg_wsharelcd.serial.disableRTS=false
 
-tmvg_esp32s3.build.tarch=xtensa
-tmvg_esp32s3.build.bootloader_addr=0x0
-tmvg_esp32s3.build.target=esp32s3
-tmvg_esp32s3.build.mcu=esp32s3
-tmvg_esp32s3.build.core=esp32
-tmvg_esp32s3.build.variant=esp32s3
-tmvg_esp32s3.build.board=TMVG_S3
+tvmg_wsharelcd.build.tarch=xtensa
+tvmg_wsharelcd.build.bootloader_addr=0x0
+tvmg_wsharelcd.build.target=esp32s3
+tvmg_wsharelcd.build.mcu=esp32s3
+tvmg_wsharelcd.build.core=esp32
+tvmg_wsharelcd.build.variant=waveshare_esp32_s3_touch_lcd_43b
+tvmg_wsharelcd.build.board=WAVESHARE_ESP32_S3_TOUCH_LCD_43B
 
-tmvg_esp32s3.build.usb_mode=1
-tmvg_esp32s3.build.cdc_on_boot=1
-tmvg_esp32s3.build.msc_on_boot=0
-tmvg_esp32s3.build.dfu_on_boot=0
-tmvg_esp32s3.build.f_cpu=240000000L
+tvmg_wsharelcd.build.usb_mode=1
+tvmg_wsharelcd.build.cdc_on_boot=1
+tvmg_wsharelcd.build.msc_on_boot=0
+tvmg_wsharelcd.build.dfu_on_boot=0
+tvmg_wsharelcd.build.f_cpu=240000000L
 
-tmvg_esp32s3.build.flash_size=16MB
-tmvg_esp32s3.build.flash_freq=80m
-tmvg_esp32s3.build.flash_mode=dio
-tmvg_esp32s3.build.boot=qio
-tmvg_esp32s3.build.boot_freq=80m
+tvmg_wsharelcd.build.flash_size=16MB
+tvmg_wsharelcd.build.flash_freq=80m
+tvmg_wsharelcd.build.flash_mode=dio
+tvmg_wsharelcd.build.boot=qio
+tvmg_wsharelcd.build.boot_freq=80m
 
-tmvg_esp32s3.build.psram_type=opi
-tmvg_esp32s3.build.psram_defines=-DBOARD_HAS_PSRAM
-tmvg_esp32s3.build.memory_type={build.boot}_{build.psram_type}
+tvmg_wsharelcd.build.psram_type=opi
+tvmg_wsharelcd.build.psram_defines=-DBOARD_HAS_PSRAM
+tvmg_wsharelcd.build.memory_type={build.boot}_{build.psram_type}
 
-tmvg_esp32s3.build.partitions=large_spiffs_16MB
+tvmg_wsharelcd.build.partitions=large_spiffs_16MB
 
-tmvg_esp32s3.build.loop_core=-DARDUINO_RUNNING_CORE=1
-tmvg_esp32s3.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
+tvmg_wsharelcd.build.loop_core=-DARDUINO_RUNNING_CORE=1
+tvmg_wsharelcd.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
 
-tmvg_esp32s3.menu.DebugLevel.none=None
-tmvg_esp32s3.menu.DebugLevel.none.build.code_debug=0
-tmvg_esp32s3.menu.DebugLevel.error=Error
-tmvg_esp32s3.menu.DebugLevel.error.build.code_debug=1
-tmvg_esp32s3.menu.DebugLevel.warn=Warn
-tmvg_esp32s3.menu.DebugLevel.warn.build.code_debug=2
-tmvg_esp32s3.menu.DebugLevel.info=Info
-tmvg_esp32s3.menu.DebugLevel.info.build.code_debug=3
-tmvg_esp32s3.menu.DebugLevel.debug=Debug
-tmvg_esp32s3.menu.DebugLevel.debug.build.code_debug=4
-tmvg_esp32s3.menu.DebugLevel.verbose=Verbose
-tmvg_esp32s3.menu.DebugLevel.verbose.build.code_debug=5
+tvmg_wsharelcd.menu.DebugLevel.none=None
+tvmg_wsharelcd.menu.DebugLevel.none.build.code_debug=0
+tvmg_wsharelcd.menu.DebugLevel.error=Error
+tvmg_wsharelcd.menu.DebugLevel.error.build.code_debug=1
+tvmg_wsharelcd.menu.DebugLevel.warn=Warn
+tvmg_wsharelcd.menu.DebugLevel.warn.build.code_debug=2
+tvmg_wsharelcd.menu.DebugLevel.info=Info
+tvmg_wsharelcd.menu.DebugLevel.info.build.code_debug=3
+tvmg_wsharelcd.menu.DebugLevel.debug=Debug
+tvmg_wsharelcd.menu.DebugLevel.debug.build.code_debug=4
+tvmg_wsharelcd.menu.DebugLevel.verbose=Verbose
+tvmg_wsharelcd.menu.DebugLevel.verbose.build.code_debug=5
 
-# The FQDN will have TMVGRevision=v1, the 'version 1' is shown in the menu
 
-tmvg_esp32s3.menu.TMVGRevision.v3=version 3
+# The FQDN will have TVMGRevision=v1, the 'version 1' is shown in the menu
 
-tmvg_esp32s3.build.defines={build.tmvgdefs} {build.tmvgcustom} {build.psram_defines}
+tvmg_wsharelcd.menu.TVMGRevision.v2=version 2
+
+tvmg_wsharelcd.build.defines={build.tmvgdefs} {build.tmvgcustom} {build.psram_defines}
+
+##############################################################
+
+tvmg_esp32s3.name=TVMG ESP32S3
+
+tvmg_esp32s3.build.tmvgdefs=-DTVMG_PROJECT
+tvmg_esp32s3.build.tmvgcustom=-DTVMG_ESP32S3 -DTVMG_RS485 -DTVMG_LITTLEFS -DTVMG_RGBLED
+
+tvmg_esp32s3.bootloader.tool=esptool_py
+tvmg_esp32s3.bootloader.tool.default=esptool_py
+
+tvmg_esp32s3.upload.tool=esptool_py
+tvmg_esp32s3.upload.tool.default=esptool_py
+tvmg_esp32s3.upload.tool.network=esp_ota
+tvmg_esp32s3.upload.maximum_size=4718592
+tvmg_esp32s3.upload.maximum_data_size=327680
+tvmg_esp32s3.upload.flags=
+tvmg_esp32s3.upload.extra_flags=
+tvmg_esp32s3.upload.erase_cmd=
+tvmg_esp32s3.upload.use_1200bps_touch=false
+tvmg_esp32s3.upload.wait_for_upload_port=false
+tvmg_esp32s3.upload.speed=921600
+
+tvmg_esp32s3.serial.disableDTR=false
+tvmg_esp32s3.serial.disableRTS=false
+
+tvmg_esp32s3.build.tarch=xtensa
+tvmg_esp32s3.build.bootloader_addr=0x0
+tvmg_esp32s3.build.target=esp32s3
+tvmg_esp32s3.build.mcu=esp32s3
+tvmg_esp32s3.build.core=esp32
+tvmg_esp32s3.build.variant=esp32s3
+tvmg_esp32s3.build.board=TVMG_S3
+
+# Using COM port for serial not USB, so CDC disabled
+
+tvmg_esp32s3.build.usb_mode=1
+tvmg_esp32s3.build.cdc_on_boot=0
+tvmg_esp32s3.build.msc_on_boot=0
+tvmg_esp32s3.build.dfu_on_boot=0
+tvmg_esp32s3.build.f_cpu=240000000L
+
+tvmg_esp32s3.build.flash_size=16MB
+tvmg_esp32s3.build.flash_freq=80m
+tvmg_esp32s3.build.flash_mode=dio
+tvmg_esp32s3.build.boot=qio
+tvmg_esp32s3.build.boot_freq=80m
+
+tvmg_esp32s3.build.psram_type=opi
+tvmg_esp32s3.build.psram_defines=-DBOARD_HAS_PSRAM
+tvmg_esp32s3.build.memory_type={build.boot}_{build.psram_type}
+
+tvmg_esp32s3.build.partitions=large_spiffs_16MB
+
+tvmg_esp32s3.build.loop_core=-DARDUINO_RUNNING_CORE=1
+tvmg_esp32s3.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
+
+tvmg_esp32s3.menu.DebugLevel.none=None
+tvmg_esp32s3.menu.DebugLevel.none.build.code_debug=0
+tvmg_esp32s3.menu.DebugLevel.error=Error
+tvmg_esp32s3.menu.DebugLevel.error.build.code_debug=1
+tvmg_esp32s3.menu.DebugLevel.warn=Warn
+tvmg_esp32s3.menu.DebugLevel.warn.build.code_debug=2
+tvmg_esp32s3.menu.DebugLevel.info=Info
+tvmg_esp32s3.menu.DebugLevel.info.build.code_debug=3
+tvmg_esp32s3.menu.DebugLevel.debug=Debug
+tvmg_esp32s3.menu.DebugLevel.debug.build.code_debug=4
+tvmg_esp32s3.menu.DebugLevel.verbose=Verbose
+tvmg_esp32s3.menu.DebugLevel.verbose.build.code_debug=5
+
+# The FQDN will have TVMGRevision=v1, the 'version 1' is shown in the menu
+
+tvmg_esp32s3.menu.TVMGRevision.v3=version 3
+
+tvmg_esp32s3.build.defines={build.tmvgdefs} {build.tmvgcustom} {build.psram_defines}
 
 ####################################################################
-
-#build.common_tmvg_defines=-DPETE=1 -DWILLOW=2

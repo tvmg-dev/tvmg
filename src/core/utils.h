@@ -56,7 +56,7 @@ extern float   getFloatFromcJSON( cJSON *node,const char *key, float defaultValu
 extern String  getStringFromcJSON( cJSON *node,const char *key, const String &defaultValue = "" );
 extern int     strcmpcJSON( cJSON *node,const char *key, const char *item );
 
-extern void    replaceSpiffsFile( const String &origFile,const String &newFile );
+extern void    replaceFile( const String &origFile,const String &newFile );
 
 //----------------------------------------------------------------------
 // Debugging macros/helper
