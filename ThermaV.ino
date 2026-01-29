@@ -984,7 +984,7 @@ void loop(void)
 
    bool  restartRequired = false;
 
-#ifndef TVMG_OLED
+#if defined(TVMG_RGBLED)
    static uint8_t  count = 0;
    uint8_t         brightness = 16;
    if ( count++ % 2 )
