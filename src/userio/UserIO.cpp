@@ -11,7 +11,7 @@
 #include "src/config/hwconfig.h"
 
 #ifndef TVMG_OLED
-   #include "LcdDisplay.h"
+   #include "LCDDisplay.h"
 #else
    #include "OledDisplay.h"
 #endif

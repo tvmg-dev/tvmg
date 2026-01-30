@@ -12,8 +12,8 @@ menu.TVMGRevision=ThermaV Boards Revision
 ##############################################################
 
 tvmg_esp32.name=TVMG ESP32 Gadget
-tvmg_esp32.build.tmvgdefs=-DTVMG_PROJECT
-tvmg_esp32.build.tmvgcustom=-DTVMG_ESP32 -DTVMG_SPIFFS -DTVMG_OLED
+tvmg_esp32.build.tvmgdefs=-DTVMG_PROJECT
+tvmg_esp32.build.tvmgcustom=-DTVMG_ESP32 -DTVMG_SPIFFS -DTVMG_OLED
 
 # Standard options
 
@@ -46,7 +46,7 @@ tvmg_esp32.build.flash_size=4MB
 tvmg_esp32.build.flash_freq=80m
 tvmg_esp32.build.flash_mode=dio
 tvmg_esp32.build.boot=dio
-tvmg_esp32.build.partitions=4MB_ota_512KB_spiffs
+tvmg_esp32.build.partitions=tvmg_ota_512KB_spiffs_4MB
 
 tvmg_esp32.build.loop_core=-DARDUINO_RUNNING_CORE=1
 tvmg_esp32.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
@@ -56,11 +56,11 @@ tvmg_esp32.build.copy_jtag_files=0
 # Menu to select board type, not really necessary
 
 tvmg_esp32.menu.TVMGadget.tnode=TNode
-tvmg_esp32.menu.TVMGadget.tnode.tmvg.subtype=-DTNODE
+tvmg_esp32.menu.TVMGadget.tnode.tvmg.subtype=-DTNODE
 tvmg_esp32.menu.TVMGadget.master=master
-tvmg_esp32.menu.TVMGadget.master.tmvg.subtype=-DMASTER
+tvmg_esp32.menu.TVMGadget.master.tvmg.subtype=-DMASTER
 tvmg_esp32.menu.TVMGadget.external=external
-tvmg_esp32.menu.TVMGadget.external.tmvg.subtype=-DEXTERNAL
+tvmg_esp32.menu.TVMGadget.external.tvmg.subtype=-DEXTERNAL
 
 # The FQDN will have TVMGRevision=v1, the 'version 1' is shown in the menu
 
@@ -83,13 +83,13 @@ tvmg_esp32.menu.DebugLevel.verbose.build.code_debug=5
 
 # Using the legacy TVMG_ESP32
 
-tvmg_esp32.build.defines={build.tmvgdefs} {build.tmvgcustom} {tmvg.subtype}
+tvmg_esp32.build.defines={build.tvmgdefs} {build.tvmgcustom} {tvmg.subtype}
 
 ##############################################################
 
 tvmg_wsharelcd.name=TVMG Waveshare LCD
-tvmg_wsharelcd.build.tmvgdefs=-DTVMG_PROJECT
-tvmg_wsharelcd.build.tmvgcustom=-DTVMG_WAVESHARE_LCDB -DTVMG_LITTLEFS
+tvmg_wsharelcd.build.tvmgdefs=-DTVMG_PROJECT
+tvmg_wsharelcd.build.tvmgcustom=-DTVMG_WAVESHARE_LCDB -DTVMG_LITTLEFS
 
 tvmg_wsharelcd.vid.0=0x303a
 tvmg_wsharelcd.pid.0=0x8231
@@ -138,7 +138,7 @@ tvmg_wsharelcd.build.psram_type=opi
 tvmg_wsharelcd.build.psram_defines=-DBOARD_HAS_PSRAM
 tvmg_wsharelcd.build.memory_type={build.boot}_{build.psram_type}
 
-tvmg_wsharelcd.build.partitions=large_spiffs_16MB
+tvmg_wsharelcd.build.partitions=tvmg_littlefs_16MB
 
 tvmg_wsharelcd.build.loop_core=-DARDUINO_RUNNING_CORE=1
 tvmg_wsharelcd.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
@@ -161,14 +161,14 @@ tvmg_wsharelcd.menu.DebugLevel.verbose.build.code_debug=5
 
 tvmg_wsharelcd.menu.TVMGRevision.v2=version 2
 
-tvmg_wsharelcd.build.defines={build.tmvgdefs} {build.tmvgcustom} {build.psram_defines}
+tvmg_wsharelcd.build.defines={build.tvmgdefs} {build.tvmgcustom} {build.psram_defines}
 
 ##############################################################
 
 tvmg_esp32s3.name=TVMG ESP32S3
 
-tvmg_esp32s3.build.tmvgdefs=-DTVMG_PROJECT
-tvmg_esp32s3.build.tmvgcustom=-DTVMG_ESP32S3 -DTVMG_RS485 -DTVMG_LITTLEFS -DTVMG_RGBLED
+tvmg_esp32s3.build.tvmgdefs=-DTVMG_PROJECT
+tvmg_esp32s3.build.tvmgcustom=-DTVMG_ESP32S3 -DTVMG_RS485 -DTVMG_LITTLEFS -DTVMG_RGBLED
 
 tvmg_esp32s3.bootloader.tool=esptool_py
 tvmg_esp32s3.bootloader.tool.default=esptool_py
@@ -214,7 +214,7 @@ tvmg_esp32s3.build.psram_type=opi
 tvmg_esp32s3.build.psram_defines=-DBOARD_HAS_PSRAM
 tvmg_esp32s3.build.memory_type={build.boot}_{build.psram_type}
 
-tvmg_esp32s3.build.partitions=large_spiffs_16MB
+tvmg_esp32s3.build.partitions=tvmg_littlefs_16MB
 
 tvmg_esp32s3.build.loop_core=-DARDUINO_RUNNING_CORE=1
 tvmg_esp32s3.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
@@ -236,6 +236,6 @@ tvmg_esp32s3.menu.DebugLevel.verbose.build.code_debug=5
 
 tvmg_esp32s3.menu.TVMGRevision.v3=version 3
 
-tvmg_esp32s3.build.defines={build.tmvgdefs} {build.tmvgcustom} {build.psram_defines}
+tvmg_esp32s3.build.defines={build.tvmgdefs} {build.tvmgcustom} {build.psram_defines}
 
 ####################################################################

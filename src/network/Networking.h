@@ -1,7 +1,7 @@
 #ifndef NETWORKING_H
 #define NETWORKING_H
 
-#include <String.h>
+#include <Arduino.h>
 #include <AsyncUDP.h>
 
 class WebServer;
