@@ -2,7 +2,7 @@ FROM debian:bookworm-slim
 
 # 1. System dependencies
 RUN apt-get update && apt-get install -y \
-    curl wget python3 python3-pip python3-serial ca-certificates unzip \
+    curl wget python3 python3-pip python3-serial ca-certificates unzip patch \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Filesystem Tools
@@ -22,3 +22,12 @@ RUN arduino-cli config init && \
     arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json && \
     arduino-cli core update-index && \
     arduino-cli core install esp32:esp32@3.1.0
+
+# 4. Apply Patches
+# Using the framework root path verified in our test
+COPY patches/ /tmp/patches/
+
+RUN cd /root/.arduino15/packages/esp32/hardware/esp32/3.1.0 && \
+    patch -p0 < /tmp/patches/esp-asyncudp.patch && \
+    patch -p0 < /tmp/patches/esp-network.patch && \
+    rm -rf /tmp/patches

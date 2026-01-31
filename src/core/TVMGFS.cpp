@@ -5,13 +5,17 @@
    #include <LittleFS.h>
    #define TVMG_FS_INSTANCE LittleFS
    #define TVMG_FS_TYPE_NAME "LittleFS"
+   #define TVMG_PARTITION_NAME "rootfs"
+   #define TVMG_RECOVERY_PARTITION_NAME "recovery"
 #elif defined(TVMG_SPIFFS)
    #include <SPIFFS.h>
    #define TVMG_FS_INSTANCE SPIFFS
    #define TVMG_FS_TYPE_NAME "SPIFFS"
+   #define TVMG_PARTITION_NAME "spiffs"
 #else
    #error "Must define either TVMG_LITTLEFS or TVMG_SPIFFS"
 #endif
+
 
 TVMGFileSystem tvmgFileSys;
 
@@ -53,11 +57,17 @@ bool TVMGFileSystem::rmdir( const String& path )
 
 bool TVMGFileSystem::begin( bool formatOnFail )
 {
-   PW_MSG( "Mounting %s %s", typeName(), (formatOnFail ? ",format on fail" : "" ) );
+   PW_MSG( "Mounting %s%s", TVMG_PARTITION_NAME,(formatOnFail ? ",format on fail" : "" ) );
 
-   // We call begin on the system singleton (TVMG_FS_INSTANCE)
+   // We call begin() on the system singleton (TVMG_FS_INSTANCE)
    // This avoids the Guru Meditation crash caused by duplicate instances
-   m_isMounted = TVMG_FS_INSTANCE.begin( formatOnFail );
+   // And we may have more than 1 partition, so mount the 'root' partition.
+
+   const char *mountPath = "/" TVMG_PARTITION_NAME;
+
+   // begin( formatOnFail, basePath, maxOpenFiles, partitionName )
+
+   m_isMounted = TVMG_FS_INSTANCE.begin( formatOnFail,mountPath,10,TVMG_PARTITION_NAME );
 
    PW_MSG( "%s %s", typeName(), (m_isMounted ? "mounted" : "failed" ) );
 

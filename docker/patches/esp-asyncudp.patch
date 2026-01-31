@@ -1,0 +1,12 @@
+# Allow listen() to succeed if task has already been created
+--- libraries/AsyncUDP/src/AsyncUDP.cpp
++++ libraries/AsyncUDP/src/AsyncUDP.cpp
+@@ -573,7 +573,7 @@
+ }
+ 
+ bool AsyncUDP::listen(const ip_addr_t *addr, uint16_t port) {
+-  if (!_udp_task_start()) {
++  if (!_udp_task_handle && !_udp_task_start()) {
+     log_e("failed to start task");
+     return false;
+   }
