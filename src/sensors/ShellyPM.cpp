@@ -12,6 +12,7 @@
 
 #define SHELLY_MINI_PMG3   "MiniPMG3"
 #define SHELLY_EM          "EM"
+#define SHELLY_EMG3        "EMG3"
 
 ShellyPowerModule::ShellyPowerModule()
            : m_sensors(),
@@ -49,6 +50,10 @@ ShellyPowerModule::ShellyPowerModule()
             else if ( model == SHELLY_MINI_PMG3 )
             {
                pwrSensor->m_model = PMG3;
+            }
+            else if ( model == SHELLY_EMG3 )
+            {
+               pwrSensor->m_model = EMG3;
             }
             else
             {
@@ -159,6 +164,38 @@ bool ShellyPowerModule::getPower( uint8_t index )
    }
 }
 
+cJSON *ShellyPowerModule::getData( const String &query )
+{
+   String resp;
+   cJSON *json = nullptr;
+
+   START_TIMING( query );
+
+   HTTPClient http;
+   http.begin( query );
+
+   // Allow 4s to get data from the Shelly
+
+   http.setTimeout( 4000 );
+
+   int httpResponse = http.GET();
+   if ( httpResponse > 0 )
+   {
+      resp = http.getString();
+      resp.replace( ":true",":1" );
+      resp.replace( ":false",":0" );
+   }
+
+   if ( resp.length() )
+   {
+      json = cJSON_Parse( resp.c_str() );
+   }
+
+   END_TIMING;
+
+   return( json );
+}
+
 bool ShellyPowerModule::getEM( PrivateSensor *sensor )
 {
    bool retVal = false;
@@ -169,39 +206,82 @@ bool ShellyPowerModule::getEM( PrivateSensor *sensor )
 
    restQuery.replace( "host",sensor->m_ipAddress.toString() );
 
-   HTTPClient http;
-   http.begin( restQuery );
-
-   // Allow 4s to get data from the Shelly
-   http.setTimeout( 4000 );
-
-   int httpResponse = http.GET();
-   if ( httpResponse > 0 )
+   cJSON *json = getData( restQuery );
+   if ( json )
    {
-      String resp = http.getString();
-      resp.replace( ":true",":1" );
-      resp.replace( ":false",":0" );
+      float power = getFloatFromcJSON( json,"power",-100 );
 
-      cJSON *json = cJSON_Parse( resp.c_str() );
-      if ( json )
+      // put a 3W lower limit in place, seen -ve values returned
+      if ( power > -100 && power < 3 )
       {
-         float power = getFloatFromcJSON( json,"power",-100 );
-
-         // put a 3W lower limit in place, seen -ve values returned
-         if ( power > -100 && power < 3 )
-         {
-            power = 0;
-         }
-
-         sensor->m_data.m_power = power;
-         sensor->m_data.m_energy = getFloatFromcJSON( json,"total",ENERGY_INVALID );
-         if ( sensor->m_data.m_power != POWER_INVALID && sensor->m_data.m_energy != ENERGY_INVALID )
-         {
-            retVal = true;
-         }
-         cJSON_Delete( json );
+         power = 0;
       }
+
+      sensor->m_data.m_power = power;
+      sensor->m_data.m_energy = getFloatFromcJSON( json,"total",ENERGY_INVALID );
+      if ( sensor->m_data.m_power != POWER_INVALID && sensor->m_data.m_energy != ENERGY_INVALID )
+      {
+         retVal = true;
+      }
+      cJSON_Delete( json );
    }
+
+   PW_DEBUG( "EM: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
+                                     sensor->m_data.m_power,sensor->m_data.m_energy );
+
+   if ( !retVal )
+   {
+      PW_ERROR( "Failed to get shelly %s",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str() );
+   }
+
+   return retVal;
+}
+
+bool ShellyPowerModule::getEMG3( PrivateSensor *sensor )
+{
+   bool retVal = false;
+
+   String restQuery = "http://host/rpc/EM1.GetStatus?id=device";
+   String meter( sensor->m_meter );
+
+   restQuery.replace( "host",sensor->m_ipAddress.toString() );
+   restQuery.replace( "device",meter );
+
+   cJSON *json = getData( restQuery );
+   if ( json )
+   {
+      float power = getFloatFromcJSON( json,"act_power",-100 );
+
+      // put a 3W lower limit in place, seen -ve values returned
+      if ( power > -100 && power < 3 )
+      {
+         power = 0;
+      }
+      sensor->m_data.m_power = power;
+
+      cJSON_Delete( json );
+   }
+
+   restQuery = String( "http://host/rpc/EM1Data.GetStatus?id=device" );
+
+   restQuery.replace( "host",sensor->m_ipAddress.toString() );
+   restQuery.replace( "device",meter );
+
+   json = getData( restQuery );
+   if ( json )
+   {
+      sensor->m_data.m_energy = getFloatFromcJSON( json,"total_act_energy",ENERGY_INVALID );
+
+      cJSON_Delete( json );
+   }
+
+   if ( sensor->m_data.m_power != POWER_INVALID && sensor->m_data.m_energy != ENERGY_INVALID )
+   {
+      retVal = true;
+   }
+
+   PW_DEBUG( "EMG3: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
+                                     sensor->m_data.m_power,sensor->m_data.m_energy );
 
    if ( !retVal )
    {
@@ -218,44 +298,33 @@ bool ShellyPowerModule::getPMG3( PrivateSensor *sensor )
 
    restQuery.replace( "host",sensor->m_ipAddress.toString() );
 
-   HTTPClient http;
-   http.begin( restQuery );
-
-   // Allow 4s to get data from the Shelly
-   http.setTimeout( 4000 );
-
-   int httpResponse = http.GET();
-   if ( httpResponse > 0 )
+   cJSON *json = getData( restQuery );
+   if ( json )
    {
-      String resp = http.getString();
-      resp.replace( ":true",":1" );
-      resp.replace( ":false",":0" );
+      float power = getFloatFromcJSON( json,"apower",-100 );
 
-      cJSON *root = cJSON_Parse( resp.c_str() );
-      if ( root )
+      // put a 3W lower limit in place, seen -ve values returned
+      if ( power > -100 && power < 3 )
       {
-         float power = getFloatFromcJSON( root,"apower",-100 );
-
-         // put a 3W lower limit in place, seen -ve values returned
-         if ( power > -100 && power < 3 )
-         {
-            power = 0;
-         }
-         sensor->m_data.m_power = power;
-
-         cJSON *aenergy = cJSON_GetObjectItem( root,"aenergy" );
-         if ( aenergy )
-         {
-            sensor->m_data.m_energy = getFloatFromcJSON( aenergy,"total",ENERGY_INVALID );
-         }
-
-         if ( sensor->m_data.m_power != POWER_INVALID && sensor->m_data.m_energy != ENERGY_INVALID )
-         {
-            retVal = true;
-         }
-         cJSON_Delete( root );
+         power = 0;
       }
+      sensor->m_data.m_power = power;
+
+      cJSON *aenergy = cJSON_GetObjectItem( json,"aenergy" );
+      if ( aenergy )
+      {
+         sensor->m_data.m_energy = getFloatFromcJSON( aenergy,"total",ENERGY_INVALID );
+      }
+
+      if ( sensor->m_data.m_power != POWER_INVALID && sensor->m_data.m_energy != ENERGY_INVALID )
+      {
+         retVal = true;
+      }
+      cJSON_Delete( json );
    }
+
+   PW_DEBUG( "PMG3: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
+                                     sensor->m_data.m_power,sensor->m_data.m_energy );
 
    if ( !retVal )
    {
