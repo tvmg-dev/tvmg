@@ -381,8 +381,6 @@ void setupSerial()
    PW_DEBUG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
 #else    // ESP32S3's
-
-   // For COM port use on the S3 need CDC disabled
 #if defined(TVMG_WAVESHARE_LCDB)
 
    #if ARDUINO_USB_CDC_ON_BOOT == 0
