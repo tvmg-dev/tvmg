@@ -381,6 +381,7 @@ void setupSerial()
    PW_DEBUG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
 #else    // ESP32S3's
+
    // For COM port use on the S3 need CDC disabled
 #if defined(TVMG_WAVESHARE_LCDB)
 
@@ -388,8 +389,11 @@ void setupSerial()
       #error "Should have CDC enabled"
    #endif
 
+   uint32_t serialStart = millis();
+
    Serial.begin( 115200 );
-   while( !Serial );
+
+   while( !Serial && (millis() - serialStart < 500) );
 
 #elif defined(TVMG_ESP32S3) && defined(TVMG_RS485)
 

@@ -32,7 +32,7 @@ function espbuild()
     -v \"/$(pwd)/arduino/tvmg_littlefs_16MB.csv:/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/partitions/tvmg_littlefs_16MB.csv\" \
     -v \"/$(pwd)/arduino/tvmg_ota_512KB_spiffs_4MB.csv:/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/partitions/tvmg_ota_512KB_spiffs_4MB.csv\" \
     -w \"/root/Arduino/$sketch_dir\" \
-    esp32-s3-builder"
+    tvmg-builder"
 
   # --- PATH A: FACTORY IMAGE ---
   if [[ "$factory_mode" == true ]]; then
@@ -46,7 +46,13 @@ function espbuild()
   echo "SKETCH: $sketch_dir | BOARD: $board_name"
   echo "-------------------------------------------------------"
 
-  local cmd="rm -f /root/build_core/partitions.csv; arduino-cli compile --jobs 8 $verbose_flag --build-path /root/build_core --libraries /shared_libs --fqbn $internal_fqbn --output-dir /root/Arduino/$sketch_dir/$local_output_path ."
+  local cmd="mkdir -p /root/build_core/work; \
+             rm -f /root/build_core/work/partitions.csv; \
+             arduino-cli compile --jobs 8 $verbose_flag \
+             --build-path /root/build_core/work \
+             --libraries /shared_libs \
+             --fqbn $internal_fqbn \
+             --output-dir /root/Arduino/$sketch_dir/$local_output_path ."
 
   eval "$DOCKER_BASE /bin/bash -c '$cmd'"
   local build_status=$?
@@ -75,7 +81,50 @@ alias espbuild-ws='espbuild tvmg_wsharelcd'
 
 function flash-32()
 {
-   python -m esptool --chip esp32s3 --port COM8 --baud 921600 write_flash 0x10000 ThermaV.ino.bin
+  local file="./build/output/tvmg_esp32/tvmg_esp32.bin"
+  local address="0x10000"
+  local factory_mode=false
+  local port="COM3"
+
+  # Check for -factory flag
+  for arg in "$@"; do
+    if [[ "$arg" == "-factory" ]]; then
+      factory_mode=true
+    fi
+  done
+
+  if [[ "$factory_mode" == true ]]; then
+    file="./build/output/tvmg_esp32/factory_complete.bin"
+    address="0x0"
+    echo ">>> Factory Mode: Flashing complete image to $address"
+  fi
+
+  if [ ! -f "$file" ]; then
+    printf " Not found: $file\n\n"
+  else
+    # The flash_mode, flash_size and flash_freq are in the bootloader header
+    # and the 'keep' option for those settings is the default
+    #
+    # When we program a full image then the bootloader will have the modes
+    # set.  Programming an image only doesn't need such headers
+
+    python -m esptool --chip esp32 --port $port --baud 921600 \
+    --before default_reset --after hard_reset write_flash -z \
+    "$address" "$file"
+
+    if [ $? ]; then
+      echo "  Launching Monitor..."
+      winpty python -m esp_idf_monitor --port $port --baud 115200
+    fi
+  fi
+}
+
+function flash()
+{
+   local port=$1
+   local variant=$2
+
+
 }
 
 function flash-ws()
@@ -101,15 +150,59 @@ function flash-ws()
   if [ ! -f "$file" ]; then
     printf " Not found: $file\n\n"
   else
-    # We use the -p COM8 specifically as requested
-    python -m esptool --chip esp32s3 --port $port --baud 921600 write_flash "$address" "$file"
+    # The flash_mode, flash_size and flash_freq are in the bootloader header
+    # and the 'keep' option for those settings is the default
+    #
+    # When we program a full image then the bootloader will have the modes
+    # set.  Programming an image only doesn't need such headers
 
-    echo ">>> Launching Monitor..."
-    winpty python -m esp_idf_monitor --port $port --baud 115200
+    python -m esptool --chip esp32s3 --port $port --baud 921600 \
+    --before default_reset --after hard_reset write_flash -z \
+    "$address" "$file"
+
+    if [ $? ]; then
+      echo "  Launching Monitor..."
+      winpty python -m esp_idf_monitor --port $port --baud 115200
+    fi
   fi
 }
 
 function flash-s3()
 {
-   python -m esptool --chip esp32s3 --port COM8 --baud 921600 write_flash 0x10000 ThermaV.ino.bin
+  local file="./build/output/tvmg_esp32s3/tvmg_esp32s3.bin"
+  local address="0x10000"
+  local factory_mode=false
+  local port="COM6"
+
+  # Check for -factory flag
+  for arg in "$@"; do
+    if [[ "$arg" == "-factory" ]]; then
+      factory_mode=true
+    fi
+  done
+
+  if [[ "$factory_mode" == true ]]; then
+    file="./build/output/tvmg_esp32s3/factory_complete.bin"
+    address="0x0"
+    echo ">>> Factory Mode: Flashing complete image to $address"
+  fi
+
+  if [ ! -f "$file" ]; then
+    printf " Not found: $file\n\n"
+  else
+    # The flash_mode, flash_size and flash_freq are in the bootloader header
+    # and the 'keep' option for those settings is the default
+    #
+    # When we program a full image then the bootloader will have the modes
+    # set.  Programming an image only doesn't need such headers
+
+    python -m esptool --chip esp32s3 --port $port --baud 921600 \
+    --before default_reset --after hard_reset write_flash -z \
+    "$address" "$file"
+
+    if [ $? ]; then
+      echo "  Launching Monitor..."
+      winpty python -m esp_idf_monitor --port $port --baud 115200
+    fi
+  fi
 }

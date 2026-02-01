@@ -1,5 +1,9 @@
 #!/bin/bash
 
+export SPIFFSGEN=~/Documents/github/esp-idf/components/spiffs/spiffsgen.py
+export PARTTOOL=~/Documents/github/esp-idf/components/partition_table/parttool.py
+export ESPTOOL=~/Documents/github/esptool/esptool.py
+
 # Hard coded for now, ESP32-S3 will have different loader
 
 bootloaderOffset="0x1000"

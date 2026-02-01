@@ -5,7 +5,7 @@
    #include <LittleFS.h>
    #define TVMG_FS_INSTANCE LittleFS
    #define TVMG_FS_TYPE_NAME "LittleFS"
-   #define TVMG_PARTITION_NAME "rootfs"
+   #define TVMG_PARTITION_NAME "primary"
    #define TVMG_RECOVERY_PARTITION_NAME "recovery"
 #elif defined(TVMG_SPIFFS)
    #include <SPIFFS.h>

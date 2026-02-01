@@ -19,123 +19,105 @@ function generate_factory_image() {
     # 1. Validation
     if [[ ! -f "$part_bin" || ! -f "$boot_bin" || ! -f "$app_bin" ]]; then
         echo "Error: Missing build artifacts in $out_dir"
-        echo "Ensure you have compiled for $variant before running -factory"
         return 1
     fi
 
     echo "-------------------------------------------------------"
     echo "FACTORY IMAGE GENERATION: $variant"
-    echo "SOURCE: $sketch_name"
     echo "-------------------------------------------------------"
 
-    # 2. Extract Metadata (The Source of Truth)
-    # Use -q to suppress headers and get clean CSV output
-    local part_data=$(python3 "$GEN_PART_PY" -q "$part_bin")
+    # 2. Extract Bootloader Header Metadata (The "Truth" Bytes)
+    local header_hex=$(od -An -N4 -t x1 "$boot_bin" | tr -d ' ')
 
-    if [[ -z "$part_data" ]]; then
-        echo "Error: Failed to parse partition table."
+    local magic=${header_hex:0:2}
+    if [[ "$magic" != "e9" ]]; then
+        echo "Error: $boot_bin is not a valid ESP image header."
         return 1
     fi
 
-    # Calculate Max Flash Extent for --flash_size
-    # We strip spaces from the raw data to ensure awk math works
-    local max_byte=$(echo "$part_data" | sed 's/[[:space:]]//g' | grep -v "#" | awk -F, '{printf "%d\n", $4+$5}' | sort -n | tail -1)
+    # Decode Size and Freq (Byte 3)
+    local byte3_hex=${header_hex:6:2}
+    local byte3_dec=$((16#$byte3_hex))
+    local size_nibble=$(( (byte3_dec >> 4) & 0xF ))
 
-    local flash_size="4MB"
-    [[ $max_byte -gt 4194304 ]] && flash_size="8MB"
-    [[ $max_byte -gt 8388608 ]] && flash_size="16MB"
-    [[ $max_byte -gt 16777216 ]] && flash_size="32MB"
-
-    # 3. Detect Chip Type
+    case "$size_nibble" in
+        0) b_size="1MB" ;;
+        1) b_size="2MB" ;;
+        2) b_size="4MB" ;;
+        3) b_size="8MB" ;;
+        4) b_size="16MB" ;;
+        5) b_size="32MB" ;;
+        *) b_size="keep" ;;
+    esac
+    # 3. Detect Chip Type and Determine Bootloader Offset
     local chip_type=$($ESPTOOL_BIN image_info "$boot_bin" | grep "Detected image type" | cut -d':' -f2 | xargs | tr '[:upper:]' '[:lower:]' | sed 's/-//g')
 
-    echo "Detected Chip: $chip_type | Required Flash: $flash_size"
+    # EXPLICIT logic: Standard ESP32 MUST use 0x1000.
+    # Only S and C series (S2, S3, C3, etc.) use 0x0000.
+    local boot_offset="0x1000"
+    if [[ "$chip_type" == "esp32s2" || "$chip_type" == "esp32s3" || "$chip_type" == "esp32c3" || "$chip_type" == "esp32c6" ]]; then
+        boot_offset="0x0000"
+    fi
+
+    echo "Detected Chip: $chip_type | Bootloader Offset: $boot_offset | Flash Size: $b_size"
+
+    # 3.a Extract Partition Metadata for App and OTA Offsets
+    local part_data=$(python3 "$GEN_PART_PY" -q "$part_bin")
+    local app_offset=$(echo "$part_data" | grep -E "app|factory" | head -n 1 | cut -d',' -f4 | xargs)
+    local ota_offset=$(echo "$part_data" | grep "otadata" | head -n 1 | cut -d',' -f4 | xargs)
 
     # 4. Sync App to Recovery (If directory exists)
     if [[ -d "$fs_src_root/recovery" ]]; then
-        echo "Syncing app binary to recovery folder..."
         cp "$app_bin" "$fs_src_root/recovery/factory_reset.bin"
     fi
 
-    # 5. Initialize Merge Command as an ARRAY
+    # 5. Initialize Merge Command
     local merge_args=(
         "--chip" "$chip_type"
         "merge_bin"
         "-o" "${out_dir}/factory_complete.bin"
-        "--flash_mode" "dio"
-        "--flash_size" "$flash_size"
-        "0x0000" "$boot_bin"
+        "--fill-flash-size" "$b_size"
+        "$boot_offset" "$boot_bin"
         "0x8000" "$part_bin"
-        "0xe000" "$OTADATA_BIN"
-        "0x10000" "$app_bin"
     )
+
+    [[ -n "$ota_offset" ]] && merge_args+=("$ota_offset" "$OTADATA_BIN")
+    merge_args+=("$app_offset" "$app_bin")
 
     # 6. Process Filesystems
     if [[ -d "$fs_src_root" ]]; then
-        # Iterate through subdirectories in the filesystem source root
         for fs_folder_path in "${fs_src_root}"/*/; do
-            # Skip if no directories found
             [[ -d "$fs_folder_path" ]] || continue
-
             local fs_folder=$(basename "$fs_folder_path")
-            echo "Checking filesystem folder: $fs_folder"
-
-            # Match partition name even if there are spaces in the CSV output
             local line=$(echo "$part_data" | grep -E "^${fs_folder}[[:space:]]*," | head -n 1)
 
             if [[ -n "$line" ]]; then
-                # Clean the line of all spaces so 'cut' fields are reliable
                 local clean_line=$(echo "$line" | sed 's/[[:space:]]//g')
-
                 local subtype=$(echo "$clean_line" | cut -d',' -f3)
                 local offset_raw=$(echo "$clean_line" | cut -d',' -f4)
                 local size_raw=$(echo "$clean_line" | cut -d',' -f5)
                 local img_bin="${out_dir}/${fs_folder}.bin"
 
-                # Convert Size to Bytes for the tools
                 local size_bytes=$size_raw
-                if [[ "$size_raw" == *K ]]; then
-                    size_bytes=$(( ${size_raw%K} * 1024 ))
-                elif [[ "$size_raw" == *M ]]; then
-                    size_bytes=$(( ${size_raw%M} * 1024 * 1024 ))
-                fi
-
-                echo "Packaging $fs_folder ($subtype) | Size: $size_bytes bytes | Offset: $offset_raw"
+                [[ "$size_raw" == *K ]] && size_bytes=$(( ${size_raw%K} * 1024 ))
+                [[ "$size_raw" == *M ]] && size_bytes=$(( ${size_raw%M} * 1024 * 1024 ))
 
                 if [[ "$subtype" == "spiffs" ]]; then
                     mkspiffs -c "${fs_src_root}/${fs_folder}" -s "$size_bytes" "$img_bin"
                 else
-                    # littlefs packaging - FIXED to 4096 block size
                     mklittlefs -c "${fs_src_root}/${fs_folder}" -s "$size_bytes" -p 256 -b 4096 "$img_bin"
                 fi
-
-                # Add to merge array if binary was created
-                if [[ -f "$img_bin" ]]; then
-                    merge_args+=("$offset_raw" "$img_bin")
-                else
-                    echo "ERROR: Failed to create image for $fs_folder"
-                    return 1
-                fi
-            else
-                echo "Warning: No partition found matching folder name '$fs_folder' - skipping."
+                [[ -f "$img_bin" ]] && merge_args+=("$offset_raw" "$img_bin")
             fi
         done
     fi
 
     # 7. Final Merge Execution
-    echo "-------------------------------------------------------"
-    echo "Merging All Binaries into Factory Image..."
+    echo "Merging into factory_complete.bin ($b_size)..."
+    echo "Arguments:"
+    echo "${merge_args[@]}"
 
-    # Run esptool with the constructed array
     $ESPTOOL_BIN "${merge_args[@]}"
-
-    if [[ $? -eq 0 ]]; then
-        echo "SUCCESS: factory_complete.bin created in $out_dir"
-    else
-        echo "ERROR: esptool merge_bin failed."
-        return 1
-    fi
 }
 
-# Execute
 generate_factory_image "$1"
