@@ -26,7 +26,7 @@ public:
    bool getPower( uint8_t index );
 
 private:
-   enum ShellyModel { UNKNOWN,PMG3,EM };
+   enum ShellyModel { UNKNOWN,PMG3,EM,EMG3 };
 
    typedef struct {
       ShellyPowerSensor m_data;        // sensor essentials
@@ -36,7 +36,9 @@ private:
       bool              m_isValid;
    } PrivateSensor;
 
+   cJSON *getData( const String &query );
    bool getEM( PrivateSensor *sensor );
+   bool getEMG3( PrivateSensor *sensor );
    bool getPMG3( PrivateSensor *sensor );
 
    PrivateSensor  m_sensors[ MAX_SHELLY_SENSORS ];
