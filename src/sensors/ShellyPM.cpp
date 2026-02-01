@@ -158,9 +158,13 @@ bool ShellyPowerModule::getPower( uint8_t index )
    {
       return getPMG3( sensor );
    }
-   else
+   else if ( sensor->m_model == EM )
    {
       return getEM( sensor );
+   }
+   else
+   {
+      return getEMG3( sensor );
    }
 }
 
