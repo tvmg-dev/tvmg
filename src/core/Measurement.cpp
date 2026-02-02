@@ -2,7 +2,7 @@
 
 #include <cJSON.h>
 
-#include "src/config/config.h"
+#include "src/config/Config.h"
 
 #include "Measurement.h"
 #include "Storage.h"

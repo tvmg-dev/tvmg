@@ -4,6 +4,12 @@ function espbuild()
   local board_name=""
   local factory_mode=false
   local verbose_flag="--verbose"
+  local library_host_path="/c/Users/$(whoami)/Documents/Arduino/libraries"
+
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+      echo "Linux environment"
+      library_host_path="$(pwd)/libraries"
+  fi
 
   for arg in "$@"; do
     if [[ "$arg" == "-factory" ]]; then
@@ -27,7 +33,7 @@ function espbuild()
   local DOCKER_BASE="MSYS_NO_PATHCONV=1 docker run --rm \
     -v \"/$(pwd):/root/Arduino/$sketch_dir\" \
     -v \"/$(pwd)/$local_cache_path:/root/build_core\" \
-    -v \"/c/Users/$(whoami)/Documents/Arduino/libraries:/shared_libs\" \
+    -v \"${library_host_path}:/shared_libs\" \
     -v \"/$(pwd)/arduino/boards.local.txt:/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/boards.local.txt\" \
     -v \"/$(pwd)/arduino/tvmg_littlefs_16MB.csv:/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/partitions/tvmg_littlefs_16MB.csv\" \
     -v \"/$(pwd)/arduino/tvmg_ota_512KB_spiffs_4MB.csv:/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/partitions/tvmg_ota_512KB_spiffs_4MB.csv\" \

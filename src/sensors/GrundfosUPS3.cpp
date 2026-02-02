@@ -5,7 +5,7 @@
 #include "GrundfosUPS3.h"
 #include "HeatMeter.h"
 
-#include "src/config/config.h"
+#include "src/config/Config.h"
 #include "src/userio/UserIO.h"
 
 // pin we need to read to get the level, needed by ISR
