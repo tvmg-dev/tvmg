@@ -21,7 +21,9 @@ RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/inst
 RUN arduino-cli config init && \
     arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json && \
     arduino-cli core update-index && \
-    arduino-cli core install esp32:esp32@3.1.0
+    arduino-cli core install esp32:esp32@3.1.0 && \
+    rm -rf /root/.arduino15/staging/packages && \
+    chmod 711 /root && chmod -R a+rX /root/.arduino15
 
 # 4. Apply Patches
 # Using the framework root path verified in our test
@@ -31,3 +33,6 @@ RUN cd /root/.arduino15/packages/esp32/hardware/esp32/3.1.0 && \
     patch -p0 < /tmp/patches/esp-asyncudp.patch && \
     patch -p0 < /tmp/patches/esp-network.patch && \
     rm -rf /tmp/patches
+
+RUN mkdir -p /working && chmod 777 /working
+WORKDIR /working

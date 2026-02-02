@@ -5,10 +5,13 @@ function espbuild()
   local factory_mode=false
   local verbose_flag="--verbose"
   local library_host_path="/c/Users/$(whoami)/Documents/Arduino/libraries"
+  local docker_user=""
 
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
       echo "Linux environment"
       library_host_path="$(pwd)/libraries"
+      docker_user="-u $(id -u):$(id -g)"
+      
   fi
 
   for arg in "$@"; do
@@ -30,14 +33,15 @@ function espbuild()
   mkdir -p "$local_cache_path" "$local_output_path"
 
   # 3. Docker Command Base (Restored to your working string format)
-  local DOCKER_BASE="MSYS_NO_PATHCONV=1 docker run --rm \
-    -v \"/$(pwd):/root/Arduino/$sketch_dir\" \
-    -v \"/$(pwd)/$local_cache_path:/root/build_core\" \
+  local DOCKER_BASE="MSYS_NO_PATHCONV=1 docker run ${docker_user} --rm \
+    -e HOME=/root \
+    -v \"/$(pwd):/working/$sketch_dir\" \
+    -v \"/$(pwd)/$local_cache_path:/working/build_core\" \
     -v \"${library_host_path}:/shared_libs\" \
     -v \"/$(pwd)/arduino/boards.local.txt:/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/boards.local.txt\" \
     -v \"/$(pwd)/arduino/tvmg_littlefs_16MB.csv:/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/partitions/tvmg_littlefs_16MB.csv\" \
     -v \"/$(pwd)/arduino/tvmg_ota_512KB_spiffs_4MB.csv:/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/partitions/tvmg_ota_512KB_spiffs_4MB.csv\" \
-    -w \"/root/Arduino/$sketch_dir\" \
+    -w \"/working/$sketch_dir\" \
     tvmg-builder"
 
   # --- PATH A: FACTORY IMAGE ---
@@ -52,13 +56,13 @@ function espbuild()
   echo "SKETCH: $sketch_dir | BOARD: $board_name"
   echo "-------------------------------------------------------"
 
-  local cmd="mkdir -p /root/build_core/work; \
-             rm -f /root/build_core/work/partitions.csv; \
+  local cmd="mkdir -p /working/build_core/work; \
+             rm -f /working/build_core/work/partitions.csv; \
              arduino-cli compile --jobs 8 $verbose_flag \
-             --build-path /root/build_core/work \
+             --build-path /working/build_core/work \
              --libraries /shared_libs \
              --fqbn $internal_fqbn \
-             --output-dir /root/Arduino/$sketch_dir/$local_output_path ."
+             --output-dir /working/$sketch_dir/$local_output_path ."
 
   eval "$DOCKER_BASE /bin/bash -c '$cmd'"
   local build_status=$?
