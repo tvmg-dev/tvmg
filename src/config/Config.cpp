@@ -8,9 +8,9 @@
 
 #include "Config.h"
 
-static Config   *s_instance = nullptr;
+   static Config   *s_instance = nullptr;
 
-const char *k_versionStr = "v26.02.03";
+const char *k_versionStr = "v26.02.04a";
 
 char  defaultConfigString[] = "unknown";
 

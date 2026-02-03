@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build ESP-32",
+            "type": "shell",
+            "command": "espbuild-32",
+            "options": { "shell": { "executable": "/bin/bash", "args": ["-l", "-i", "-c"] } },
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "clear": true, "panel": "shared" }
+        },
+        {
+            "label": "Build ESP-S3",
+            "type": "shell",
+            "command": "espbuild-s3",
+            "options": { "shell": { "executable": "/bin/bash", "args": ["-l", "-i", "-c"] } },
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "clear": true, "panel": "shared" }
+        },
+        {
+            "label": "Build ESP-WS",
+            "type": "shell",
+            "command": "espbuild-ws",
+            "options": { "shell": { "executable": "/bin/bash", "args": ["-l", "-i", "-c"] } },
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "clear": true, "panel": "shared" }
+        }
+    ]
+}

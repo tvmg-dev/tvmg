@@ -2,11 +2,16 @@ function espbuild()
 {
   # 1. Parameter Handling
   local board_name=""
-  local factory_mode=false
+  local factory_mode=true
   local verbose_flag="--verbose"
-  local library_host_path="/c/Users/$(whoami)/Documents/Arduino/libraries"
   local docker_user=""
+  local jobs_num=4
 
+  local win_docs_raw=$(powershell.exe -Command "[Environment]::GetFolderPath('MyDocuments')" 2>/dev/null | tr -d '\r')
+  local win_docs=$(wslpath "$win_docs_raw")
+
+  local library_host_path="${win_docs}/Arduino/libraries"
+  
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
       echo "Linux environment"
       library_host_path="$(pwd)/libraries"
@@ -27,12 +32,14 @@ function espbuild()
   local internal_fqbn="esp32:esp32:${board_name}"
   local sketch_dir=$(basename "$(pwd)")
 
-  # 2. Path Preparation
+  # Output paths - for the build cache and final artefacts
   local local_cache_path="build/cache/${board_name}"
   local local_output_path="build/output/${board_name}"
+  rm -rf "${local_output_path}"
   mkdir -p "$local_cache_path" "$local_output_path"
 
-  # 3. Docker Command Base (Restored to your working string format)
+  # Docker - base command
+  #   Probably need a better way of putting the partitions in place ?
   local DOCKER_BASE="MSYS_NO_PATHCONV=1 docker run ${docker_user} --rm \
     -e HOME=/root \
     -v \"/$(pwd):/working/$sketch_dir\" \
@@ -44,21 +51,14 @@ function espbuild()
     -w \"/working/$sketch_dir\" \
     tvmg-builder"
 
-  # --- PATH A: FACTORY IMAGE ---
-  if [[ "$factory_mode" == true ]]; then
-    echo ">>> Executing REPRODUCIBLE Factory Merge: $board_name"
-    eval "$DOCKER_BASE /bin/bash ./scripts/gen_factory_image.sh $board_name"
-    return $?
-  fi
-
-  # --- PATH B: ARDUINO-CLI BUILD ---
-  echo "-------------------------------------------------------"
-  echo "SKETCH: $sketch_dir | BOARD: $board_name"
-  echo "-------------------------------------------------------"
+    # build the application image
+  printf "=======================================================\n"
+  printf "Sketch: $sketch_dir | BOARD: $board_name\n"
+  printf "=======================================================\n\n"
 
   local cmd="mkdir -p /working/build_core/work; \
              rm -f /working/build_core/work/partitions.csv; \
-             arduino-cli compile --jobs 8 $verbose_flag \
+             arduino-cli compile --jobs $jobs_num $verbose_flag \
              --build-path /working/build_core/work \
              --libraries /shared_libs \
              --fqbn $internal_fqbn \
@@ -67,19 +67,32 @@ function espbuild()
   eval "$DOCKER_BASE /bin/bash -c '$cmd'"
   local build_status=$?
 
-  # 4. Post-Build: Copy and Rename Binary
+  # Post-Build: Rename the application binary given the board name
   if [ $build_status -eq 0 ]; then
     local source_bin="${local_output_path}/${sketch_dir}.ino.bin"
     local target_bin="${local_output_path}/${board_name}.bin"
 
     if [ -f "$source_bin" ]; then
-      cp "$source_bin" "$target_bin"
-      echo " Success: Copied $source_bin to $target_bin"
-    else
-      echo " Warning: Could not find $source_bin to rename."
+      mv "$source_bin" "$target_bin"
+      printf " Success, generated: $target_bin\n\n"
+      build_status=0
     fi
   else
-    echo " Build failed with exit code $build_status"
+    printf "\n\n Build failed with exit code $build_status\n\n"
+  fi
+
+  # Generate full flash image if ok
+  if [[ $build_status -eq 0 && "$factory_mode" == true ]]; then
+    eval "$DOCKER_BASE /bin/bash ./scripts/gen_factory_image.sh $board_name"
+    build_status=$?
+  fi
+
+  # Copy to Windows output
+  if [[ $build_stats -eq 0 ]]; then
+    local windows_dest="${win_docs}/tvmg/${board_name}"
+
+    mkdir -p "${windows_dest}"
+    cp "${local_output_path}/${board_name}"* "${windows_dest}"
   fi
 
   return $build_status

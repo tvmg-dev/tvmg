@@ -6,32 +6,30 @@ readonly GEN_PART_PY="/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools
 readonly OTADATA_BIN="/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/partitions/boot_app0.bin"
 
 function generate_factory_image() {
-    local variant=$1
-    local out_dir="build/output/${variant}"
-    local fs_src_root="filesystems/${variant}"
+    local board_name=$1
+    local out_dir="build/output/${board_name}"
+    local fs_src_root="filesystems/${board_name}"
 
     # Identify sketch from current working directory
     local sketch_name=$(basename "$(pwd)")
     local part_bin="${out_dir}/${sketch_name}.ino.partitions.bin"
     local boot_bin="${out_dir}/${sketch_name}.ino.bootloader.bin"
-    local app_bin="${out_dir}/${sketch_name}.ino.bin"
-
-    # 1. Validation
+    local app_bin="${out_dir}/${board_name}.bin"
+    
+    # Check for artefacts
     if [[ ! -f "$part_bin" || ! -f "$boot_bin" || ! -f "$app_bin" ]]; then
-        echo "Error: Missing build artifacts in $out_dir"
+        printf "Error: Missing build artifacts in $out_dir"
         return 1
     fi
 
-    echo "-------------------------------------------------------"
-    echo "FACTORY IMAGE GENERATION: $variant"
-    echo "-------------------------------------------------------"
+    printf "\nFactory Image Generation for: $board_name\n\n"
 
-    # 2. Extract Bootloader Header Metadata (The "Truth" Bytes)
+    # Extract Bootloader Header Metadata (the source of 'truth')
     local header_hex=$(od -An -N4 -t x1 "$boot_bin" | tr -d ' ')
 
     local magic=${header_hex:0:2}
     if [[ "$magic" != "e9" ]]; then
-        echo "Error: $boot_bin is not a valid ESP image header."
+        printf "Error: $boot_bin is not a valid ESP image header."
         return 1
     fi
 
@@ -49,33 +47,34 @@ function generate_factory_image() {
         5) b_size="32MB" ;;
         *) b_size="keep" ;;
     esac
-    # 3. Detect Chip Type and Determine Bootloader Offset
+
+    # Detect Chip Type and Determine Bootloader Offset
     local chip_type=$($ESPTOOL_BIN image_info "$boot_bin" | grep "Detected image type" | cut -d':' -f2 | xargs | tr '[:upper:]' '[:lower:]' | sed 's/-//g')
 
-    # EXPLICIT logic: Standard ESP32 MUST use 0x1000.
-    # Only S and C series (S2, S3, C3, etc.) use 0x0000.
+    # EXPLICIT logic: Standard legacy ESP32 MUST use 0x1000.
+    # later cpu's, S and C series (S2, S3, C3, etc.) use 0x0000.
     local boot_offset="0x1000"
     if [[ "$chip_type" == "esp32s2" || "$chip_type" == "esp32s3" || "$chip_type" == "esp32c3" || "$chip_type" == "esp32c6" ]]; then
         boot_offset="0x0000"
     fi
 
-    echo "Detected Chip: $chip_type | Bootloader Offset: $boot_offset | Flash Size: $b_size"
+    printf "Detected Chip: $chip_type | Bootloader Offset: $boot_offset | Flash Size: $b_size\n"
 
-    # 3.a Extract Partition Metadata for App and OTA Offsets
+    # Extract Partition Metadata for App and OTA Offsets from the partition binary
     local part_data=$(python3 "$GEN_PART_PY" -q "$part_bin")
     local app_offset=$(echo "$part_data" | grep -E "app|factory" | head -n 1 | cut -d',' -f4 | xargs)
     local ota_offset=$(echo "$part_data" | grep "otadata" | head -n 1 | cut -d',' -f4 | xargs)
 
-    # 4. Sync App to Recovery (If directory exists)
+    # Write the app to a recovery partition (If directory exists)
     if [[ -d "$fs_src_root/recovery" ]]; then
-        cp "$app_bin" "$fs_src_root/recovery/factory_reset.bin"
+        cp "$app_bin" "$fs_src_root/recovery/factory_app.bin"
     fi
 
-    # 5. Initialize Merge Command
+    # Final merge command
     local merge_args=(
         "--chip" "$chip_type"
         "merge_bin"
-        "-o" "${out_dir}/factory_complete.bin"
+        "-o" "${out_dir}/${board_name}_factory.bin"
         "--fill-flash-size" "$b_size"
         "$boot_offset" "$boot_bin"
         "0x8000" "$part_bin"
@@ -84,7 +83,7 @@ function generate_factory_image() {
     [[ -n "$ota_offset" ]] && merge_args+=("$ota_offset" "$OTADATA_BIN")
     merge_args+=("$app_offset" "$app_bin")
 
-    # 6. Process Filesystems
+    # Generate the filesystems - there may be multiple partitions
     if [[ -d "$fs_src_root" ]]; then
         for fs_folder_path in "${fs_src_root}"/*/; do
             [[ -d "$fs_folder_path" ]] || continue
@@ -112,11 +111,10 @@ function generate_factory_image() {
         done
     fi
 
-    # 7. Final Merge Execution
-    echo "Merging into factory_complete.bin ($b_size)..."
-    echo "Arguments:"
-    echo "${merge_args[@]}"
-
+    # Finally perform the merge operation
+    printf "Merging into ${board_name}_complete.bin ($b_size)...\n"
+    printf "Arguments: %s\n" "${merge_args[*]}"
+    
     $ESPTOOL_BIN "${merge_args[@]}"
 }
 
