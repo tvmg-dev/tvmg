@@ -11,12 +11,12 @@ function espbuild()
   local win_docs=$(wslpath "$win_docs_raw")
 
   local library_host_path="${win_docs}/Arduino/libraries"
-  
+
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
       echo "Linux environment"
       library_host_path="$(pwd)/libraries"
       docker_user="-u $(id -u):$(id -g)"
-      
+
   fi
 
   for arg in "$@"; do
@@ -88,144 +88,20 @@ function espbuild()
   fi
 
   # Copy to Windows output
-  if [[ $build_stats -eq 0 ]]; then
+  if [[ $build_stats -eq 0 && ! -z "$win_docs" ]]; then
     local windows_dest="${win_docs}/tvmg/${board_name}"
 
     mkdir -p "${windows_dest}"
     cp "${local_output_path}/${board_name}"* "${windows_dest}"
+
+    printf "\n${windows_dest} updated\n\n"
   fi
 
   return $build_status
 }
 
+# Some alias's for building
+
 alias espbuild-32='espbuild tvmg_esp32'
 alias espbuild-s3='espbuild tvmg_esp32s3'
 alias espbuild-ws='espbuild tvmg_wsharelcd'
-
-function flash-32()
-{
-  local file="./build/output/tvmg_esp32/tvmg_esp32.bin"
-  local address="0x10000"
-  local factory_mode=false
-  local port="COM3"
-
-  # Check for -factory flag
-  for arg in "$@"; do
-    if [[ "$arg" == "-factory" ]]; then
-      factory_mode=true
-    fi
-  done
-
-  if [[ "$factory_mode" == true ]]; then
-    file="./build/output/tvmg_esp32/factory_complete.bin"
-    address="0x0"
-    echo ">>> Factory Mode: Flashing complete image to $address"
-  fi
-
-  if [ ! -f "$file" ]; then
-    printf " Not found: $file\n\n"
-  else
-    # The flash_mode, flash_size and flash_freq are in the bootloader header
-    # and the 'keep' option for those settings is the default
-    #
-    # When we program a full image then the bootloader will have the modes
-    # set.  Programming an image only doesn't need such headers
-
-    python -m esptool --chip esp32 --port $port --baud 921600 \
-    --before default_reset --after hard_reset write_flash -z \
-    "$address" "$file"
-
-    if [ $? ]; then
-      echo "  Launching Monitor..."
-      winpty python -m esp_idf_monitor --port $port --baud 115200
-    fi
-  fi
-}
-
-function flash()
-{
-   local port=$1
-   local variant=$2
-
-
-}
-
-function flash-ws()
-{
-  local file="./build/output/tvmg_wsharelcd/tvmg_wsharelcd.bin"
-  local address="0x10000"
-  local factory_mode=false
-  local port="COM8"
-
-  # Check for -factory flag
-  for arg in "$@"; do
-    if [[ "$arg" == "-factory" ]]; then
-      factory_mode=true
-    fi
-  done
-
-  if [[ "$factory_mode" == true ]]; then
-    file="./build/output/tvmg_wsharelcd/factory_complete.bin"
-    address="0x0"
-    echo ">>> Factory Mode: Flashing complete image to $address"
-  fi
-
-  if [ ! -f "$file" ]; then
-    printf " Not found: $file\n\n"
-  else
-    # The flash_mode, flash_size and flash_freq are in the bootloader header
-    # and the 'keep' option for those settings is the default
-    #
-    # When we program a full image then the bootloader will have the modes
-    # set.  Programming an image only doesn't need such headers
-
-    python -m esptool --chip esp32s3 --port $port --baud 921600 \
-    --before default_reset --after hard_reset write_flash -z \
-    "$address" "$file"
-
-    if [ $? ]; then
-      echo "  Launching Monitor..."
-      winpty python -m esp_idf_monitor --port $port --baud 115200
-    fi
-  fi
-}
-
-function flash-s3()
-{
-  local file="./build/output/tvmg_esp32s3/tvmg_esp32s3.bin"
-  local address="0x10000"
-  local factory_mode=false
-  local port="COM6"
-
-  # Check for -factory flag
-  for arg in "$@"; do
-    if [[ "$arg" == "-factory" ]]; then
-      factory_mode=true
-    fi
-  done
-
-  if [[ "$factory_mode" == true ]]; then
-    file="./build/output/tvmg_esp32s3/factory_complete.bin"
-    address="0x0"
-    echo ">>> Factory Mode: Flashing complete image to $address"
-  fi
-
-  if [ ! -f "$file" ]; then
-    printf " Not found: $file\n\n"
-  else
-    # The flash_mode, flash_size and flash_freq are in the bootloader header
-    # and the 'keep' option for those settings is the default
-    #
-    # When we program a full image then the bootloader will have the modes
-    # set.  Programming an image only doesn't need such headers
-
-    python -m esptool --chip esp32s3 --port $port --baud 921600 \
-    --before default_reset --after hard_reset write_flash -z \
-    "$address" "$file"
-
-    if [ $? ]; then
-      echo "  Launching Monitor..."
-      winpty python -m esp_idf_monitor --port $port --baud 115200
-    fi
-  fi
-}
