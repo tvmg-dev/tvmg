@@ -1,3 +1,4 @@
+v26.02.03 - Fix bug in Shelly EM3G sampling
 v26.02.02 - Now using docker & arduino-cli build pipeline
 v26.02.01 - Support the EM Gen3 Shelly device
 v26.01.08 - Ensure thread safe fetching of event logs for the live view
