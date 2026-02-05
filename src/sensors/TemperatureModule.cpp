@@ -50,8 +50,7 @@ TemperatureModule::TemperatureModule()
            m_numSensors( 0 ),
            m_haveRemoteSensors( false ),
            m_sendPort( -1 ),
-           m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS ),
-           m_fakeMeasurements( false )
+           m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
 {
    PW_DEBUG( "TemperatureModule::TemperatureModule()" );
    PW_MSG( "Temperature Module Startup" );
@@ -157,12 +156,6 @@ TemperatureModule::TemperatureModule()
 
       PW_MSG( "Registered %d thermometers",m_numSensors );
    }
-
-   if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
-   {
-      m_fakeMeasurements = true;
-   }
-
 }
 
 TemperatureModule::~TemperatureModule()
@@ -379,25 +372,6 @@ void TemperatureModule::addUDPListener()
 
 bool TemperatureModule::getTemperatures()
 {
-   // If faking, then incremenent local temperatures and also broadcast
-   if ( m_fakeMeasurements )
-   {
-      for ( int i = 0; i < m_numSensors; i++ )
-      {
-         if ( m_sensors[ i ].m_isValid && ! m_sensors[ i ].m_isRemote )
-         {
-            if ( m_sensors[ i ].m_data.m_temp < (TEMPERATURE_INVALID + 1.0f) )
-            {
-               m_sensors[ i ].m_data.m_temp = i;
-            }
-            m_sensors[ i ].m_data.m_temp += 0.1;
-         }
-      }
-
-      localBroadcastData();
-      return true;
-   }
-
    // Let's see what we have
    bool haveLocalSensors = false;
    bool haveOWSensors = false;

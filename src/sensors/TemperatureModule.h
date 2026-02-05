@@ -89,7 +89,6 @@ private:
    uint16_t          m_sendPort;
 
    int32_t           m_millisLastAquisition;       // milliseconds since last acquisition
-   bool              m_fakeMeasurements;
 };
 
 #endif

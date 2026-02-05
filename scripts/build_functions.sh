@@ -88,7 +88,7 @@ function espbuild()
   fi
 
   # Copy to Windows output
-  if [[ $build_stats -eq 0 && ! -z "$win_docs" ]]; then
+  if [[ $build_status -eq 0 && ! -z "$win_docs" ]]; then
     local windows_dest="${win_docs}/tvmg/${board_name}"
 
     mkdir -p "${windows_dest}"

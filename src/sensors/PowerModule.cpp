@@ -13,8 +13,7 @@ PowerModule::PowerModule( ModbusMaster *modbus )
            : m_modbus( modbus ),
              m_sensors(),
              m_numLocalSensors( 0 ),
-             m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS ),
-             m_fakeMeasurements( false )
+             m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS )
 {
    PW_DEBUG( "PowerModule::PowerModule()" );
    PW_MSG( "Power Module Startup" );
@@ -61,11 +60,6 @@ PowerModule::PowerModule( ModbusMaster *modbus )
    if ( m_numLocalSensors )
    {
       PW_MSG( "Registered %d power sensors",m_numLocalSensors );
-   }
-
-   if ( GET_REGISTRY_INT( FAKE_MEASUREMENTS ) == 1 )
-   {
-      m_fakeMeasurements = true;
    }
 }
 
@@ -131,27 +125,13 @@ PowerSensor  *PowerModule::readNextSensor( uint8_t index )
 bool PowerModule::getPower( uint8_t index )
 {
    uint8_t  modbusResult;
-
-   if ( m_fakeMeasurements )
-   {
-      if ( index < m_numLocalSensors )
-      {
-         if ( m_sensors[ index ].m_data.m_energy == POWER_INVALID )
-         {
-            m_sensors[ index ].m_data.m_energy = index;
-            m_sensors[ index ].m_data.m_power = index;
-         }
-
-         m_sensors[ index ].m_data.m_energy += 1;
-         m_sensors[ index ].m_data.m_power += 2;
-      }
-
-      return true;
-   }
+   bool     readOk = false;
 
    if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_modbus )
    {
       const char *name = getSensorName( POWER,m_sensors[ index ].m_data.m_id ).c_str();
+
+      START_TIMING( String( "Power ") + String( name ) );
 
       // force a short delay if necessary
       if ( hwConfig->ModBusMsgDelay > -1 )
@@ -195,10 +175,11 @@ bool PowerModule::getPower( uint8_t index )
          m_sensors[ index ].m_data.m_power = power;
 
          PW_DEBUG( "I [%.1f] : V [%.1f] : Freq [%.1f] : PowerFactor [%.1f]",current, voltage, hz, pf );
-         return true;
+         readOk = true;
       }
+      END_TIMING;
    }
 
-   return false;
+   return readOk;
 }
 
