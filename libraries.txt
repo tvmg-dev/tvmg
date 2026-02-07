@@ -1,0 +1,44 @@
+Using library SD at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SD
+Using library FS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\FS
+Using library SPI at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SPI
+Using library ModbusMaster at version 2.0.1-pw1 in folder: C:\Users\trial\Documents\Arduino\libraries\ModbusMaster
+Using library OneWire at version 2.3.8 in folder: C:\Users\trial\Documents\Arduino\libraries\OneWire
+Using library DallasTemperature at version 3.9.0 in folder: C:\Users\trial\Documents\Arduino\libraries\DallasTemperature
+Using library SPIFFS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SPIFFS
+Using library ESP32 Async UDP at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\AsyncUDP
+Using library ESP Async WebServer at version 3.4.5 in folder: C:\Users\trial\Documents\Arduino\libraries\ESP_Async_WebServer
+Using library Async TCP at version 3.3.1-pw1 in folder: C:\Users\trial\Documents\Arduino\libraries\AsyncTCP
+Using library WiFi at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\WiFi
+Using library Networking at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\Network
+Using library Preferences at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\Preferences
+Using library ESPmDNS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\ESPmDNS
+Using library NetworkClientSecure at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\NetworkClientSecure
+Using library HTTPClient at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\HTTPClient
+Using library ReadyMail at version 0.3.6 in folder: C:\Users\trial\Documents\Arduino\libraries\ReadyMail
+Using library Update at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\Update
+Using library U8g2 at version 2.35.30 in folder: C:\Users\trial\Documents\Arduino\libraries\U8g2
+Using library Wire at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\Wire
+
+In libraries
+EMailSender - git + patched, but no longer used !
+
+
+AsyncTCP - git [v3.3.1] + patched
+DallasTemperature - git [v3.9.0]
+ESPAsyncWebServer - git [3.4.5]
+ModbusMaster - git [v2.0.1] + patched
+OneWire - git [v2.3.8]
+ReadyMail - git [v0.3.6] + patched
+modbus-esp8266 - git [4.1.0]
+
+U8g2 - not git directly as is being packaged somewhere
+
+esp-lib-utils - git [v0.3.0]     # is this needed at all ? I think used with later display panel
+
+ESP32_Display_Panel - git [v0.2.2]
+ESP32_IO_Expander - git [v0.1.0]
+
+
+lv_conf.h  ???
+lvgl
+

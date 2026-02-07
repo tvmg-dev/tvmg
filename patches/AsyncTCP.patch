@@ -1,0 +1,32 @@
+# Pin the AsyncTCP task to core 0
+diff --git a/src/AsyncTCP.cpp b/src/AsyncTCP.cpp
+index 0761144..f52e2dc 100644
+--- a/src/AsyncTCP.cpp
++++ b/src/AsyncTCP.cpp
+@@ -338,7 +338,7 @@ static bool customTaskCreateUniversal(
+     return xTaskCreatePinnedToCore(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask, xCoreID);
+   } else {
+ #endif
+-    return xTaskCreate(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask);
++    return xTaskCreatePinnedToCore(pxTaskCode, pcName, usStackDepth, pvParameters, uxPriority, pxCreatedTask,0 );
+ #ifndef CONFIG_FREERTOS_UNICORE
+   }
+ #endif
+diff --git a/src/AsyncTCP.h b/src/AsyncTCP.h
+index 6d69a91..211706a 100644
+--- a/src/AsyncTCP.h
++++ b/src/AsyncTCP.h
+@@ -55,10 +55,12 @@ extern "C" {
+   #define CONFIG_ASYNC_TCP_RUNNING_CORE -1 // any available core
+ #endif
+ 
+-// guard AsyncTCP task with watchdog
++// guard AsyncTCP task with watchdog if enabled
++#ifndef CONFIG_ASYNC_TCP_NO_WATCHDOG
+ #ifndef CONFIG_ASYNC_TCP_USE_WDT
+   #define CONFIG_ASYNC_TCP_USE_WDT 1
+ #endif
++#endif
+ 
+ #ifndef CONFIG_ASYNC_TCP_STACK_SIZE
+   #define CONFIG_ASYNC_TCP_STACK_SIZE 8192 * 2
