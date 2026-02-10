@@ -17,7 +17,7 @@ public:
    void  storeSample( const Measurement::Sample &sample,bool isNewFile );
    char  *getCurrentFileName();
    void  setNetworking( Networking *network );
-   void  getStatus( char *line );
+   void  getStatus( char *line,int lineSize );
 
 private:
    void  removeOldSamples();

@@ -298,7 +298,7 @@ void  UserIO::showStorage()
 
    if ( storageModule )
    {
-      storageModule->getStatus( line );
+      storageModule->getStatus( line,MAX_DISPLAY_COLUMNS );
       storeLine( 1,line );
    }
 

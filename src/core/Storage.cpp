@@ -4,7 +4,6 @@
 #include "Storage.h"
 #include "src/network/Networking.h"
 #include "src/config/Config.h"
-#include "src/userio/UserIO.h"
 
 #include "src/sensors/TemperatureModule.h"
 #include "src/sensors/PowerModule.h"
@@ -354,11 +353,11 @@ char  *Storage::getCurrentFileName()
    return m_currentFileName;
 }
 
-void  Storage::getStatus( char *line )
+void  Storage::getStatus( char *line,int lineSize )
 {
    if ( ! boardHasSDCard() )
    {
-      strncpy( line,"No Fitted SD",MAX_DISPLAY_COLUMNS );
+      strncpy( line,"No Fitted SD",lineSize );
    }
    else if ( m_storageOk )
    {
@@ -366,11 +365,11 @@ void  Storage::getStatus( char *line )
       totalMiB = SD.totalBytes() / (1024 * 1024);
       usedMiB = SD.usedBytes() / (1024 * 1024);
 
-      snprintf( line,MAX_DISPLAY_COLUMNS,"SD: %u MiB free",totalMiB - usedMiB );
+      snprintf( line,lineSize,"SD: %u MiB free",totalMiB - usedMiB );
    }
    else
    {
-      strncpy( line,"SD Card Fault",MAX_DISPLAY_COLUMNS );
+      strncpy( line,"SD Card Fault",lineSize );
    }
 }
 

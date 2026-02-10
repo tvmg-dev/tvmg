@@ -25,7 +25,6 @@
 #include "src/core/utils.h"
 #include "src/core/Measurement.h"
 
-#include "src/userio/UserIO.h"
 #include "Networking.h"
 
 const char status_html[] = R"rawliteral(
