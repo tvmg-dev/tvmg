@@ -16,6 +16,12 @@ public:
 private:
    void generateOptionsSection();
    void setupAsyncServer();
+   void setupEventSources();
+   void setupOTAHandler();
+   void setupFilesHandlers();
+   void setupControlHandlers();
+   
+   void setupMiscHandlers();
    void handleCheckbox( const String &item,const String &state );
 
    AsyncWebServer    *m_webServer;

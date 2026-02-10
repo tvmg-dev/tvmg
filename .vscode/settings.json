@@ -10,5 +10,9 @@
         "**/.git/subtree-cache/**": true,
         "**/node_modules/**": true,
         "**/build/**": true
-    }
+    },
+    "search.exclude": {
+        "libraries/": true,
+        "build/": true
+    }    
 }

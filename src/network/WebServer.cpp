@@ -140,6 +140,15 @@ const char* param_download_path = "download_path";
 const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
 
+// For authentication
+#define AUTHENTICATE \
+do \
+   if(!request->authenticate(http_username, http_password)) \
+   { \
+      return request->requestAuthentication(); \
+   } \
+while( 0 )
+
 //----------------------------------------------------------------------
 // Additional section for options purposes
 
@@ -676,26 +685,38 @@ void WebServer::setupAsyncServer()
 {
    m_webServer = new AsyncWebServer( 80 );
 
+   if ( !m_webServer )
+   {
+      PW_ERROR( ("Failed to create web server") );
+   }
+   else
+   {
+      setupEventSources();
+      setupOTAHandler();
+      setupFilesHandlers();
+      setupControlHandlers();
+      setupMiscHandlers();
+
+      m_webServer->onNotFound(notFound);
+
+      m_webServer->begin();
+   }
+}
+
+void WebServer::setupEventSources()
+{
    m_otaEvents = new AsyncEventSource( "/events" );
    m_webServer->addHandler( m_otaEvents );
 
    m_statusEvents = new AsyncEventSource( "/telemetry" );
    m_webServer->addHandler( m_statusEvents );
+}
 
-   m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
-   {
-      PW_DEBUG( "/manager request" );
-
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
-      request->send_P(200, "text/html", manager_html, processor);
-   });
-
+void WebServer::setupOTAHandler()
+{
    m_webServer->on("/update", HTTP_POST, [&](AsyncWebServerRequest *request)
    {
-      // --- 1. THE RESPONSE HANDLER (Called after upload completes) ---
+      // The response handler (called after upload completes)
       // We just send a simple HTTP 200 to acknowledge the AJAX request.
       // The manager UI is being updated separately in Javascript via the
       // Send Server Events (SSE) '/events' stream.
@@ -708,7 +729,7 @@ void WebServer::setupAsyncServer()
    },
    [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
    {
-      // --- 2. THE UPLOAD HANDLER (Called for every chunk of the .bin file) ---
+      // The upload handler (called for every chunk of the update file)
 
       size_t totalSize = request->contentLength(); // Total file size for percentage
 
@@ -723,7 +744,7 @@ void WebServer::setupAsyncServer()
             PW_DEBUG( "OTA: Starting update for %s", filename.c_str() );
             m_networking->setUpdateProgress(0, filename, false);
 
-            // Reset UI via SSE
+            // Reset client via SSE
             m_otaEvents->send( "0", "ota_progress", millis() );
 
             // Start the internal Flash update process
@@ -735,7 +756,7 @@ void WebServer::setupAsyncServer()
             PW_ERROR( "Failed to start update" );
             m_networking->setUpdateProgress( -1, filename, false );
             Networking::releaseNetworkMutex();
-            // Signal failure to the UI immediately
+            // Signal failure to the client immediately
             m_otaEvents->send( "failed:Could not begin update", "ota_state", millis() );
             return;
          }
@@ -777,7 +798,7 @@ void WebServer::setupAsyncServer()
             }
          }
 
-         // FINALIZATION: Runs on the last packet
+         // Runs on the final packet
          if (final)
          {
             // Write any remaining bytes left in the buffer
@@ -807,21 +828,13 @@ void WebServer::setupAsyncServer()
          }
       }
    });
+}
 
-   m_webServer->on("/upload", HTTP_POST, [](AsyncWebServerRequest *request)
-   {
-      // don't send a response as we will send a redirect in the uploadFile method
-   }, uploadFile);
-
+void WebServer::setupFilesHandlers()
+{
    m_webServer->on("/edit", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
-      uint32_t largestFreeBlock = largestFreeInternalBlock();
-
-      PW_DEBUG( "Largest free heap %d",largestFreeBlock );
+      AUTHENTICATE;
 
       String fileName = "/" + request->getParam(param_edit_path)->value();
 
@@ -833,10 +846,7 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/save", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
 
       if ( request->params() == 1 )
       {
@@ -853,10 +863,7 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/delete", HTTP_GET, [](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
 
       String fileName = "/" + request->getParam(param_delete_path)->value();
       PW_DEBUG( "Deleting %s",fileName.c_str() );
@@ -871,10 +878,7 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/download", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
 
       String fileName = "/" + request->getParam(param_download_path)->value();
       PW_DEBUG( "Downloading %s",fileName.c_str() );
@@ -912,12 +916,17 @@ void WebServer::setupAsyncServer()
       request->send(response);
    });
 
+   m_webServer->on("/upload", HTTP_POST, [](AsyncWebServerRequest *request)
+   {
+      // don't send a response as we will send a redirect in the uploadFile method
+   }, uploadFile);
+}
+
+void WebServer::setupControlHandlers()
+{
    m_webServer->on("/reset", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
 
       PW_WARN( "Resetting..." );
 
@@ -934,10 +943,7 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/checkbox", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
 
       if (request->hasParam("item") && request->hasParam("state"))
       {
@@ -947,38 +953,10 @@ void WebServer::setupAsyncServer()
       request->send( 200,"text/plain","OK" );
    });
 
-   m_webServer->on(m_hiddenPage.c_str(), HTTP_GET, [](AsyncWebServerRequest *request)
-   {
-      if ( GET_REGISTRY_INT( DEBUGPAGE_HWRESET ) == 1 )
-      {
-         hwReset();
-      }
-
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
-
-      if ( Networking::takeNetworkMutex( 100 ) == 1 )
-      {
-         getRunTimeInfo();
-         Networking::releaseNetworkMutex();
-
-         if ( GET_REGISTRY_INT( DEBUGPAGE_CPU0_TASKWDT ) == 1 )
-         {
-            // cause task watchog
-            uint32_t start = millis();
-            while( millis() - start < 180000 )
-            {
-               buffs++;
-            }
-         }
-      }
-      request->send(200);
-   });
-
    m_webServer->on("/runtimeinfo", HTTP_POST, [](AsyncWebServerRequest *request)
    {
+      AUTHENTICATE;
+
       getRunTimeInfo();
       debugSensorNameMap();
 
@@ -991,10 +969,7 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/reboot", HTTP_POST, [](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
 
       request->send_P(200, "text/html", reboot_html,processor);
 
@@ -1008,13 +983,20 @@ void WebServer::setupAsyncServer()
       setRebootRequired();
 
    });
+}
+
+void WebServer::setupMiscHandlers()
+{
+   m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
+   {
+      AUTHENTICATE;
+
+      request->send_P(200, "text/html", manager_html, processor);
+   });
 
    m_webServer->on("/json", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
 
       Measurement *measurement = Measurement::instance();
       bool sent = false;
@@ -1039,10 +1021,8 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/status", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
+
       request->send( 200,"text/html",status_html );
    });
 
@@ -1108,16 +1088,36 @@ void WebServer::setupAsyncServer()
 
    m_webServer->on("/history", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
-      if(!request->authenticate(http_username, http_password))
-      {
-         return request->requestAuthentication();
-      }
+      AUTHENTICATE;
       request->send_P(200, "text/html", history_html,processor);
    });
 
-   m_webServer->onNotFound(notFound);
+   m_webServer->on(m_hiddenPage.c_str(), HTTP_GET, [](AsyncWebServerRequest *request)
+   {
+      if ( GET_REGISTRY_INT( DEBUGPAGE_HWRESET ) == 1 )
+      {
+         hwReset();
+      }
 
-   m_webServer->begin();
+      AUTHENTICATE;
+
+      if ( Networking::takeNetworkMutex( 100 ) == 1 )
+      {
+         getRunTimeInfo();
+         Networking::releaseNetworkMutex();
+
+         if ( GET_REGISTRY_INT( DEBUGPAGE_CPU0_TASKWDT ) == 1 )
+         {
+            // cause task watchog
+            uint32_t start = millis();
+            while( millis() - start < 180000 )
+            {
+               buffs++;
+            }
+         }
+      }
+      request->send(200);
+   });
 }
 
 void  WebServer::handleCheckbox( const String &item,const String &state )
