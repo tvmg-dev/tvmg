@@ -1,4 +1,7 @@
-v26.02.04 - More build environment changes, no functionan updates
+v26.02.05 - Flash programmer - force image bank for app only update.
+          - UserIO updates only via control.
+          - Preparation for LVGL integration
+v26.02.04 - More build environment changes, no functional updates
 v26.02.03 - Fix bug in Shelly EM3G sampling
 v26.02.02 - Now using docker & arduino-cli build pipeline
 v26.02.01 - Support the EM Gen3 Shelly device

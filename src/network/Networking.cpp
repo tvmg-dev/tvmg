@@ -1069,6 +1069,13 @@ void  Networking::releaseWebClient()
 
 void  Networking::setUpdateProgress( int percentComplete,const String &filename,bool finished )
 {
+   static bool notifyUpdate = false;
+
+   if ( percentComplete != 0 )
+   {
+      notifyUpdate = false;
+   }
+
    // If update start fails then we get size -1 and finished is false
 
    if ( percentComplete == -1 )
@@ -1083,8 +1090,13 @@ void  Networking::setUpdateProgress( int percentComplete,const String &filename,
    else if ( !percentComplete )
    {
       PW_MSG( "OTA update with %s",filename.c_str() );
-      m_hasUpdated = false;
-      m_infoCallback( OTA_STARTED,filename );
+
+      if ( !notifyUpdate )
+      {
+         m_hasUpdated = false;
+         m_infoCallback( OTA_STARTED,filename );
+         notifyUpdate = true;
+      }
    }
    else
    {

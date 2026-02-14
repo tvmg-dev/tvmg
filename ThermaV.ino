@@ -82,7 +82,7 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
 {
    char line[ MAX_DISPLAY_COLUMNS + 1 ];
 
-   // PW_MSG( "\n\nNetwork Info: %d, string: %s\n\n", info,str.c_str() );
+   PW_DEBUG( "NWC: %d : %s", info,str.c_str() );
 
    if ( !userIO )
    {
@@ -109,8 +109,16 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
          userIO->updateLine( 2,line );
          break;
       case Networking::OTA_PROGRESS:
-         snprintf( line,MAX_DISPLAY_COLUMNS,"%s %%",str.c_str() );
-         userIO->updateLine( 5,line,false );
+         {
+            static int progress = -1;
+            int newProgress = str.toInt();
+            if ( newProgress != progress  )
+            {
+               snprintf( line,MAX_DISPLAY_COLUMNS,"%s %%",str.c_str() );
+               userIO->updateLine( 5,line,false );
+               progress = newProgress;
+            }
+         }  
          break;
       case Networking::OTA_COMPLETE:
          userIO->updateLine( 5,"Completed" );
