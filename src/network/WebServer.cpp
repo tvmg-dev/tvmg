@@ -792,8 +792,8 @@ void WebServer::setupOTAHandler()
                   char progMsg[8];
                   sprintf( progMsg, "%d", progress );
                   m_otaEvents->send( progMsg, "ota_progress", millis() );
+                  m_networking->setUpdateProgress( progress, filename, false );
                }
-               m_networking->setUpdateProgress( index + packetOffset, filename, false );
             }
          }
 
@@ -972,7 +972,7 @@ void WebServer::setupControlHandlers()
 
       request->send_P(200, "text/html", reboot_html,processor);
 
-      // if this we're in Access Point mode then allow immediate reboot
+      // if we're in Access Point mode then allow immediate reboot
 
       if ( s_networking->inAPMode() )
       {
@@ -980,7 +980,6 @@ void WebServer::setupControlHandlers()
       }
 
       setRebootRequired();
-
    });
 }
 

@@ -181,10 +181,6 @@ void  UserIO::show( DisplayLine lines[] )
 void  UserIO::setNetworking( Networking *network )
 {
    m_networking = network;
-   if ( m_networking )
-   {
-      m_networking->setUserIO( this );
-   }
 }
 
 void  UserIO::setLGHeatPump( LGHeatPump *heatpump )

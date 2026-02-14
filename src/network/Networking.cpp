@@ -19,8 +19,6 @@
 
 #include "src/config/Config.h"
 
-#include "src/userio/UserIO.h"
-
 #include "Networking.h"
 #include "WebServer.h"
 
@@ -628,16 +626,23 @@ AsyncUDP *Networking::s_listenUdp = nullptr;
 uint32_t Networking::s_mutexAcquiredMillis;
 SemaphoreHandle_t Networking::s_networkMutex = NULL;
 
-Networking::Networking()
+Networking::Networking( NetworkingInfoCallback infoCallback )
           : m_emailer( nullptr ),
             m_webServer( nullptr ),
-            m_userIO( nullptr ),
             m_status(),
             m_willSendEmails( false ),
-            m_hasUpdated( false )
+            m_hasUpdated( false ),
+            m_infoCallback( infoCallback )
 {
    PW_DEBUG( "Networking::Networking()" );
    PW_MSG( "Networking Startup" );
+
+   if ( !m_infoCallback )
+   {
+      PW_ERROR( "No info callback set" );
+      delay( 1000 );
+      abort();
+   }
 
    if ( !s_networkMutex )
    {
@@ -648,12 +653,12 @@ Networking::Networking()
 
    m_status.ipAddr = "";
    m_status.mdnsName = "";
-   m_status.isConnected = false;
    m_status.timeToAcquireNTP = -1;
    m_status.timeToConnect = 0;
    m_status.emonFails = 0;
    m_status.emonSent = 0;
    m_status.emonQFails = 0;
+   m_status.state = NOTSTARTED;
 
    if ( GET_REGISTRY_INT( SEND_EMAILS ) == 1 )
    {
@@ -683,6 +688,8 @@ bool Networking::startAccessPoint()
    String SSID( "ThermaV-Monitor" );
 
    m_status.mdnsName = String( "tvmg-init" );
+
+   m_infoCallback( STARTING_AP,String( "Starting AP " ) + m_status.mdnsName );
 
    WiFi.disconnect();
 
@@ -767,6 +774,8 @@ void Networking::initialise()
       PW_ERROR( "Failed to set hostname" );
    }
 
+   m_infoCallback( STARTING_STA, String( "Starting STA " ) + String( GET_REGISTRY_STRING( WIFI_SSID ) ) );
+
    WiFi.begin( GET_REGISTRY_STRING( WIFI_SSID ), GET_REGISTRY_STRING( WIFI_PASSWORD ) );
    while (WiFi.status() != WL_CONNECTED && (millis() - start < wifiTimeout) )
    {
@@ -776,11 +785,11 @@ void Networking::initialise()
    if ( WiFi.status() != WL_CONNECTED )
    {
       PW_WARN( "Network not connected" );
-      m_status.isConnected = false;
+      m_status.state = DISCONNECTED;
+      m_infoCallback( m_status.state,"Failed to connect to WiFi" );
       return;
    }
 
-   m_status.isConnected = true;
 
    m_status.timeToConnect = ( millis() - start ) / 1000;
    m_status.ipAddr = WiFi.localIP().toString();
@@ -790,10 +799,8 @@ void Networking::initialise()
    PW_DEBUG( "  IP : %s",m_status.ipAddr.c_str() );
    PW_DEBUG( "  Autoreconnect : %u", WiFi.getAutoReconnect() );
 
-   if ( m_userIO )
-   {
-      m_userIO->updateLine( 3,"Acquire NTP" );
-   }
+   m_status.state = CONNECTED_STA;
+   m_infoCallback( m_status.state,m_status.SSID + " : connected" );
 
    acquireNTP();
 
@@ -857,6 +864,8 @@ bool  Networking::acquireNTP()
 
    PW_DEBUG( "Acquiring NTP..." );
 
+   m_infoCallback( ACQUIRING_NTP,"Acquiring NTP" );
+
    configTzTime( "GMT0BST,M3.5.0/1,M10.5.0",ntpServer );
    start = millis();
 
@@ -890,7 +899,8 @@ const Networking::Status   &Networking::getStatus()
 {
    // Update WiFi info
 
-   m_status.isConnected = (WiFi.status() == WL_CONNECTED);
+   isConnected();
+
    m_status.RSSI = WiFi.RSSI();
 
    // now Emon stats, the emonSendFailures could be updated in the emontask
@@ -905,9 +915,17 @@ const Networking::Status   &Networking::getStatus()
 
 bool  Networking::isConnected()
 {
-   m_status.isConnected = (WiFi.status() == WL_CONNECTED);
+   bool connected = (WiFi.status() == WL_CONNECTED);
+   if ( connected )
+   {
+      m_status.state = ( inAPMode() ? CONNECTED_AP : CONNECTED_STA );
+   }
+   else
+   {
+      m_status.state = DISCONNECTED;
+   }
 
-   return m_status.isConnected;
+   return connected;
 }
 
 bool Networking::inAPMode()
@@ -1049,93 +1067,35 @@ void  Networking::releaseWebClient()
    }
 }
 
-void  Networking::setUpdateProgress( int size,const String &filename,bool finished )
+void  Networking::setUpdateProgress( int percentComplete,const String &filename,bool finished )
 {
    // If update start fails then we get size -1 and finished is false
 
-   if ( size == -1 )
+   if ( percentComplete == -1 )
    {
-      if ( m_userIO )
-      {
-         m_userIO->clear();
-         m_userIO->updateLine( 1,"Updating :" );
-         m_userIO->updateLine( 3,"FAILED !" );
-
-         delay( 2000 );
-      }
+      m_infoCallback( OTA_FAILED,"Failed to start OTA" );
    }
    else if ( finished )
    {
       m_hasUpdated = true;
-      if ( m_userIO )
-      {
-         m_userIO->updateLine( 5,"Completed" );
-         delay( 2000 );
-      }
+      m_infoCallback( OTA_COMPLETE,"OTA Completed" );
    }
-
-   // restart UserIO updating if failed or finished update, may not do anything
-   // if finished as will reboot
-
-   if ( size == -1 || finished )
-   {
-      if ( m_userIO )
-      {
-         m_userIO->show( UserIO::NETWORK_STATUS );
-      }
-
-      return;
-   }
-
-   m_hasUpdated = false;
-
-   // Update UserIO if available
-
-   if ( ! m_userIO )
-   {
-      return;
-   }
-
-   if ( !size )
+   else if ( !percentComplete )
    {
       PW_MSG( "OTA update with %s",filename.c_str() );
-
-      // set userIO to OTA_UPDATE, so the display is updated by calls to this method
-
-      m_userIO->show( UserIO::OTA_UPDATE );
-      m_userIO->clear();
-      m_userIO->updateLine( 1,"Updating :" );
-
-      char line[ MAX_DISPLAY_COLUMNS + 1 ];
-      snprintf( line,MAX_DISPLAY_COLUMNS," %s",filename.c_str() );
-      m_userIO->updateLine( 2,line );
+      m_hasUpdated = false;
+      m_infoCallback( OTA_STARTED,filename );
    }
    else
    {
-      static int i = 0;
-      char  progress[] = ".oOo";
-      char  line[ 2 ];
-
-      if ( i % 5 == 0 )
-      {
-         PW_MSG( "OTA size %d",size );
-      }
-
-      line[ 0 ] = progress[ i++ % 4 ];
-      line[ 1 ] = 0;
-
-      m_userIO->updateLine( 5,line,false );
+      PW_DEBUG( "OTA %d complete",percentComplete );
+      m_infoCallback( OTA_PROGRESS, String( percentComplete ) );
    }
 }
 
 bool  Networking::hasUpdated()
 {
    return m_hasUpdated;
-}
-
-void  Networking::setUserIO( UserIO *userIO )
-{
-   m_userIO = userIO;
 }
 
 int Networking::takeNetworkMutex( int ms )

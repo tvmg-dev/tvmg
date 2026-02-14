@@ -77,7 +77,50 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
    }
 }
 
-// ---------------------------------------------------------------------
+// Networking state callback function
+ void networkingInfoCallback( Networking::NetworkingInfo info,const String &str )
+{
+   char line[ MAX_DISPLAY_COLUMNS + 1 ];
+
+   // PW_MSG( "\n\nNetwork Info: %d, string: %s\n\n", info,str.c_str() );
+
+   if ( !userIO )
+   {
+      return;
+   }
+
+   switch( info )
+   {
+      case Networking::ACQUIRING_NTP:
+         userIO->updateLine( 3,"Acquire NTP" );
+         break;
+      case Networking::OTA_FAILED:
+         userIO->clear();
+         userIO->updateLine( 1,"Updating :" );
+         userIO->updateLine( 3,"FAILED !" );
+         delay( 2000 );
+         userIO->show( UserIO::NETWORK_STATUS );
+         break;
+      case Networking::OTA_STARTED:
+         userIO->show( UserIO::OTA_UPDATE );
+         userIO->clear();
+         userIO->updateLine( 1,"Updating :" );
+         snprintf( line,MAX_DISPLAY_COLUMNS," %s",str.c_str() );
+         userIO->updateLine( 2,line );
+         break;
+      case Networking::OTA_PROGRESS:
+         snprintf( line,MAX_DISPLAY_COLUMNS,"%s %%",str.c_str() );
+         userIO->updateLine( 5,line,false );
+         break;
+      case Networking::OTA_COMPLETE:
+         userIO->updateLine( 5,"Completed" );
+         delay( 2000 );
+         userIO->show( UserIO::NETWORK_STATUS );
+         break;
+   }
+}
+
+// --------------------------------------------------------------------------
 // Reboot handling code, if we have no network then we consider WiFi has
 // failed and drop to AP mode which will remain active until reboot.
 
@@ -85,7 +128,7 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
 
 void newConfiguration( void )
 {
-   networking = new Networking;
+   networking = new Networking( networkingInfoCallback );
    networking->startAccessPoint();
 
    PW_WARN( "Need to configure via SSID : %s",networking->getSSID().c_str() );
@@ -486,7 +529,7 @@ void startNetworking()
 
    config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
 
-   networking = new Networking;
+   networking = new Networking( networkingInfoCallback );
    userIO->setNetworking( networking );
 
    networking->initialise();

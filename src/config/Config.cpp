@@ -10,7 +10,7 @@
 
    static Config   *s_instance = nullptr;
 
-const char *k_versionStr = "v26.02.05c";
+const char *k_versionStr = "v26.02.05f";
 
 char  defaultConfigString[] = "unknown";
 
