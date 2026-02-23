@@ -3,6 +3,8 @@
 
 #include "src/sensors/LGHeatPump.h"
 
+#include "src/userio/Indicator.h"
+
 #define  LGHEATPUMPSIM_SENSOR_NAME  "LGHEATPUMPSIM"
 
 class ModbusRTU;
@@ -15,7 +17,9 @@ public:
    void  initialise();
    void  heartbeat();
 
-private:
+   static Indicator  *s_indicator;
+
+   private:
    struct MaxRegisterAddresses
    {
       int coils = 0;

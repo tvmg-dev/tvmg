@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <AsyncUDP.h>
 
+#include "src/userio/Indicator.h"
+
 class WebServer;
 class Emailer;
 class UserIO;
@@ -90,6 +92,7 @@ private:
 
    static SemaphoreHandle_t   s_networkMutex;
    static uint32_t            s_mutexAcquiredMillis;
+   static Indicator           *s_indicator;
 };
 
 #endif

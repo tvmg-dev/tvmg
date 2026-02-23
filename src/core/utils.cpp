@@ -369,6 +369,7 @@ void getRunTimeInfo()
    // Some memory info
 
    printMemCapsInfo( MALLOC_CAP_INTERNAL,"INTERNAL" );
+   printMemCapsInfo( MALLOC_CAP_SPIRAM,"PSRAM" );
    PW_MSG( "Largest Free %d",largestFreeInternalBlock() );
 
    // How many current tasks, could change as we execute

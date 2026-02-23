@@ -6,6 +6,8 @@
 
 #include "src/core/utils.h"
 
+#include "src/userio/Indicator.h"
+
 #define MAX_HP_REGISTERS      50
 #define MAX_LGSOFTWARE_LENGTH 32
 
@@ -168,6 +170,7 @@ private:
    std::map<uint32_t,uint8_t> m_registerMap;    // map of register address to m_registers[] index
    bool           m_logRegisters;               // whether writing registers to a file
    bool           m_logHeatingTargetChanges;    // whether to log heating target changes
+   Indicator      *m_indicator;                 // for any ux
 };
 
 #endif

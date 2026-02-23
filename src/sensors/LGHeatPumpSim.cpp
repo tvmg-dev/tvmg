@@ -6,6 +6,8 @@
 #include "src/config/hwconfig.h"
 #include "src/config/Config.h"
 
+Indicator *LGHeatPumpSimulator::s_indicator = nullptr;
+
 // Need a task for the modbus library to check for read requests, bit
 // wasteful in terms of spinning up every 10ms but may be necessary due
 // to the frame timing.  Maybe the h/w serial does the heavy lifting ?
@@ -26,11 +28,24 @@ void taskModbus( void *parameter )
 
 bool needNextSample = false;
 
-// Callback set for the last input register read
+// Callback set for the first coil and the last input register read
 
 uint16_t registerReadCallback( TRegister* reg, uint16_t val )
 {
-   needNextSample = true;
+   Indicator *s_indicator = LGHeatPumpSimulator::s_indicator;
+
+   if ( reg->address == COIL(0) && s_indicator )
+   {
+      s_indicator->on();
+   }
+   else if ( reg->address == IREG(24) )
+   {
+      needNextSample = true;
+      if ( s_indicator )
+      {
+         s_indicator->off();
+      }
+   }
 
    return val;
 }
@@ -67,6 +82,7 @@ LGHeatPumpSimulator::LGHeatPumpSimulator( HardwareSerial *serial ) :
             if ( series == 4 )
             {
                m_series = series;
+               s_indicator = Indicator::getIndicator( Indicator::HEATPUMP,m_modbusAddress );
             }
             else
             {
@@ -336,6 +352,7 @@ void LGHeatPumpSimulator::initialise()
             // Get the callback when input register 24 (compressor) is read
 
             m_slave->onGet( IREG(24),registerReadCallback );
+            m_slave->onGet( COIL(0),registerReadCallback );
 
             // Now setup the task - run on core 0, not the main loop core, 3K stack
 

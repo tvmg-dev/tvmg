@@ -50,7 +50,9 @@ TemperatureModule::TemperatureModule()
            m_numSensors( 0 ),
            m_haveRemoteSensors( false ),
            m_sendPort( -1 ),
-           m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS )
+           m_millisLastAquisition( -TEMPERATURE_MIN_SAMPLING_PERIOD_MS ),
+           m_indicator( nullptr )
+
 {
    PW_DEBUG( "TemperatureModule::TemperatureModule()" );
    PW_MSG( "Temperature Module Startup" );
@@ -154,7 +156,11 @@ TemperatureModule::TemperatureModule()
          }
       }
 
-      PW_MSG( "Registered %d thermometers",m_numSensors );
+      if ( m_numSensors )
+      {
+         PW_MSG( "Registered %d thermometers",m_numSensors );
+         m_indicator = Indicator::getIndicator( Indicator::THERM,0 );
+      }
    }
 }
 
@@ -394,6 +400,8 @@ bool TemperatureModule::getTemperatures()
    {
       START_TIMING( "OpenWeather Acquisition" );
 
+      Indicator::Scoped guard( m_indicator );
+
       for ( int i = 0; i < m_numSensors; i++ )
       {
          if ( !m_sensors[ i ].m_isDs18b20 )
@@ -405,6 +413,7 @@ bool TemperatureModule::getTemperatures()
          }
       }
       END_TIMING;
+      delay( 100 );
    }
 
    if ( !haveLocalSensors )
@@ -419,6 +428,8 @@ bool TemperatureModule::getTemperatures()
    }
 
    START_TIMING( "1-Wire Acquisition" );
+
+   Indicator::Scoped guard( m_indicator );
 
    // Now get the temperatures from the scratch pad used by the Dallas library
 

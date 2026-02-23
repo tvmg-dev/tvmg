@@ -17,7 +17,8 @@
 ShellyPowerModule::ShellyPowerModule()
            : m_sensors(),
              m_numSensors( 0 ),
-             m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS )
+             m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS ),
+             m_indicator( nullptr )
 {
    PW_DEBUG( "ShellyPowerModule::ShellyPowerModule()" );
    PW_MSG( "Shelly Power Module Startup" );
@@ -98,6 +99,7 @@ ShellyPowerModule::ShellyPowerModule()
    if ( m_numSensors )
    {
       PW_MSG( "Registered %d Shelly power sensors",m_numSensors );
+      m_indicator = Indicator::getIndicator( Indicator::POWER,1 );
    }
 }
 
@@ -153,6 +155,9 @@ bool ShellyPowerModule::getPower( uint8_t index )
 
    sensor->m_data.m_power = POWER_INVALID;
    sensor->m_data.m_energy = ENERGY_INVALID;
+
+   delay( 100 );
+   Indicator::Scoped guard( m_indicator );
 
    if ( sensor->m_model == PMG3 )
    {

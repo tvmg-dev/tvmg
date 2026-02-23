@@ -5,6 +5,8 @@
 
 #include "src/core/utils.h"
 
+#include "src/userio/Indicator.h"
+
 #define POWER_SENSOR_NAME "POWER"
 
 #define MAX_POWER_SENSORS  3
@@ -46,6 +48,7 @@ private:
    PrivateSensor  m_sensors[ MAX_POWER_SENSORS ];
    uint8_t        m_numLocalSensors;
    int32_t        m_millisLastAquisition;       // milliseconds since last acquisition
+   Indicator      *m_indicator;
 };
 
 #endif

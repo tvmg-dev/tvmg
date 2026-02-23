@@ -625,6 +625,7 @@ AsyncUDP *Networking::s_listenUdp = nullptr;
 
 uint32_t Networking::s_mutexAcquiredMillis;
 SemaphoreHandle_t Networking::s_networkMutex = NULL;
+Indicator *Networking::s_indicator = nullptr;
 
 Networking::Networking( NetworkingInfoCallback infoCallback )
           : m_emailer( nullptr ),
@@ -647,6 +648,8 @@ Networking::Networking( NetworkingInfoCallback infoCallback )
    if ( !s_networkMutex )
    {
       s_networkMutex = xSemaphoreCreateRecursiveMutex();
+      s_indicator = Indicator::getIndicator( Indicator::NETWORK,1 );
+
    }
 
    // set status to defaults, not connected etc.
@@ -1121,6 +1124,7 @@ int Networking::takeNetworkMutex( int ms )
    uint32_t startMillis;
 
    PW_DEBUG( "Take n/w mutex" );
+
    startMillis = millis();
    int ok = xSemaphoreTakeRecursive( s_networkMutex,ms * portTICK_PERIOD_MS);
 
@@ -1132,6 +1136,10 @@ int Networking::takeNetworkMutex( int ms )
    {
       s_mutexAcquiredMillis = millis();
       PW_DEBUG( "n/w mutex took %d ms",s_mutexAcquiredMillis - startMillis );
+      if ( s_indicator )
+      {
+         s_indicator->on();
+      }
    }
 
    return( ok == pdTRUE );
@@ -1143,6 +1151,11 @@ void  Networking::releaseNetworkMutex()
    {
       PW_DEBUG( "n/w mutex held for %d",millis() - s_mutexAcquiredMillis );
       xSemaphoreGiveRecursive( s_networkMutex );
+
+      if ( s_indicator )
+      {
+         s_indicator->off();
+      }
    }
 }
 

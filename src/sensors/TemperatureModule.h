@@ -6,6 +6,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+#include "src/userio/Indicator.h"
+
 class AsyncUDP;
 
 //---------------------------------------------------------------------
@@ -89,6 +91,7 @@ private:
    uint16_t          m_sendPort;
 
    int32_t           m_millisLastAquisition;       // milliseconds since last acquisition
+   Indicator         *m_indicator;   
 };
 
 #endif

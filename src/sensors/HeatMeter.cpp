@@ -12,7 +12,8 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
                  m_isOk( false ),
                  m_sensors(),
                  m_numLocalSensors( 0 ),
-                 m_millisLastAquisition( -HM_MIN_SAMPLING_PERIOD_MS )
+                 m_millisLastAquisition( -HM_MIN_SAMPLING_PERIOD_MS ),
+                 m_indicator( nullptr )
 {
    PW_DEBUG( "HeatMeterModule::HeatMeterModule()" );
    PW_MSG( "Heat Meter Module Startup" );
@@ -58,10 +59,7 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
    if ( m_numLocalSensors )
    {
       PW_MSG( "Registered %d heat meters",m_numLocalSensors );
-   }
-   else
-   {
-      PW_WARN( "No heat meters registered" );
+      m_indicator = Indicator::getIndicator( Indicator::HEATMETER,0 );
    }
 }
 
@@ -85,7 +83,12 @@ void HeatMeterModule::sample()
 
       for ( int i = 0; i < m_numLocalSensors; i++ )
       {
+         Indicator::Scoped guard( m_indicator );
          m_sensors[ i ]->takeMeasurement();
+         if ( i != m_numLocalSensors - 1 )
+         {
+            delay( 100 );
+         }
       }
 
       m_millisLastAquisition = millis();

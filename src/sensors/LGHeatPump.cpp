@@ -10,6 +10,8 @@
 #include "src/config/hwconfig.h"
 #include "src/config/Config.h"
 
+#include "src/userio/Indicator.h"
+
 // Some statics for quick bodge on register sampling
 
 static ModbusMaster *s_master = nullptr;
@@ -17,7 +19,7 @@ static uint16_t     s_modbusAddress = 32;
 
 #define LG_MIN_SAMPLING_PERIOD_MS   15000
 
-// For writing out registers to spiffs
+// For writing out registers to FS
 
 #define MAX_LGREG_FILE_SIZE         (1024 * 250)      // limit size of modbus register sample file
 #define LGREG_FILE_LINE_SIZE        320               // each line of the above file padded length
@@ -194,7 +196,8 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_currentKW( 0 ),
      m_flowRateWhenNotHeating( 0 ),
      m_logRegisters( false ),
-     m_logHeatingTargetChanges( true )
+     m_logHeatingTargetChanges( true ),
+     m_indicator( nullptr )
 {
    PW_DEBUG( "LGHeatPump::LGHeatPump()" );
 
@@ -317,6 +320,10 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
          cJSON_Delete( root );
          close( file );
       }
+   }
+   if ( m_numRegisters )
+   {
+      m_indicator = Indicator::getIndicator( Indicator::HEATPUMP,m_modbusAddress );
    }
 }
 
@@ -468,6 +475,8 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
 
    delay( 50 );
    m_modbus->clearResponseBuffer();
+
+   Indicator::Scoped guard( m_indicator );
 
    switch( type )
    {

@@ -13,7 +13,8 @@ PowerModule::PowerModule( ModbusMaster *modbus )
            : m_modbus( modbus ),
              m_sensors(),
              m_numLocalSensors( 0 ),
-             m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS )
+             m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS ),
+             m_indicator( nullptr )
 {
    PW_DEBUG( "PowerModule::PowerModule()" );
    PW_MSG( "Power Module Startup" );
@@ -60,6 +61,7 @@ PowerModule::PowerModule( ModbusMaster *modbus )
    if ( m_numLocalSensors )
    {
       PW_MSG( "Registered %d power sensors",m_numLocalSensors );
+      m_indicator = Indicator::getIndicator( Indicator::POWER,0 );
    }
 }
 
@@ -138,6 +140,8 @@ bool PowerModule::getPower( uint8_t index )
       {
          delay( hwConfig->ModBusMsgDelay );
       }
+
+      Indicator::Scoped guard( m_indicator );
 
       m_modbus->setSlaveId( m_sensors[ index ].m_address );
 

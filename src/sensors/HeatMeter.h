@@ -6,6 +6,8 @@
 
 #include "GrundfosUPS3.h"
 
+#include "src/userio/Indicator.h"
+
 #define HEATMETER_SENSOR_NAME "HEATMETER"
 
 #define MAX_HEAT_METERS 5
@@ -67,6 +69,7 @@ private:
    uint8_t      m_numLocalSensors;
 
    int32_t      m_millisLastAquisition;       // milliseconds since last acquisition
+   Indicator    *m_indicator;
 };
 
 

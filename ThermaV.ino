@@ -18,7 +18,10 @@
 #include "src/sensors/LGHeatPump.h"
 #include "src/sensors/LGHeatPumpSim.h"
 
-#include "src/userio/UserIO.h"
+#include "src/userio/DummyDisplay.h"
+#include "src/userio/OledDisplay.h"
+#include "src/userio/LCDDisplay.h"
+#include "src/userio/Indicator.h"
 
 #include "src/network/Networking.h"
 #include "src/network/WebServer.h"
@@ -35,12 +38,13 @@ ShellyPowerModule *shellyPowerModule = nullptr;
 ModbusTCP         *modbusTCP = nullptr;
 Storage           *storageModule = nullptr;
 HeatMeterModule   *heatMeterModule = nullptr;
-UserIO            *userIO = nullptr;
+Display           *display = nullptr;
 Measurement       *measurement = nullptr;
 Config            *config = nullptr;
 Networking        *networking = nullptr;
 LGHeatPump        *lgThermaV = nullptr;
 LGHeatPumpSimulator  *lgSimulator = nullptr;
+Indicator         *systemIndicator = nullptr;
 
 // Amount of time we can have the network mutex held before the loop()
 // can proceed.  If this is exceeded then will reboot.
@@ -84,7 +88,7 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
 
    PW_DEBUG( "NWC: %d : %s", info,str.c_str() );
 
-   if ( !userIO )
+   if ( !display )
    {
       return;
    }
@@ -92,21 +96,21 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
    switch( info )
    {
       case Networking::ACQUIRING_NTP:
-         userIO->updateLine( 3,"Acquire NTP" );
+         display->updateLine( 3,"Acquire NTP" );
          break;
       case Networking::OTA_FAILED:
-         userIO->clear();
-         userIO->updateLine( 1,"Updating :" );
-         userIO->updateLine( 3,"FAILED !" );
+         display->clear();
+         display->updateLine( 1,"Updating :" );
+         display->updateLine( 3,"FAILED !" );
          delay( 2000 );
-         userIO->show( UserIO::NETWORK_STATUS );
+         display->show( Display::NETWORK_STATUS );
          break;
       case Networking::OTA_STARTED:
-         userIO->show( UserIO::OTA_UPDATE );
-         userIO->clear();
-         userIO->updateLine( 1,"Updating :" );
+         display->show( Display::OTA_UPDATE );
+         display->clear();
+         display->updateLine( 1,"Updating :" );
          snprintf( line,MAX_DISPLAY_COLUMNS," %s",str.c_str() );
-         userIO->updateLine( 2,line );
+         display->updateLine( 2,line );
          break;
       case Networking::OTA_PROGRESS:
          {
@@ -115,15 +119,15 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
             if ( newProgress != progress  )
             {
                snprintf( line,MAX_DISPLAY_COLUMNS,"%s %%",str.c_str() );
-               userIO->updateLine( 5,line,false );
+               display->updateLine( 5,line,false );
                progress = newProgress;
             }
          }  
          break;
       case Networking::OTA_COMPLETE:
-         userIO->updateLine( 5,"Completed" );
+         display->updateLine( 5,"Completed" );
          delay( 2000 );
-         userIO->show( UserIO::NETWORK_STATUS );
+         display->show( Display::NETWORK_STATUS );
          break;
    }
 }
@@ -136,6 +140,9 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
 
 void newConfiguration( void )
 {
+   Indicator *newConfigIndicator = Indicator::getIndicator( Indicator::SYSTEM,1 );
+   Indicator::Scoped guard( newConfigIndicator );
+
    networking = new Networking( networkingInfoCallback );
    networking->startAccessPoint();
 
@@ -143,11 +150,11 @@ void newConfiguration( void )
    PW_WARN( "Use %s/manager",networking->getMDNSName().c_str() );
    PW_WARN( "Or %s/manager",networking->getIPAddress().c_str() );
 
-   if ( userIO )
+   if ( display )
    {
       char line[ MAX_DISPLAY_COLUMNS ];
 
-      userIO->clear();
+      display->clear();
 
       if ( !config->isFactoryReset() )
       {
@@ -168,14 +175,14 @@ void newConfiguration( void )
          snprintf( line,MAX_DISPLAY_COLUMNS,"From Reset..." );
       }
 
-      userIO->updateLine( 0,line );
+      display->updateLine( 0,line );
 
       snprintf( line,MAX_DISPLAY_COLUMNS,"SSID %s",networking->getSSID().c_str() );
-      userIO->updateLine( 2,line );
+      display->updateLine( 2,line );
       snprintf( line,MAX_DISPLAY_COLUMNS,"Use %s",networking->getMDNSName().c_str() );
-      userIO->updateLine( 3,line );
+      display->updateLine( 3,line );
       snprintf( line,MAX_DISPLAY_COLUMNS,"Use %s",networking->getIPAddress().c_str() );
-      userIO->updateLine( 4,line );
+      display->updateLine( 4,line );
    }
 
    // Clear the no WiFi counter, so we can try and reboot again if possible
@@ -191,13 +198,11 @@ void newConfiguration( void )
 
 // ---------------------------------------------------------------------
 // Handle button presses
-// button 1 is for debug emails, button 2 is for toggling OLED cycling
-// or refreshing current display
+// button 1 is for debug emails, button 2 is unused
 
 int  touchThreshold = 32;
 bool wasButton1Pressed = false;
 bool wasButton2Pressed = false;
-bool userIOHoldScreen = false;   // if true then don't cycle screens
 
 int  touch1Value = 0;
 
@@ -220,8 +225,8 @@ void  handleTouch1()
 
    wasButton1Pressed = false;
 
-   userIO->clear();
-   userIO->updateLine( 1, "BT-1 pressed" );
+   display->clear();
+   display->updateLine( 1, "BT-1 pressed" );
 
    String   msgString;
    const Measurement::Sample sample = measurement->getLastSample();
@@ -266,16 +271,6 @@ void  handleTouch1()
 void  handleTouch2()
 {
    PW_MSG( "Button-2 was pressed" );
-
-   wasButton2Pressed = false;
-   if ( userIOHoldScreen )
-   {
-      userIOHoldScreen = false;
-   }
-   else
-   {
-      userIOHoldScreen = true;
-   }
 }
 
 void  processButtons()
@@ -486,14 +481,14 @@ String handleBootReason()
 
    // Brief display of reboot reason
 
-   userIO->updateLine( 0,"Reboot Reason" );
+   display->updateLine( 0,"Reboot Reason" );
    snprintf( line,MAX_DISPLAY_COLUMNS,"Code : %d",rebootReason );
-   userIO->updateLine( 1,line );
+   display->updateLine( 1,line );
    snprintf( line,MAX_DISPLAY_COLUMNS,"%s",config->getAppRebootReason( rebootReason ).c_str() );
-   userIO->updateLine( 3,line );
+   display->updateLine( 3,line );
 
    delay( 2000 );
-   userIO->clear();
+   display->clear();
 
    // If we fast booted then drop to AP mode again
 
@@ -528,17 +523,27 @@ String handleBootReason()
 void startNetworking()
 {
    char line[ MAX_DISPLAY_COLUMNS ];
+   char *ssid = GET_REGISTRY_STRING( WIFI_SSID );
 
-   userIO->updateLine( 0,"Starting Networking..." );
-   userIO->updateLine( 1,"SSID :-" );
-   userIO->updateLine( 2,GET_REGISTRY_STRING( WIFI_SSID ) );
+   display->updateLine( 0,"Starting Networking..." );
+   display->updateLine( 1,"SSID :" );
+   display->updateLine( 2,ssid );
+
+   // If no WIFI_SSID then we just jump straight to new config
+   if ( ssid && !strcmp( ssid,"unknown" ) )
+   {
+      config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
+      delay( 500 );
+
+      newConfiguration();
+   }
 
    // set reboot reason to no-wifi so if we fail here we detect it
 
    config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
 
    networking = new Networking( networkingInfoCallback );
-   userIO->setNetworking( networking );
+   display->setNetworking( networking );
 
    networking->initialise();
 
@@ -552,7 +557,7 @@ void startNetworking()
       config->setPersistentInt( k_noNetworkCounter,failedReboots );
 
       snprintf( line,MAX_DISPLAY_COLUMNS," Failure %u",failedReboots );
-      userIO->updateLine( 4,line );
+      display->updateLine( 4,line );
 
       // If we've had X failures to acquire WiFi, then revert to AP mode
       // and new configuration attempt
@@ -565,7 +570,7 @@ void startNetworking()
          newConfiguration();
       }
 
-      userIO->updateLine( 5," Rebooting in 10s" );
+      display->updateLine( 5," Rebooting in 10s" );
       delay( 10000 );
       ESP.restart();
    }
@@ -576,7 +581,7 @@ void startNetworking()
 
    // show network status
 
-   userIO->show( UserIO::NETWORK_STATUS );
+   display->show( Display::NETWORK_STATUS );
 
    // If we don't have NTP, then we reboot here if we have
    // a configuration - ping an email too.  If no configuration then
@@ -584,7 +589,7 @@ void startNetworking()
 
    if ( !networking->didAcquireNTP() )
    {
-      userIO->updateLine( 5,"Reboot in 5s" );
+      display->updateLine( 5,"Reboot in 5s" );
 
       char msg[ 128 ];
       snprintf( msg,128,"Failed to aquire NTP - rebooting"  );
@@ -612,8 +617,8 @@ void checkBootHold()
       {
          while( 1 )
          {
-            userIO->show( UserIO::NETWORK_STATUS );
-            userIO->updateLine( 3,"  !! BOOT HOLD !!",false );
+            display->show( Display::NETWORK_STATUS );
+            display->updateLine( 3,"  !! BOOT HOLD !!",false );
             delay( 5000 );
          }
       }
@@ -636,7 +641,7 @@ void  initialiseMeasurement()
    // get modbus if available
 
    configureModBus();
-   userIO->setModBus( modbusMaster );
+   display->setModBus( modbusMaster );
 
    // Instantiate the power collecting module
 
@@ -680,19 +685,19 @@ void  initialiseMeasurement()
    // User IO needs HP collection stats, could be a null ptr but UserIO will
    // deal with it
 
-   userIO->setLGHeatPump( lgThermaV );
+   display->setLGHeatPump( lgThermaV );
 
    // Instantiate the HeatMeterModule, userIO also needs HM module for update
 
    heatMeterModule = new HeatMeterModule( tempModule );
    heatMeterModule->initialise();
-   userIO->setHeatMeter( heatMeterModule );
+   display->setHeatMeter( heatMeterModule );
 
    // Instantiate the measurement module, but don't initialise it just yet,
-   // userIO needs access to data
+   // Display needs access to data
 
    measurement = new Measurement( tempModule,powerModule,shellyPowerModule,lgThermaV,heatMeterModule,storageModule,networking );
-   userIO->setMeasurement( measurement );
+   display->setMeasurement( measurement );
 
    // let's tell storage we have networking available
 
@@ -882,10 +887,23 @@ void setup( void )
    config = Config::instance( true );
    selectHardware();
 
-   // prepare the display for output
+   // prepare the display and indicators for output
 
-   userIO = new UserIO();
-   userIO->initialise();
+#if defined(TVMG_OLED)   
+   display = new OledDisplay;
+#elif defined(TVMG_WAVESHARE_LCDB)
+   display = new LcdDisplay;
+#else
+   display = new DummyDisplay;
+#endif   
+
+   display->initialise();
+   
+   Indicator::initialise();
+
+   // Get system indicator and turn it on
+   systemIndicator = Indicator::getIndicator( Indicator::SYSTEM,0 );
+   Indicator::Scoped guard( systemIndicator );
 
    // handle reboot reason - display info & may drop to AP mode if too many fast boot cycles
 

@@ -3,6 +3,8 @@
 
 #include "src/core/utils.h"
 
+#include "src/userio/Indicator.h"
+
 #define SHELLY_SENSOR_NAME "SHELLYPM"
 
 #define MAX_SHELLY_SENSORS 3
@@ -44,6 +46,7 @@ private:
    PrivateSensor  m_sensors[ MAX_SHELLY_SENSORS ];
    uint8_t        m_numSensors;
    int32_t        m_millisLastAquisition;       // milliseconds since last acquisition
+   Indicator      *m_indicator;
 };
 
 #endif

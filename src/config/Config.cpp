@@ -10,7 +10,7 @@
 
    static Config   *s_instance = nullptr;
 
-const char *k_versionStr = "v26.02.05";
+const char *k_versionStr = "lcd-sram-1c";
 
 char  defaultConfigString[] = "unknown";
 
@@ -136,7 +136,7 @@ int32_t getRegistryInt( char *key )
 
    if ( index == -1 )
    {
-      PW_DEBUG( "Registry: no entry for %s",key );
+//      PW_DEBUG( "Registry: no entry for %s",key );
       return -1;
    }
    else
@@ -151,7 +151,7 @@ char *getRegistryString( char *key )
 
    if ( index == -1 )
    {
-      PW_DEBUG( "Registry: no entry for %s",key );
+//      PW_DEBUG( "Registry: no entry for %s",key );
       return defaultConfigString;
    }
    else
