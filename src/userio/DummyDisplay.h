@@ -20,7 +20,7 @@ public:
 
    void  updateLine( uint8_t lineNum,const char *line,bool isForLog = true ) override;
    void  clear() override {}
-   void  show( ScreenType type ) override { void) type; }
+   void  show( ScreenType type ) override { (void) type; }
 };
 
 #endif // !defined(TVMG_OLED) && !defined(TVMG_WAVESHARE_LCDB)

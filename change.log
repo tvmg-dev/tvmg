@@ -1,3 +1,7 @@
+v26.02.06 - New Indicators - used in LCD and also in OLED screensaver.
+            Fast detect no SSID configured for entry into AP mode.
+            LCD not using PSRAM due to system impact, using SRAM bounce buffers
+            only to maintain functionality (SPI bus contention occurs).
 v26.02.05 - Flash programmer - force image bank for app only update.
           - UserIO updates only via control.
           - Preparation for LVGL integration
