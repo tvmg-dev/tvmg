@@ -176,7 +176,7 @@ static const int lcd_data_pins[16] =
 };
 
 // CH422G I2C addresses and bits (from Waveshare docs/examples)
-#define CH422G_SYS_ADDR 0x20  // System config
+#define CH422G_SYS_ADDR 0x24  // System config
 #define CH422G_IO_ADDR 0x38   // IO output register
 #define TP_RST     0x02       // Bit 1: Touch reset (not used here)
 #define LCD_BL     0x04       // Bit 2: Backlight

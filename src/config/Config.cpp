@@ -8,15 +8,13 @@
 
 #include "Config.h"
 
-   static Config   *s_instance = nullptr;
+const char *k_versionStr = "v26.02.06";
 
-const char *k_versionStr = "lcd-sram-1c";
+static Config   *s_instance = nullptr;
+static char  defaultConfigString[] = "unknown";
 
-char  defaultConfigString[] = "unknown";
-
-uint8_t Config::numRegistryEntries = 0;
-
-KeyValue  Config::m_entries[ MAX_REGISTRY_ENTRIES ];
+uint8_t  Config::numRegistryEntries = 0;
+KeyValue Config::m_entries[ MAX_REGISTRY_ENTRIES ];
 
 //----------------------------------------------------------------------
 // For mapping reboot codes to strings
@@ -59,7 +57,7 @@ RTC_NOINIT_ATTR   uint32_t s_lastResetSeconds;
 
 // info under system namespace in non-volatile store partition
 
-const char k_nvsNamespace[] = "sysinfo";
+static const char k_nvsNamespace[] = "sysinfo";
 
 //----------------------------------------------------------------------
 // Registry utilities - should really replace with cJSON
