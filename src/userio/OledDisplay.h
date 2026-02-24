@@ -3,6 +3,9 @@
 
 #ifdef TVMG_OLED
 
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
+
 #include "Display.h"
 
 #include "src/core/Measurement.h"
@@ -35,6 +38,7 @@ public:
    void  updateScreensaver() ;
 
 private:
+   void  resetDisplay();
    void  show( DisplayLine lines[] );
    void  storeLine( uint8_t lineNum,const char *line );
    bool  setNextScreen();
@@ -47,6 +51,8 @@ private:
    void  showLGStatus();
    bool  getTemperature( uint8_t id,float *temp );
    void  getLGValue( uint32_t parameter,float_t *value );
+   void  lockDisplay();
+   void  unlockDisplay();
 
    OLED_BOARD *         m_oled;
    bool                 m_isScreenSaving;
@@ -59,7 +65,16 @@ private:
    ModbusMaster *       m_modbus;
    Measurement::Sample  m_sample;
    time_t               m_startTime;
+   SemaphoreHandle_t    m_mutex;    // recursive mutex to protect access to the OLED controller
 
+   // RAII helper that takes/releases the mutex automatically
+   class LockGuard {
+   public:
+      explicit LockGuard(OledDisplay &disp) : m_disp(disp) { m_disp.lockDisplay(); }
+      ~LockGuard() { m_disp.unlockDisplay(); }
+   private:
+      OledDisplay &m_disp;
+   };
 };
 
 #endif  // TVMG_OLED

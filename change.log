@@ -1,3 +1,6 @@
+v26.02.07 - Protect OLED from multi-thread access.
+            Initial Waveshare Relay board support (ESP32S3 with RS485).
+            Fix flash programmer (python) flash size detection.
 v26.02.06 - New Indicators - used in LCD and also in OLED screensaver.
             Fast detect no SSID configured for entry into AP mode.
             LCD not using PSRAM due to system impact, using SRAM bounce buffers

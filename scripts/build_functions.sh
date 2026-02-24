@@ -105,3 +105,5 @@ function espbuild()
 alias espbuild-32='espbuild tvmg_esp32'
 alias espbuild-s3='espbuild tvmg_esp32s3'
 alias espbuild-ws='espbuild tvmg_wsharelcd'
+alias espbuild-wr='espbuild tvmg_wsrelay'
+

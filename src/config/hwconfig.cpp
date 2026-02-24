@@ -119,6 +119,24 @@ HardwareConfig WaveshareLCD =
    false          // has SD card
 };
 
+HardwareConfig WaveshareRelay =
+{
+   -1,            // OneWireGPIO
+   1,             // ModBusSerial
+   9600,          // ModBusBaudRate
+   SERIAL_8N1,    // ModBusSerialFormat
+   17,            // ModBusRxGPIO
+   18,            // ModBusTxGPIO
+   50,            // ModBusMsgDelay
+   21,            // ModBus485EnGPIO
+   -1,            // OLEDClkGPIO
+   -1,            // OLEDDataGPIO
+   -1,            // TouchButton1 (esp32 touch 2)
+   -1,            // TouchButton2
+   -1,            // PWM GPIO
+   false          // has SD card
+};
+
 HardwareConfig ESP32S3Rs485 =
 {
    10,            // OneWireGPIO
@@ -153,6 +171,9 @@ void  selectHardware()
 #if defined(TVMG_WAVESHARE_LCDB)
    PW_MSG( "Waveshare LCD" );
    hwConfig = &WaveshareLCD;
+#elif defined(TVMG_WAVESHARE_RELAY)
+   PW_MSG( "Waveshare Relay" );
+   hwConfig = &WaveshareRelay;
 #elif defined(TVMG_ESP32S3) && defined(TVMG_RS485)
    PW_MSG( "ESP32S3 with RS485" );
    hwConfig = &ESP32S3Rs485;

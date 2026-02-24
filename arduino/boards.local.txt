@@ -239,3 +239,62 @@ tvmg_esp32s3.menu.TVMGRevision.v3=version 3
 tvmg_esp32s3.build.defines={build.tvmgdefs} {build.tvmgcustom} {build.psram_defines}
 
 ####################################################################
+tvmg_wsrelay.name=TVMG WSHARE RELAY
+
+tvmg_wsrelay.build.tvmgdefs=-DTVMG_PROJECT
+tvmg_wsrelay.build.tvmgcustom=-DTVMG_WAVESHARE_RELAY -DTVMG_LITTLEFS 
+
+tvmg_wsrelay.bootloader.tool=esptool_py
+tvmg_wsrelay.bootloader.tool.default=esptool_py
+
+tvmg_wsrelay.upload.tool=esptool_py
+tvmg_wsrelay.upload.tool.default=esptool_py
+tvmg_wsrelay.upload.tool.network=esp_ota
+tvmg_wsrelay.upload.maximum_size=4718592
+tvmg_wsrelay.upload.maximum_data_size=327680
+tvmg_wsrelay.upload.flags=
+tvmg_wsrelay.upload.extra_flags=
+tvmg_wsrelay.upload.erase_cmd=
+tvmg_wsrelay.upload.use_1200bps_touch=false
+tvmg_wsrelay.upload.wait_for_upload_port=false
+tvmg_wsrelay.upload.speed=921600
+
+tvmg_wsrelay.serial.disableDTR=false
+tvmg_wsrelay.serial.disableRTS=false
+
+tvmg_wsrelay.build.tarch=xtensa
+tvmg_wsrelay.build.bootloader_addr=0x0
+tvmg_wsrelay.build.target=esp32s3
+tvmg_wsrelay.build.mcu=esp32s3
+tvmg_wsrelay.build.core=esp32
+tvmg_wsrelay.build.variant=esp32s3
+tvmg_wsrelay.build.board=TVMG_WSRELAY
+
+tvmg_wsrelay.build.usb_mode=1
+tvmg_wsrelay.build.cdc_on_boot=1
+tvmg_wsrelay.build.msc_on_boot=0
+tvmg_wsrelay.build.dfu_on_boot=0
+tvmg_wsrelay.build.f_cpu=240000000L
+
+tvmg_wsrelay.build.flash_size=16MB
+tvmg_wsrelay.build.flash_freq=80m
+tvmg_wsrelay.build.flash_mode=dio
+tvmg_wsrelay.build.boot=qio
+tvmg_wsrelay.build.boot_freq=80m
+
+tvmg_wsrelay.build.psram_type=opi
+tvmg_wsrelay.build.psram_defines=-DBOARD_HAS_PSRAM
+tvmg_wsrelay.build.memory_type={build.boot}_{build.psram_type}
+
+tvmg_wsrelay.build.partitions=tvmg_littlefs_16MB
+
+tvmg_wsrelay.build.loop_core=-DARDUINO_RUNNING_CORE=1
+tvmg_wsrelay.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
+
+# The FQDN will have TVMGRevision=v1, the 'version 1' is shown in the menu
+
+tvmg_wsrelay.menu.TVMGRevision.v3=version 3
+
+tvmg_wsrelay.build.defines={build.tvmgdefs} {build.tvmgcustom} {build.psram_defines}
+
+####################################################################

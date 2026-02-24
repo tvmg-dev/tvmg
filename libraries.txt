@@ -27,10 +27,14 @@ OneWire - git [v2.3.8]
 ReadyMail - git [v0.3.6] + patched
 modbus-esp8266 - git [4.1.0]
 
+U8g2 - not git directly as is being packaged somewhere
+
+# The following are not used, but were used as part of lcd verification
+# See earlier builds
+
 ESP32_Display_Panel - git [v1.0.3]
 ESP32_IO_Expander - git [v1.0.1]
 esp-lib-utils - git [v0.1.2]
 lvgl - git [v8.4.0]
 
-U8g2 - not git directly as is being packaged somewhere
 

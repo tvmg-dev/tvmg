@@ -86,9 +86,17 @@ OledDisplay::OledDisplay() : Display(),
         m_heatMeter( nullptr ),
         m_modbus( nullptr ),
         m_sample(),
-        m_startTime(0)
+        m_startTime(0),
+        m_mutex(nullptr)
 {
    PW_MSG( "OLED Display Startup" );
+
+   // create a recursive mutex for protecting i2c access to the OLED board
+   m_mutex = xSemaphoreCreateRecursiveMutex();
+   if ( m_mutex == nullptr )
+   {
+      PW_ERROR( "Failed to create OLED mutex" );
+   }
 
    m_oled = new OLED_BOARD( U8G2_R0,U8X8_PIN_NONE,hwConfig->OLEDClkGPIO,hwConfig->OLEDDataGPIO );
    s_instance = this;
@@ -102,6 +110,11 @@ OledDisplay::OledDisplay() : Display(),
 OledDisplay::~OledDisplay()
 {
    delete m_oled;
+   if ( m_mutex )
+   {
+      vSemaphoreDelete(m_mutex);
+      m_mutex = nullptr;
+   }
 }
 
 OledDisplay *OledDisplay::getInstance()
@@ -113,21 +126,33 @@ OledDisplay *OledDisplay::getInstance()
    return s_instance;
 }
 
+void OledDisplay::lockDisplay()
+{
+   if ( m_mutex )
+   {
+      xSemaphoreTakeRecursive(m_mutex, portMAX_DELAY);
+   }
+}
+
+void OledDisplay::unlockDisplay()
+{
+   if ( m_mutex )
+   {
+      xSemaphoreGiveRecursive(m_mutex);
+   }
+}
+
 void OledDisplay::initialise()
 {
    PW_DEBUG( "OledDisplay::initialise" );
 
    // Start the display panel, set font etc.
-
    if ( m_oled )
    {
+      OledDisplay::LockGuard guard(*this);
       m_oled->begin();
 
-      m_oled->setFont(u8g2_font_6x10_tf);
-      m_oled->setFontRefHeightExtendedText();
-      m_oled->setDrawColor(1);
-      m_oled->setFontPosTop();
-      m_oled->setFontDirection(0);
+      resetDisplay();
    }
 
    // Create our timer callback
@@ -147,6 +172,20 @@ void OledDisplay::initialise()
    {
       esp_timer_start_periodic(userioTimer, DISPLAY_CALLBACK_TIMER_MS * 1000);
    }
+}
+
+void  OledDisplay::resetDisplay()
+{
+   OledDisplay::LockGuard guard(*this);
+
+   m_isScreenSaving = false;
+
+   m_oled->clearBuffer();
+   m_oled->setFont(u8g2_font_6x10_tf);
+   m_oled->setFontRefHeightExtendedText();
+   m_oled->setDrawColor(1);
+   m_oled->setFontPosTop();
+   m_oled->setFontDirection(0);
 }
 
 void  OledDisplay::setMeasurement( Measurement *measurement )
@@ -208,6 +247,8 @@ void  OledDisplay::clear()
 
 void OledDisplay::show( DisplayLine lines[] )
 {
+   OledDisplay::LockGuard guard(*this);
+
    m_oled->clearBuffer();
 
    for ( int row = 0; row < MAX_DISPLAY_ROWS; row++ )
@@ -368,6 +409,7 @@ bool OledDisplay::getTemperature( uint8_t id,float *temp )
 
    if ( temp )
    {
+      *temp = TEMPERATURE_INVALID;
       for ( int i = 0; i < m_sample.m_tempSensors.size(); i++ )
       {
          const TempSensor &sensor = m_sample.m_tempSensors[ i ];
@@ -389,6 +431,7 @@ void  OledDisplay::showTemps()
    PW_MSG( "Show : Temperature" );
 
    char  line[ MAX_DISPLAY_COLUMNS ];
+   int   lineNum = 0; 
 
    if ( m_sample.m_tempSensors.size() > 0 )
    {
@@ -397,37 +440,47 @@ void  OledDisplay::showTemps()
       if ( getTemperature( HEAT_PUMP_FLOW,&flowT ) && getTemperature( HEAT_PUMP_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"HP: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
-         storeLine( 0,line );
+         storeLine( lineNum++,line );
       }
 
       if ( getTemperature( HEATING_FLOW,&flowT ) && getTemperature( HEATING_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"UF: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
-         storeLine( 1,line );
+         storeLine( lineNum++,line );
       }
 
-      if ( getTemperature( OUTSIDE,&flowT ) )
+      getTemperature( OUTSIDE,&flowT );
+      getTemperature( OPENWEATHER,&returnT );
+      if ( flowT > TEMPERATURE_INVALID || returnT > TEMPERATURE_INVALID )
       {
-         snprintf( line,MAX_DISPLAY_COLUMNS,"OS: %3.1f",flowT );
-         storeLine( 2,line );
+         if (flowT > TEMPERATURE_INVALID && returnT > TEMPERATURE_INVALID) 
+         {
+            snprintf(line, MAX_DISPLAY_COLUMNS, "OS: %3.1f [%3.1f]", flowT, returnT);
+         } 
+         else
+         {
+            float temp = (flowT > TEMPERATURE_INVALID ? temp = flowT : temp = returnT);
+            snprintf(line, MAX_DISPLAY_COLUMNS, "OS: %3.1f", temp);
+         } 
+         storeLine( lineNum++,line );
       }
 
       if ( getTemperature( LOFT_FLOW,&flowT ) && getTemperature( LOFT_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"2: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
-         storeLine( 3,line );
+         storeLine( lineNum++,line );
       }
 
       if ( getTemperature( FIRST_FLOW,&flowT ) && getTemperature( FIRST_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"1: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
-         storeLine( 4,line );
+         storeLine( lineNum++,line );
       }
 
       if ( getTemperature( GND_FLOW,&flowT ) && getTemperature( GND_RETURN,&returnT ) )
       {
          snprintf( line,MAX_DISPLAY_COLUMNS,"0: %3.1f %3.1f (%3.1f)",flowT,returnT,flowT - returnT );
-         storeLine( 5,line );
+         storeLine( lineNum++,line );
       }
 
       show( m_currentLines );
@@ -638,7 +691,7 @@ void  OledDisplay::show( ScreenType type )
          showLGStatus();
          break;
       case OTA_UPDATE:
-         // Do nothing, networking is updating directly
+         resetDisplay();
          break;
       default :
          PW_WARN( "Unknown display type" );
@@ -740,14 +793,7 @@ void  OledDisplay::showNext()
 
    if ( m_isScreenSaving == true )
    {
-      m_isScreenSaving = false;
-
-      m_oled->clearBuffer();
-      m_oled->setFont(u8g2_font_6x10_tf);
-      m_oled->setFontRefHeightExtendedText();
-      m_oled->setDrawColor(1);
-      m_oled->setFontPosTop();
-      m_oled->setFontDirection(0);
+      resetDisplay();
    }
 
    // Find the next screen we can display, then update
@@ -765,10 +811,16 @@ void  OledDisplay::refresh()
    show( m_currentScreen );
 }
 
-
-void OledDisplay::updateScreensaver()
+void  OledDisplay::updateScreensaver()
 {
    static bool on = true;
+
+   if ( m_currentScreen == OTA_UPDATE )
+   {
+      return;
+   }
+   
+   OledDisplay::LockGuard guard(*this);
 
    if ( !m_isScreenSaving )
    {
@@ -787,6 +839,8 @@ void OledDisplay::setIndicator(uint8_t column, uint8_t row, bool state)
    {
       return;
    }
+
+   OledDisplay::LockGuard guard(*this);
 
    m_oled->setDrawColor(state ? 1 : 0);
    m_oled->drawFrame( column * 8, row * 8, 12, 8);

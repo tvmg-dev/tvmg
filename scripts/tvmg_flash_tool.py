@@ -4,9 +4,14 @@ import esptool
 import serial.tools.miniterm
 import time
 import os
+import io
+import re
+import contextlib
 from serial.tools import list_ports
 
-VERSION = "1.6.1"
+from esptool.cmds import detect_chip, run_stub, attach_flash, flash_id
+
+VERSION = "1.6.2"
 
 def find_esp_port():
     ports = list_ports.comports()
@@ -16,11 +21,11 @@ def find_esp_port():
             return port.device
     return None
 
-def get_flash_size(chip_type, port):
-    """Temporary call to esptool to detect the actual flash size of the connected chip."""
+def get_flash_size1(port):
+    """Call to esptool to detect the actual flash size of the connected chip."""
     try:
         print("--- Detecting Flash Size... ---")
-        esp = esptool.cmds.detect_chip(port=port, baud=921600, chip=chip_type)
+        esp = esptool.cmds.detect_chip(port=port, baud=921600,potty=12)
         esp.connect()
         flash_id = esp.get_flash_id()
         size_bytes = esptool.loader.FLASH_SIZE_NAMES.get(esp.get_flash_size(flash_id), 0)
@@ -34,6 +39,37 @@ def get_flash_size(chip_type, port):
         return size_bytes
     except Exception:
         return 0x400000
+
+def get_flash_size(port):
+    try:
+        with detect_chip(port, baud=115200) as esp:
+            esp = run_stub(esp)
+            attach_flash(esp)
+
+            # Capture the output text
+            f = io.StringIO()
+            with contextlib.redirect_stdout(f):
+                flash_id(esp) 
+        
+            output_text = f.getvalue()
+            print(output_text) 
+            
+            # Parse the number from the text
+            match = re.search(r"Detected flash size: (\d+)MB", output_text)
+            if match:
+                size_mb = int(match.group(1))
+                size_bytes = size_mb * 1024 * 1024
+                print(f"--- Flash Size Confirmed: {size_mb}MB ---")
+                return size_bytes
+
+            # We found the chip but couldn't parse the size string
+            print("--- Fault: Flash size detection string not found. Terminating. ---")
+            sys.exit(1)
+
+    except Exception as e:
+        # We couldn't even talk to the chip or attach the flash
+        print(f"--- Fault: Hardware communication error: {e} ---")
+        sys.exit(1)
 
 def main():
     parser = argparse.ArgumentParser(description=f"TVMG Flasher & Backup Tool v{VERSION}")
@@ -58,8 +94,8 @@ def main():
 
     try:
         # Detect actual flash size for validation and backup
-        detected_size = get_flash_size(args.chip, target_port)
-        
+        detected_size = get_flash_size(target_port)
+
         # --- FACTORY VALIDATION ---
         target_addr = args.addr
         if args.factory:

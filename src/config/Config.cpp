@@ -8,7 +8,7 @@
 
 #include "Config.h"
 
-const char *k_versionStr = "v26.02.06";
+const char *k_versionStr = "v26.02.07";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";

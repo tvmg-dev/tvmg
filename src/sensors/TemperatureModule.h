@@ -34,6 +34,7 @@ class AsyncUDP;
 #define  LOFT_RETURN       41
 #define  LG_OUTLET         50
 #define  LG_INLET          51
+#define  OPENWEATHER       52
 
 typedef struct {
    uint8_t  m_id;          // should be unique ID

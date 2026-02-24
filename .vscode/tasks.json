@@ -27,6 +27,15 @@
             "group": "build",
             "problemMatcher": ["$gcc"],
             "presentation": { "clear": true, "panel": "shared" }
+        },
+        {
+            "label": "Build ESP-WR",
+            "type": "shell",
+            "command": "espbuild-wr",
+            "options": { "shell": { "executable": "/bin/bash", "args": ["-l", "-i", "-c"] } },
+            "group": "build",
+            "problemMatcher": ["$gcc"],
+            "presentation": { "clear": true, "panel": "shared" }
         }
     ]
 }

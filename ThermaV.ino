@@ -427,8 +427,7 @@ void setupSerial()
    PW_DEBUG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
 #else    // ESP32S3's
-#if defined(TVMG_WAVESHARE_LCDB)
-
+#if defined(TVMG_WAVESHARE_LCDB) || defined(TVMG_WAVESHARE_RELAY)
    #if ARDUINO_USB_CDC_ON_BOOT == 0
       #error "Should have CDC enabled"
    #endif
@@ -438,13 +437,11 @@ void setupSerial()
    Serial.begin( 115200 );
 
    while( !Serial && (millis() - serialStart < 500) );
-
 #elif defined(TVMG_ESP32S3) && defined(TVMG_RS485)
 
-   #if ARDUINO_USB_CDC_ON_BOOT == 1
-      #error "Should have CDC disabled"
-   #endif
-
+#if ARDUINO_USB_CDC_ON_BOOT == 1
+   #error "Should have CDC disabled"
+#endif
    Serial.begin( 115200 );
    delay( 500 );
 
