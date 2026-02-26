@@ -5,15 +5,21 @@
 #include <soc/rtc.h>
 #include <hal/wdt_hal.h>
 #include <rtc_wdt.h>
+#include <cJSON.h>
 
 #include "Config.h"
 
 #include "src/userio/Indicator.h"
+#include "src/core/utils.h"
 
 const char *k_versionStr = "v26.02.08b";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";
+
+#define MAX_CONFIG_FILESIZE   (8 * 1024)
+#define JSON_CONFIG_FILENAME  "/config.json"
+#define FLAT_CONFIG_FILENAME  "/config.dat"
 
 uint8_t  Config::numRegistryEntries = 0;
 KeyValue Config::m_entries[ MAX_REGISTRY_ENTRIES ];
@@ -60,6 +66,92 @@ RTC_NOINIT_ATTR   uint32_t s_lastResetSeconds;
 // info under system namespace in non-volatile store partition
 
 static const char k_nvsNamespace[] = "sysinfo";
+
+//----------------------------------------------------------------------
+// Registry key to JSON path mapping
+// Maps flat registry keys to their hierarchical JSON location
+
+struct KeyPathMapping {
+   const char *flatKey;    // Used in GET/SET REGISTRY macros
+   const char *parent1;    // First level (e.g., "network")
+   const char *parent2;    // Second level (e.g., "wifi")
+   const char *jsonKey;    // Key name in JSON (usually same as flatKey)
+   const char *type;       // "string", "int", or "bool"
+};
+
+static const KeyPathMapping k_keyMappings[] = {
+   // network
+   //    wifi
+   { "WIFI_SSID",             "network", "wifi", "WIFI_SSID", "string" },
+   { "WIFI_PASSWORD",         "network", "wifi", "WIFI_PASSWORD", "string" },
+   { "WIFI_CONNECT_TIMEOUT",  "network", "wifi", "WIFI_CONNECT_TIMEOUT", "int" },
+   //    mdns
+   { "MDNS_NAME",             "network", "mdns", "MDNS_NAME", "string" },
+   //    ntp
+   { "NTP_UPDATE_TIMEOUT",    "network", "ntp", "NTP_UPDATE_TIMEOUT", "int" },
+   //    udp
+   { "BROADCAST_UDP_PORT",    "network", "udp", "BROADCAST_UDP_PORT", "int" },
+   { "LISTEN_UDP_PORT",       "network", "udp", "LISTEN_UDP_PORT", "int" },
+
+   // email
+   //    smtp
+   { "SMTP_HOST",             "email", "smtp", "SMTP_HOST", "string" },
+   { "SMTP_PORT",             "email", "smtp", "SMTP_PORT", "int" },
+   //    account
+   { "ACCOUNT_EMAIL",         "email", "account", "ACCOUNT_EMAIL", "string" },
+   { "ACCOUNT_PASSWORD",      "email", "account", "ACCOUNT_PASSWORD", "string" },
+   //    delivery
+   { "SEND_EMAILS",           "email", "delivery", "SEND_EMAILS", "bool" },
+   { "RECIPIENT_EMAIL",       "email", "delivery", "RECIPIENT_EMAIL", "string" },
+   { "DAILY_EMAIL_HOUR",      "email", "delivery", "DAILY_EMAIL_HOUR", "int" },
+
+   // logging
+   //    output
+   { "ENABLE_SERIAL_LOGGING", "logging", "output", "ENABLE_SERIAL_LOGGING", "bool" },
+   { "LOG_TO_FILE",           "logging", "output", "LOG_TO_FILE", "bool" },
+   { "UDP_LOGGING_ENABLE",    "logging", "output", "UDP_LOGGING_ENABLE", "bool" },
+   { "LOG_TO_UDP_PORT",       "logging", "output", "LOG_TO_UDP_PORT", "int" },
+   //    levels
+   { "DEBUG_LEVEL_ENABLED",   "logging", "levels", "DEBUG_LEVEL_ENABLED", "bool" },
+   { "LOG_TIMESTAMP",         "logging", "levels", "LOG_TIMESTAMP", "bool" },
+   { "LOG_TIMING",            "logging", "levels", "LOG_TIMING", "bool" },
+   { "LOG_MEMSTATS",          "logging", "levels", "LOG_MEMSTATS", "bool" },
+   { "LOG_HP_MODBUS",         "logging", "levels", "LOG_HP_MODBUS", "bool" },
+
+   // integrations
+   //    emoncms
+   { "UPDATE_EMONCMS",        "integrations", "emoncms", "UPDATE_EMONCMS", "bool" },
+   { "EMONCMS_APIKEY",        "integrations", "emoncms", "EMONCMS_APIKEY", "string" },
+   { "EMON_INSECURE",         "integrations", "emoncms", "EMON_INSECURE", "bool" },
+   //    openweather
+   { "OPENWEATHER_INSECURE",  "integrations", "openweather", "OPENWEATHER_INSECURE", "bool" },
+
+   // ui
+   //    display
+   { "USERIO_SCREENSAVER",    "ui", "display", "USERIO_SCREENSAVER", "int" },
+
+   // debug
+   //    web
+   { "HIDDEN_WEB_PAGE",       "debug", "web", "HIDDEN_WEB_PAGE", "string" },
+   { "WEBPAGE_DEBUG_SECTION", "debug", "web", "WEBPAGE_DEBUG_SECTION", "bool" },
+   { "SHOW_ALL_FILES",        "debug", "web", "SHOW_ALL_FILES", "bool" },
+   // debug
+   //    hardware
+   { "DEBUGPAGE_HWRESET",     "debug", "hardware", "DEBUGPAGE_HWRESET", "bool" },
+   { "DEBUGPAGE_CPU0_TASKWDT","debug", "hardware", "DEBUGPAGE_CPU0_TASKWDT", "bool" },
+   // debug
+   //    diagnostics
+   { "HEAP_TEST_SIZE",        "debug", "diagnostics", "HEAP_TEST_SIZE", "int" },
+   { "ASSERT_FOR_FAST_BOOT",  "debug", "diagnostics", "ASSERT_FOR_FAST_BOOT", "int" },
+   // debug
+   //    reporting
+   { "SEND_DAILY_DEBUG",      "debug", "reporting", "SEND_DAILY_DEBUG", "bool" },
+   { "KEEP_DEBUG_LOG",        "debug", "reporting", "KEEP_DEBUG_LOG", "bool" },
+
+   { nullptr, nullptr, nullptr, nullptr, nullptr }  // Sentinel
+};
+
+static const int k_numMappings = std::size(k_keyMappings) - 1;
 
 //----------------------------------------------------------------------
 // Registry utilities - should really replace with cJSON
@@ -160,10 +252,9 @@ char *getRegistryString( char *key )
    }
 }
 
-Config::Config( char *fileName )
+Config::Config()
       : m_isRegistryOk( false ),
-        m_wasFastReboot( false ),
-        m_configFileName()
+        m_wasFastReboot( false )
 {
    // Nothing in the registry yet...
 
@@ -183,8 +274,6 @@ Config::Config( char *fileName )
    PW_MSG( "  FS : used %d of %d",tvmgFileSys.usedBytes(),tvmgFileSys.totalBytes() );
    PW_MSG( "  Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
    PW_MSG( "  Firmware %s",k_versionStr );
-
-   strncpy( m_configFileName,fileName,MAX_FILENAME );
 }
 
 Config::~Config()
@@ -195,7 +284,7 @@ Config   *Config::instance( bool create )
 {
    if ( create && !s_instance )
    {
-      Config   *newConfig = new Config( "/config.dat" );
+      Config   *newConfig = new Config();
       s_instance = newConfig;
    }
 
@@ -213,6 +302,253 @@ bool Config::isRegistryAvailable()
    return( m_isRegistryOk );
 }
 
+// JSON migration and loading functions - should only need to migrate once, the
+// flat config file will be removed on completion.
+
+bool Config::migrateFromFlatFile()
+{
+   if ( !tvmgFileSys )
+   {
+      PW_WARN( "migrateFromFlatFile() : No filesystem !" );
+      return false;
+   }
+
+   File srcFile = tvmgFileSys.open( FLAT_CONFIG_FILENAME, FILE_READ );
+   if ( !srcFile )
+   {
+      PW_WARN( "migrateFromFlatFile() : Can't open %s",FLAT_CONFIG_FILENAME );
+      return false;
+   }
+
+   // Create root JSON object
+   cJSON *root = cJSON_CreateObject();
+   if ( !root )
+   {
+      srcFile.close();
+      PW_ERROR( "migrateFromFlatFile() : Failed to create root JSON" );
+      return false;
+   }
+
+   // Read flat file line by line
+   char line[ 128 ];
+   char key[ MAX_KEY_LENGTH ];
+   char value[ MAX_VALUE_LENGTH ];
+   uint32_t size = srcFile.size();
+   int numMigrated = 0;
+
+   while ( srcFile.position() < size )
+   {
+      int length = srcFile.readBytesUntil( '\n', line, 128 );
+
+      if ( length > 2 && line[ 0 ] != '#' && line[ 0 ] != '/' )
+      {
+         line[ length ] = 0;
+         if ( sscanf( line, "%s %s", key, value ) == 2 )
+         {
+            stripOutQuotes( value );
+
+            // Find the mapping for this key
+            const KeyPathMapping *mapping = nullptr;
+            for ( int i = 0; k_keyMappings[ i ].flatKey != nullptr; i++ )
+            {
+               if ( !strcmp( k_keyMappings[ i ].flatKey, key ) )
+               {
+                  mapping = &k_keyMappings[ i ];
+                  break;
+               }
+            }
+
+            if ( mapping )
+            {
+               // Navigate/create the JSON hierarchy
+               cJSON *parent1 = cJSON_GetObjectItem( root, mapping->parent1 );
+               if ( !parent1 )
+               {
+                  parent1 = cJSON_CreateObject();
+                  cJSON_AddItemToObject( root, mapping->parent1, parent1 );
+               }
+
+               cJSON *parent2 = cJSON_GetObjectItem( parent1, mapping->parent2 );
+               if ( !parent2 )
+               {
+                  parent2 = cJSON_CreateObject();
+                  cJSON_AddItemToObject( parent1, mapping->parent2, parent2 );
+               }
+
+               // Add the value based on type
+               if ( !strcmp( mapping->type, "int" ) )
+               {
+                  cJSON_AddNumberToObject( parent2, mapping->jsonKey, atoi( value ) );
+               }
+               else if ( !strcmp( mapping->type, "bool" ) )
+               {
+                  int boolVal = atoi( value );
+                  cJSON_AddBoolToObject( parent2, mapping->jsonKey, boolVal != 0 );
+               }
+               else
+               {
+                  cJSON_AddStringToObject( parent2, mapping->jsonKey, value );
+               }
+
+               numMigrated++;
+               PW_DEBUG( "Migrated: %s → %s.%s", key, mapping->parent1, mapping->parent2 );
+            }
+            else
+            {
+               PW_WARN( "migrateFromFlatFile(): Unknown key: %s", key );
+            }
+         }
+      }
+   }
+
+   srcFile.close();
+
+   // Write JSON to config.json
+   char *jsonString = cJSON_PrintUnformatted( root );
+   if ( !jsonString )
+   {
+      cJSON_Delete( root );
+      PW_ERROR( "migrateFromFlatFile() : Failed to serialize JSON" );
+      return false;
+   }
+
+   File dstFile = tvmgFileSys.open( JSON_CONFIG_FILENAME, FILE_WRITE );
+   if ( !dstFile )
+   {
+      cJSON_free( jsonString );
+      cJSON_Delete( root );
+      PW_ERROR( "migrateFromFlatFile() : Can't create %s",JSON_CONFIG_FILENAME );
+      return false;
+   }
+
+   size_t written = dstFile.print( jsonString );
+   dstFile.close();
+
+   cJSON_free( jsonString );
+   cJSON_Delete( root );
+
+   if ( written > 0 )
+   {
+      PW_MSG( "migrateFromFlatFile() : Successfully migrated %d keys to %s", numMigrated,JSON_CONFIG_FILENAME );
+      tvmgFileSys.remove( FLAT_CONFIG_FILENAME );
+      return true;
+   }
+   else
+   {
+      PW_ERROR( "migrateFromFlatFile() : Failed to write JSON file" );
+      return false;
+   }
+}
+
+bool Config::loadFromJSON()
+{
+   const char *jsonFileName = JSON_CONFIG_FILENAME;
+
+   // Read config.json and populate the registry
+   // Returns true if successful
+
+   if ( !tvmgFileSys )
+   {
+      PW_WARN( "loadFromJSON() : No filesystem !" );
+      return false;
+   }
+
+   File file = tvmgFileSys.open( jsonFileName,FILE_READ );
+   if ( !file )
+   {
+      PW_DEBUG( "loadFromJSON() : %s not found",jsonFileName );
+      return false;
+   }
+
+   // this is in early boot so we should have the memory to load a decent config file
+   size_t size = file.size();
+   if ( size > MAX_CONFIG_FILESIZE )
+   {
+      PW_ERROR( "file is too large, aborting..." );
+      file.close();
+      return false;
+   }
+
+   char *buffer = (char *)malloc( size + 1 );
+   if ( !buffer )
+   {
+      file.close();
+      PW_ERROR( "loadFromJSON() : Failed to allocate buffer" );
+      return false;
+   }
+
+   file.readBytes( buffer, size );
+   file.close();
+   buffer[ size ] = 0;
+
+   cJSON *root = cJSON_Parse( buffer );
+   free( buffer );
+
+   if ( !root )
+   {
+      PW_ERROR( "loadFromJSON() : Failed to parse JSON" );
+      return false;
+   }
+
+   int numLoaded = 0;
+
+   // Iterate through all mapped keys and extract from JSON
+   for ( int i = 0; k_keyMappings[ i ].flatKey != nullptr; i++ )
+   {
+      const KeyPathMapping *mapping = &k_keyMappings[ i ];
+
+      // Navigate the JSON hierarchy
+      cJSON *parent1 = cJSON_GetObjectItem( root, mapping->parent1 );
+      if ( !parent1 )
+         continue;
+
+      cJSON *parent2 = cJSON_GetObjectItem( parent1, mapping->parent2 );
+      if ( !parent2 )
+         continue;
+
+      cJSON *item = cJSON_GetObjectItem( parent2, mapping->jsonKey );
+      if ( !item )
+         continue;
+
+      char strValue[ MAX_VALUE_LENGTH ];
+
+      // Extract value based on type
+      if ( !strcmp( mapping->type, "int" ) )
+      {
+         snprintf( strValue, MAX_VALUE_LENGTH, "%d", item->valueint );
+      }
+      else if ( !strcmp( mapping->type, "bool" ) )
+      {
+         snprintf( strValue, MAX_VALUE_LENGTH, "%d", item->valueint );
+      }
+      else
+      {
+         if ( item->valuestring )
+         {
+            snprintf( strValue, MAX_VALUE_LENGTH, "\"%s\"", item->valuestring );
+         }
+         else
+         {
+            continue;
+         }
+      }
+
+      // Add to registry
+      setRegistryEntry( (char *)mapping->flatKey, strValue );
+      numLoaded++;
+   }
+
+   cJSON_Delete( root );
+
+   if ( numLoaded > 0 )
+   {
+      PW_MSG( "loadFromJSON() : Successfully loaded %d keys from /config.json", numLoaded );
+      return true;
+   }
+
+   return false;
+}
+
 bool  Config::readRegistryFromFile( void )
 {
    if ( !tvmgFileSys )
@@ -221,11 +557,66 @@ bool  Config::readRegistryFromFile( void )
       return false;
    }
 
-   File file = tvmgFileSys.open( m_configFileName,FILE_READ );
+   // First, try to load from JSON config (preferred format)
+   if ( tvmgFileSys.exists( JSON_CONFIG_FILENAME ) )
+   {
+      PW_MSG( "readRegistryFromFile() : Found %s, loading from JSON",JSON_CONFIG_FILENAME );
+      if ( loadFromJSON() )
+      {
+         return true;
+      }
+      PW_WARN( "readRegistryFromFile() : JSON load failed, falling back to flat file" );
+   }
+
+   // If config.json doesn't exist, check if config.dat exists
+   if ( tvmgFileSys.exists( FLAT_CONFIG_FILENAME ) )
+   {
+      PW_MSG( "readRegistryFromFile() : Found %s",FLAT_CONFIG_FILENAME );
+
+      // Load from the flat file first
+      bool flatFileOk = readRegistryFromFlatFile();
+
+      if ( flatFileOk )
+      {
+         // Try to migrate to JSON for future use
+         PW_MSG( "readRegistryFromFile() : Flat file loaded successfully, migrating to JSON..." );
+         if ( migrateFromFlatFile() )
+         {
+            PW_MSG( "readRegistryFromFile() : Migration to %s successful",JSON_CONFIG_FILENAME );
+         }
+         else
+         {
+            PW_WARN( "readRegistryFromFile() : Migration to JSON failed, but flat file is available" );
+         }
+
+         return true;
+      }
+      else
+      {
+         PW_ERROR( "readRegistryFromFile() : Failed to load from flat file" );
+         return false;
+      }
+   }
+
+   PW_ERROR( "readRegistryFromFile() : Neither %s nor %s found",JSON_CONFIG_FILENAME,FLAT_CONFIG_FILENAME );
+   return false;
+}
+
+bool  Config::readRegistryFromFlatFile( void )
+{
+   // Original flat file reading logic, refactored into separate function
+
+   if ( !tvmgFileSys )
+   {
+      PW_WARN( "readRegistryFromFlatFile() : No filesystem !" );
+      return false;
+   }
+
+   File file = tvmgFileSys.open( FLAT_CONFIG_FILENAME, FILE_READ );
 
    if ( !file )
    {
-      PW_WARN( "%s can't open",m_configFileName );
+      PW_WARN( "%s can't open", FLAT_CONFIG_FILENAME );
       return false;
    }
 
@@ -266,7 +657,7 @@ bool  Config::readRegistryFromFile( void )
 
    if ( numLines == MAX_REGISTRY_ENTRIES )
    {
-      PW_WARN( "Read maximum %d entries from %s",numLines,m_configFileName );
+      PW_WARN( "Read maximum %d entries from %s", numLines, FLAT_CONFIG_FILENAME );
    }
 
    return( numLines > 0 );

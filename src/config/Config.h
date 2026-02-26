@@ -62,7 +62,7 @@ typedef struct {
 class Config
 {
 public:
-   Config( char *fileName );
+   Config();
    ~Config();
 
    void  initialise();
@@ -86,9 +86,11 @@ public:
 
 private:
    bool readRegistryFromFile();
+   bool readRegistryFromFlatFile();
+   bool loadFromJSON();
+   bool migrateFromFlatFile();
 
-   bool           m_isRegistryOk;
-   bool           m_wasFastReboot;
-   char           m_configFileName[ MAX_FILENAME + 1 ];
+   bool m_isRegistryOk;
+   bool m_wasFastReboot;
 };
 #endif

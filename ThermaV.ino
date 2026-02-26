@@ -878,7 +878,7 @@ void setup( void )
 
    setupSerial();
 
-   // Initialise our configuration, this will create the filesystem if neeeded but not
+   // Initialise our configuration, this will create the filesystem if needed but not
    // the registry, then select the hardware.
 
    config = Config::instance( true );

@@ -35,7 +35,7 @@ const char edit_html[] = R"rawliteral(
 
    <fieldset>
     <legend>Editing: %EDIT_FILENAME%</legend>
-    <form action="/save" method="post" onsubmit="return confirm('Save changes to %EDIT_FILENAME%?')">
+    <form action="/save" method="post" onsubmit="return validateAndConfirm()">
 
      <textarea name="edit_textarea" spellcheck="false" wrap="off">%TEXTAREA_CONTENT%</textarea>
 
@@ -49,6 +49,38 @@ const char edit_html[] = R"rawliteral(
     </form>
    </fieldset>
   </div>
+  <script>
+  window.onload = function() {
+    const ta = document.querySelector('textarea[name="edit_textarea"]');
+    try {
+        // Attempt to parse and re-stringfy with 2-space indentation
+        const obj = JSON.parse(ta.value);
+        ta.value = JSON.stringify(obj, null, 2);
+    } catch (e) {
+        // Not valid JSON or already formatted, leave as is
+        console.log("Not a JSON file, skipping auto-format.");
+    }
+  };
+  function validateAndConfirm() {
+    const ta = document.querySelector('textarea[name="edit_textarea"]');
+    const fileName = "%EDIT_FILENAME%";
+
+    // 1. If it's a JSON file, check syntax first
+    if (fileName.endsWith(".json")) {
+        try {
+            const obj = JSON.parse(ta.value);
+            // Optional: Minify here to save space on the ESP32
+            ta.value = JSON.stringify(obj); 
+        } catch (e) {
+            alert("JSON Error: " + e.message + "\n\nFile not saved. Please fix the syntax.");
+            return false; // Stop everything
+        }
+    }
+
+    // 2. Syntax is valid (or it's not a JSON file), now ask for confirmation
+    return confirm('Save changes to ' + fileName + '?');
+  }
+  </script>  
  </body>
 </html>
 )rawliteral";
