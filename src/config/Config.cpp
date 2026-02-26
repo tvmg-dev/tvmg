@@ -8,7 +8,9 @@
 
 #include "Config.h"
 
-const char *k_versionStr = "v26.02.07";
+#include "src/userio/Indicator.h"
+
+const char *k_versionStr = "v26.02.08b";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";
@@ -304,6 +306,15 @@ void  Config::setFactoryReset()
       pref.end();
       setPersistentInt( k_rebootType,SERVER_RESET );
    }
+
+   // We turn off any AP mode indicator here, as we may be soft resetting 
+
+   Indicator *apModeIndicator = Indicator::getIndicator( Indicator::SYSTEM,SYSTEM_AP_ID );
+   if (apModeIndicator)
+   {
+      apModeIndicator->off();
+   }
+
 }
 
 bool  Config::getPersistentInt( const String &key,int32_t *value,int32_t defValue )
@@ -533,6 +544,14 @@ void hwReset()
 void reboot()
 {
    Config::instance()->setPersistentInt( k_rebootType,SERVER_REBOOT );
+
+   // We turn off any AP mode indicator here, as we may be soft resetting 
+
+   Indicator *apModeIndicator = Indicator::getIndicator( Indicator::SYSTEM,SYSTEM_AP_ID );
+   if (apModeIndicator)
+   {
+      apModeIndicator->off();
+   }
 
    delay( 500 );
    ESP.restart();

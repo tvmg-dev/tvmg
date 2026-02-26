@@ -5,6 +5,9 @@
 #include <map>
 #include <memory>
 
+#define SYSTEM_SETUP_ID 0
+#define SYSTEM_AP_ID    1
+
 class Indicator
 {
 public:

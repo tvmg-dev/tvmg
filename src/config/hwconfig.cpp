@@ -125,8 +125,8 @@ HardwareConfig WaveshareRelay =
    1,             // ModBusSerial
    9600,          // ModBusBaudRate
    SERIAL_8N1,    // ModBusSerialFormat
-   17,            // ModBusRxGPIO
-   18,            // ModBusTxGPIO
+   18,            // ModBusRxGPIO
+   17,            // ModBusTxGPIO
    50,            // ModBusMsgDelay
    21,            // ModBus485EnGPIO
    -1,            // OLEDClkGPIO

@@ -6,11 +6,14 @@
 #elif defined(TVMG_WAVESHARE_LCDB)   
    #include "LCDIndicator.h"
    #define IndicatorClass   LCDIndicator
+#elif defined(TVMG_WAVESHARE_RELAY)
+   #define IndicatorClass   RelayIndicator
+   #include "RelayIndicator.h"
 #endif
 
-#include "src/core/utils.h"  // for PW_ERROR etc
+#include "src/core/utils.h"
 
-// static member definition
+// map of keys to Indicator pointers
 std::map<uint32_t, std::unique_ptr<Indicator>> Indicator::s_map;
 
 Indicator::Indicator(IndicatorType type, uint32_t id)
@@ -28,7 +31,7 @@ void Indicator::initialise()
    s_map.clear();
 }
 
-#if defined(TVMG_WAVESHARE_LCDB) || defined(TVMG_OLED)
+#if defined(TVMG_WAVESHARE_LCDB) || defined(TVMG_OLED) || defined(TVMG_WAVESHARE_RELAY)
 Indicator* Indicator::getIndicator(IndicatorType type, uint32_t id)
 {
    uint32_t key = generateKey(type, id);

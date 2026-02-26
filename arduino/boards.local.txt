@@ -66,20 +66,8 @@ tvmg_esp32.menu.TVMGadget.external.tvmg.subtype=-DEXTERNAL
 
 tvmg_esp32.menu.TVMGRevision.v2=version 2
 
-# Debug selection
-
-tvmg_esp32.menu.DebugLevel.none=None
-tvmg_esp32.menu.DebugLevel.none.build.code_debug=0
-tvmg_esp32.menu.DebugLevel.error=Error
-tvmg_esp32.menu.DebugLevel.error.build.code_debug=1
-tvmg_esp32.menu.DebugLevel.warn=Warn
-tvmg_esp32.menu.DebugLevel.warn.build.code_debug=2
-tvmg_esp32.menu.DebugLevel.info=Info
-tvmg_esp32.menu.DebugLevel.info.build.code_debug=3
-tvmg_esp32.menu.DebugLevel.debug=Debug
-tvmg_esp32.menu.DebugLevel.debug.build.code_debug=4
-tvmg_esp32.menu.DebugLevel.verbose=Verbose
-tvmg_esp32.menu.DebugLevel.verbose.build.code_debug=5
+# Debug selection (from 0 to 5)
+build.code_debug=0
 
 # Using the legacy TVMG_ESP32
 
@@ -143,19 +131,8 @@ tvmg_wsharelcd.build.partitions=tvmg_littlefs_16MB
 tvmg_wsharelcd.build.loop_core=-DARDUINO_RUNNING_CORE=1
 tvmg_wsharelcd.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
 
-tvmg_wsharelcd.menu.DebugLevel.none=None
-tvmg_wsharelcd.menu.DebugLevel.none.build.code_debug=0
-tvmg_wsharelcd.menu.DebugLevel.error=Error
-tvmg_wsharelcd.menu.DebugLevel.error.build.code_debug=1
-tvmg_wsharelcd.menu.DebugLevel.warn=Warn
-tvmg_wsharelcd.menu.DebugLevel.warn.build.code_debug=2
-tvmg_wsharelcd.menu.DebugLevel.info=Info
-tvmg_wsharelcd.menu.DebugLevel.info.build.code_debug=3
-tvmg_wsharelcd.menu.DebugLevel.debug=Debug
-tvmg_wsharelcd.menu.DebugLevel.debug.build.code_debug=4
-tvmg_wsharelcd.menu.DebugLevel.verbose=Verbose
-tvmg_wsharelcd.menu.DebugLevel.verbose.build.code_debug=5
-
+# Debug selection (from 0 to 5)
+build.code_debug=0
 
 # The FQDN will have TVMGRevision=v1, the 'version 1' is shown in the menu
 
@@ -219,18 +196,8 @@ tvmg_esp32s3.build.partitions=tvmg_littlefs_16MB
 tvmg_esp32s3.build.loop_core=-DARDUINO_RUNNING_CORE=1
 tvmg_esp32s3.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
 
-tvmg_esp32s3.menu.DebugLevel.none=None
-tvmg_esp32s3.menu.DebugLevel.none.build.code_debug=0
-tvmg_esp32s3.menu.DebugLevel.error=Error
-tvmg_esp32s3.menu.DebugLevel.error.build.code_debug=1
-tvmg_esp32s3.menu.DebugLevel.warn=Warn
-tvmg_esp32s3.menu.DebugLevel.warn.build.code_debug=2
-tvmg_esp32s3.menu.DebugLevel.info=Info
-tvmg_esp32s3.menu.DebugLevel.info.build.code_debug=3
-tvmg_esp32s3.menu.DebugLevel.debug=Debug
-tvmg_esp32s3.menu.DebugLevel.debug.build.code_debug=4
-tvmg_esp32s3.menu.DebugLevel.verbose=Verbose
-tvmg_esp32s3.menu.DebugLevel.verbose.build.code_debug=5
+# Debug selection (from 0 to 5)
+build.code_debug=0
 
 # The FQDN will have TVMGRevision=v1, the 'version 1' is shown in the menu
 
@@ -290,6 +257,9 @@ tvmg_wsrelay.build.partitions=tvmg_littlefs_16MB
 
 tvmg_wsrelay.build.loop_core=-DARDUINO_RUNNING_CORE=1
 tvmg_wsrelay.build.event_core=-DARDUINO_EVENT_RUNNING_CORE=1
+
+# Debug selection (from 0 to 5)
+build.code_debug=0
 
 # The FQDN will have TVMGRevision=v1, the 'version 1' is shown in the menu
 

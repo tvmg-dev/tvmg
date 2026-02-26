@@ -140,7 +140,7 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
 
 void newConfiguration( void )
 {
-   Indicator *newConfigIndicator = Indicator::getIndicator( Indicator::SYSTEM,1 );
+   Indicator *newConfigIndicator = Indicator::getIndicator( Indicator::SYSTEM,SYSTEM_AP_ID );
    Indicator::Scoped guard( newConfigIndicator );
 
    networking = new Networking( networkingInfoCallback );
@@ -899,7 +899,7 @@ void setup( void )
    Indicator::initialise();
 
    // Get system indicator and turn it on
-   systemIndicator = Indicator::getIndicator( Indicator::SYSTEM,0 );
+   systemIndicator = Indicator::getIndicator( Indicator::SYSTEM,SYSTEM_SETUP_ID );
    Indicator::Scoped guard( systemIndicator );
 
    // handle reboot reason - display info & may drop to AP mode if too many fast boot cycles

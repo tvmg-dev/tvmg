@@ -1,15 +1,15 @@
 #ifndef LCD_INDICATOR_H
 #define LCD_INDICATOR_H
 
-#if defined(TVMG_WAVESHARE_LCDB)
+#if defined(TVMG_WAVESHARE_RELAY)
 
 #include "Indicator.h"
 
-class LCDIndicator : public Indicator
+class RelayIndicator : public Indicator
 {
 public:
-   LCDIndicator( IndicatorType type, uint32_t id );
-   ~LCDIndicator() override;
+   RelayIndicator( IndicatorType type, uint32_t id );
+   ~RelayIndicator() override;
 
 protected:
    void doOn() override;
@@ -17,8 +17,9 @@ protected:
    void doHeartbeat( uint32_t onMillis, uint32_t offMillis ) override;
 
 private:
-   int8_t m_led;
+   int8_t  m_led;
+   int8_t  m_gpio;
 };
 
-#endif // TVMG_WAVESHARE_LCDB
+#endif // TVMG_WAVESHARE_RELAY
 #endif // LCD_INDICATOR_H
