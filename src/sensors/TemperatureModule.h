@@ -19,7 +19,7 @@ class AsyncUDP;
 
 #define TEMPERATURE_INVALID   -100
 
-// The ID's should be matched in the sensors.dat file
+// The ID's should be matched in the sensors file
 
 #define  HEAT_PUMP_FLOW    1
 #define  HEAT_PUMP_RETURN  2

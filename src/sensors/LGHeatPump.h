@@ -8,10 +8,10 @@
 
 #include "src/userio/Indicator.h"
 
-#define MAX_HP_REGISTERS      50
-#define MAX_LGSOFTWARE_LENGTH 32
+#define  MAX_HP_REGISTERS      50
+#define  MAX_LGSOFTWARE_LENGTH 32
 
-#define  LGREGISTER_SCAN_LOG  "/registers.txt"
+#define  LGREGISTER_SCAN_LOG  "/lgregscan.txt"
 #define  LGMODBUS_LOG         "/lgmodbus.txt"
 #define  LGSTATUS_LOG_HTML    "/lgstatus.html"
 #define  LGSTATUS_YESTERDAY   "/lgstatus2.html"
@@ -72,26 +72,6 @@
 
 class ModbusMaster;
 
-enum ModbusType {
-   INVALID,
-   COIL = 1,
-   DISCRETE,
-   HOLDING,
-   INPUTR,
-   CALCULATED = 8
-};
-
-typedef struct {
-   uint8_t     m_id;             // simple id
-   ModbusType  m_type;           // coil etc,
-   uint16_t    m_address;        // address on modbus
-   uint32_t    m_emonFeedId;     // for emon
-   float_t     m_scalingFactor;  // conversion factor
-   int16_t     m_rawValue;       // treat all as signed values
-   float_t     m_value;          // after scaling
-   bool        m_isValid;
-} LGRegister;
-
 struct LGStatus {
    LGStatus();
 
@@ -127,6 +107,25 @@ typedef struct LGStatus LGStatus;
 class LGHeatPump
 {
 public:
+   enum ModbusType {
+      INVALID,
+      COIL = 1,
+      DISCRETE,
+      HOLDING,
+      INPUTR,
+      CALCULATED = 8
+   };
+   typedef struct {
+      uint8_t     m_id;             // simple id
+      ModbusType  m_type;           // coil etc,
+      uint16_t    m_address;        // address on modbus
+      uint32_t    m_emonFeedId;     // for emon
+      float_t     m_scalingFactor;  // conversion factor
+      int16_t     m_rawValue;       // treat all as signed values
+      float_t     m_value;          // after scaling
+      bool        m_isValid;
+   } LGRegister;
+
    LGHeatPump( ModbusMaster *master );
    ~LGHeatPump();
    void  initialise();
@@ -139,6 +138,7 @@ public:
    int8_t getRegisterIndex( uint32_t parameter );
    void  setCurrentKW( float_t kw );
 
+   static void scanModbus();
 private:
    void  getLGData();
    bool  getContiguousRange( ModbusType type,uint8_t *start,uint8_t *end );

@@ -185,7 +185,7 @@ void  Measurement::takeSample( void )
 
       i = 0;
       int regsOk = 0;
-      LGRegister *lgRegister;
+      LGHeatPump::LGRegister *lgRegister;
 
       m_heatPump->sample();
       while ( ( lgRegister = m_heatPump->readNextSensor( i++ ) ) )
@@ -330,7 +330,7 @@ void  Measurement::updateEmon()
 
    for ( int i = 0; i < m_lastSample.m_lgRegisters.size(); i++ )
    {
-      const LGRegister &sensor = m_lastSample.m_lgRegisters[ i ];
+      const LGHeatPump::LGRegister &sensor = m_lastSample.m_lgRegisters[ i ];
 
       if ( sensor.m_emonFeedId && sensor.m_isValid )
       {
@@ -465,10 +465,10 @@ char * Measurement::getSampleJSON()
 
       for ( int i = 0; i < m_lastSample.m_lgRegisters.size(); i++ )
       {
-         const LGRegister &lgReg = m_lastSample.m_lgRegisters[ i ];
+         const LGHeatPump::LGRegister &lgReg = m_lastSample.m_lgRegisters[ i ];
          const char *name = getSensorName( HEATPUMP,lgReg.m_id ).c_str();
 
-         if ( lgReg.m_type == COIL || lgReg.m_type == DISCRETE )
+         if ( lgReg.m_type == LGHeatPump::COIL || lgReg.m_type == LGHeatPump::DISCRETE )
          {
             if ( lgReg.m_value > 0 )
             {

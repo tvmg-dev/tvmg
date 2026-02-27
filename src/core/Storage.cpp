@@ -307,7 +307,7 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
 
       for ( int i = 0; i < sample.m_lgRegisters.size(); i++ )
       {
-         const LGRegister &lgReg = sample.m_lgRegisters[ i ];
+         const LGHeatPump::LGRegister &lgReg = sample.m_lgRegisters[ i ];
 
          if ( isNewFile )
          {

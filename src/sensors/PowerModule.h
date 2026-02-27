@@ -14,7 +14,7 @@
 #define POWER_INVALID         -1
 #define ENERGY_INVALID        -1
 
-// The ID's should be matched in the sensors.dat file
+// The ID's should be matched in the sensors file
 
 #define  HEAT_PUMP_ID         100
 #define  HEATING_CIRCUITS_ID  101

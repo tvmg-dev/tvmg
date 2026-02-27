@@ -6,7 +6,7 @@
 
 #define MAX_FILENAME    32
 
-#define SENSORS_FILENAME   "/sensors.dat"
+#define SENSORS_FILENAME   "/sensors.json"
 
 //----------------------------------------------------------------------
 // General buffer - also used by the external email sender library
@@ -45,10 +45,11 @@ extern DebugState getUdpDebugState();
 
 class cJSON;
 
-extern cJSON *getAllSensorJSON();
-extern void  releaseSensorJSON();
+extern cJSON * readJSONFromFile( const String &fileName );
 
-extern bool    iscJSONFileOk( const String &fileName );
+extern cJSON * getAllSensorJSON();
+extern void    releaseSensorJSON();
+
 extern bool    isSensorRequired( const char *sensorName );
 extern bool    getBoolFromcJSON( cJSON *node,const char *key, bool defaultValue );
 extern int     getIntFromcJSON( cJSON *node,const char *key, int defaultValue = -1 );

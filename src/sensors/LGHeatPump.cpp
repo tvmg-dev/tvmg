@@ -87,6 +87,12 @@ static std::map<float_t,float_t> r32Lookup = {
    {4985,72},
 };
 
+// If we're going to try a modbus address scan
+using ModbusType = LGHeatPump::ModbusType;
+
+static ModbusType s_modbusScanRegisterType = LGHeatPump::INVALID;
+static uint16_t   s_modbusScanAddr = 0;
+
 //----------------------------------------------------------------------
 // For HTML row generation in the data log.  The row can be large so
 // don't use the stack.  We also set the 'header' and 'footer' for the
@@ -219,7 +225,12 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
             m_modbusAddress = getIntFromcJSON( sensor,"address",0x11 );
             s_modbusAddress = m_modbusAddress;
             m_flowRateWhenNotHeating = getIntFromcJSON( sensor,"flowInNotHeating",0 );
-
+            s_modbusScanAddr = getIntFromcJSON( sensor,"scanAddress",0 );
+            s_modbusScanRegisterType = static_cast<ModbusType> (getIntFromcJSON( sensor,"scanType",0 ));
+            if ( s_modbusScanRegisterType > INPUTR )
+            {
+               s_modbusScanRegisterType = INVALID;
+            }
             // If series 4 then by default log the heating target changes
             bool defaultLogHeatingTarget = (series == 4 ? true : false);
             m_logHeatingTargetChanges = getBoolFromcJSON( sensor,"logHeatingTargetChanges",defaultLogHeatingTarget );
@@ -236,6 +247,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
             PW_DEBUG( "address %u, write %d series %d",m_modbusAddress,m_logRegisters,series );
             PW_DEBUG( "flow in !heating %d, %s heating target changes",
                                     m_flowRateWhenNotHeating,(m_logHeatingTargetChanges ? "log" : "ignore" ) );
+            PW_DEBUG( "scan type %u, from %u",s_modbusScanRegisterType,s_modbusScanAddr );
             break;
          }
       }
@@ -243,86 +255,76 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 
    if ( m_series && tvmgFileSys )
    {
-      // Parse the /lg.dat file for info
 
-      File file = tvmgFileSys.open( "/lg.dat",FILE_READ );
-      if ( !file )
+
+      m_registers = new LGRegister[ MAX_HP_REGISTERS ];
+
+      for ( uint8_t i = 0; i < MAX_HP_REGISTERS; i++ )
       {
-         PW_WARN( "/lg.dat is missing" );
+         m_registers[ i ].m_type = INVALID;
       }
-      else
+
+      cJSON *root = readJSONFromFile( "/lg.json");
+      if ( !root )
       {
-         m_registers = new LGRegister[ MAX_HP_REGISTERS ];
+         PW_ERROR( "Failed to parse lg.json" );
+         return;
+      }
 
-         for ( uint8_t i = 0; i < MAX_HP_REGISTERS; i++ )
+      if ( strcmpcJSON( root,"type","THERMAV" ) == 0 )
+      {
+         cJSON *registers = cJSON_GetObjectItem( root,"registers" );
+         if ( registers && cJSON_IsArray( registers ) )
          {
-            m_registers[ i ].m_type = INVALID;
-         }
-
-         String data = file.readStringUntil( '@' );
-
-         cJSON *root = cJSON_Parse( data.c_str() );
-
-         if ( !root )
-         {
-            PW_ERROR( "Failed to parse lg.dat" );
-            return;
-         }
-
-         if ( strcmpcJSON( root,"type","THERMAV" ) == 0 )
-         {
-            cJSON *registers = cJSON_GetObjectItem( root,"registers" );
-            if ( registers && cJSON_IsArray( registers ) )
+            cJSON *reg;
+            cJSON_ArrayForEach( reg,registers )
             {
-               cJSON *reg;
-               cJSON_ArrayForEach( reg,registers )
+               if ( m_numRegisters < MAX_HP_REGISTERS  )
                {
-                  if ( m_numRegisters < MAX_HP_REGISTERS  )
-                  {
-                     LGRegister &lgReg = m_registers[ m_numRegisters ];
-                     String name = getStringFromcJSON( reg,"name" );
+                  LGRegister &lgReg = m_registers[ m_numRegisters ];
+                  String name = getStringFromcJSON( reg,"name" );
 
-                     lgReg.m_id = m_numRegisters + 1;
-                     lgReg.m_address = getIntFromcJSON( reg,"addr",-1 );
-                     lgReg.m_type = static_cast<ModbusType>( getIntFromcJSON( reg,"type",INPUTR ) );
-                     lgReg.m_emonFeedId = getIntFromcJSON( reg,"emonFeedId",0 );
+                  lgReg.m_id = m_numRegisters + 1;
+                  lgReg.m_address = getIntFromcJSON( reg,"addr",-1 );
+                  lgReg.m_type = static_cast<ModbusType>( getIntFromcJSON( reg,"type",INPUTR ) );
+                  lgReg.m_emonFeedId = getIntFromcJSON( reg,"emonFeedId",0 );
 
-                     lgReg.m_scalingFactor = getFloatFromcJSON( reg,"scaling",1 );
+                  lgReg.m_scalingFactor = getFloatFromcJSON( reg,"scaling",1 );
 
-                     // add to the lookup map, key = (type << 16 | modbus-addr + 1)
+                  // add to the lookup map, key = (type << 16 | modbus-addr + 1)
 
-                     uint32_t parameter = (lgReg.m_type << 16) | (lgReg.m_address + 1);
+                  uint32_t parameter = (lgReg.m_type << 16) | (lgReg.m_address + 1);
 
-                     m_registerMap[ parameter ] = m_numRegisters;
+                  m_registerMap[ parameter ] = m_numRegisters;
 
-                     // add to sensor name map
+                  // add to sensor name map
 
-                     setSensorName( HEATPUMP,lgReg.m_id,name );
+                  setSensorName( HEATPUMP,lgReg.m_id,name );
 
-                     PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
-                              lgReg.m_type,lgReg.m_address,name.c_str(),
-                              lgReg.m_emonFeedId,lgReg.m_scalingFactor,parameter,m_numRegisters - 1 );
+                  PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
+                           lgReg.m_type,lgReg.m_address,name.c_str(),
+                           lgReg.m_emonFeedId,lgReg.m_scalingFactor,parameter,m_numRegisters - 1 );
 
-                     m_numRegisters++;
-                  }
-                  else
-                  {
-                     PW_WARN( "Exceeded max LG registers limit" );
-                  }
+                  m_numRegisters++;
+               }
+               else
+               {
+                  PW_WARN( "Exceeded max LG registers limit" );
                }
             }
-            else
-            {
-               PW_ERROR( "Registers not located in lg.dat" );
-            }
          }
-
-         cJSON_Delete( root );
-         close( file );
+         else
+         {
+            PW_ERROR( "Registers not located in lg.json" );
+         }
       }
+
+      cJSON_Delete( root );
    }
+
    if ( m_numRegisters )
    {
+      s_master = m_modbus;
       m_indicator = Indicator::getIndicator( Indicator::HEATPUMP,m_modbusAddress );
    }
 }
@@ -407,7 +409,7 @@ void LGHeatPump::sample()
    }
 }
 
-LGRegister *LGHeatPump::readNextSensor( uint8_t index )
+LGHeatPump::LGRegister *LGHeatPump::readNextSensor( uint8_t index )
 {
    if ( index >= m_numRegisters )
    {
@@ -1283,45 +1285,81 @@ float_t  LGHeatPump::convertR32PressureToTemp( float_t pressure )
    return temp;
 }
 
-#include <SD.h>
-#include <FS.h>
+// Scan 8 registers at a time - sampled from the main loop task, essentially every 5s
+// so will take ~ 12 hours to complete full address range per type.
 
-void  getHPData()
+void  scanLGModbus()
 {
-   uint8_t mbusRes = 1;
+   static bool completed = false;
 
-   if ( s_master )
+   if ( s_master && s_modbusScanRegisterType != LGHeatPump::INVALID )
    {
       s_master->setSlaveId( s_modbusAddress );
 
-      if ( GET_REGISTRY_INT( LG_MODBUS_START_REG ) > 0 )
+      if ( s_modbusScanAddr < 65535 && !completed )
       {
-         static uint16_t x = GET_REGISTRY_INT( LG_MODBUS_START_REG );
-         for ( int i = x; i < x+8; i++ )
+         PW_DEBUG( "scan type %u from %u",s_modbusScanRegisterType,s_modbusScanAddr );
+         uint32_t endAddr = s_modbusScanAddr + 8;
+         uint32_t addr = s_modbusScanAddr;
+         while ( addr < endAddr )
          {
+            int startAddr = addr;
+            int modbusRes;
+
             s_master->clearResponseBuffer();
             delay( 50 );
-            mbusRes = s_master->readInputRegisters( i,1 );
 
-            if ( !mbusRes || i % 128 == 0 )
+            switch( s_modbusScanRegisterType )
             {
-               PW_HP_MODBUS( "IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
-               PW_HP_MODBUS( "IR: %u %u",i,s_master->getResponseBuffer( 0 ) );
-               File file = SD.open( LGREGISTER_SCAN_LOG,FILE_APPEND );
+               case LGHeatPump::COIL:
+                  modbusRes = s_master->readCoils( addr,8 );
+                  addr += 8;
+                  break;
+               case LGHeatPump::DISCRETE:
+                  modbusRes = s_master->readDiscreteInputs( addr,8 );
+                  addr += 8;
+                  break;
+               case LGHeatPump::HOLDING:
+                  modbusRes = s_master->readInputRegisters( addr++,1 );
+                  break;
+               case LGHeatPump::INPUTR:
+                  modbusRes = s_master->readInputRegisters( addr++,1 );
+                  break;
+               default:
+                  return;
+            }
+
+            if ( !modbusRes || startAddr % 128 == 0 )
+            {
+               uint16_t data = s_master->getResponseBuffer( 0 );
+               char buff[ 40 ];
+               snprintf( buff,sizeof(buff),"%u,%u,%u,%u",s_modbusScanRegisterType,startAddr,data,modbusRes );
+
+               PW_MSG( "LG Modbus: %s",buff );
+               
+               // Only write to flash if littlefs
+#if defined(TVMG_LITTLEFS)
+               File file = tvmgFileSys.open( LGREGISTER_SCAN_LOG,FILE_APPEND );
                if ( file )
                {
-                  char a[ 40 ];
-                  sprintf( a,"IR: %u %u [%u]",i,s_master->getResponseBuffer( 0 ),mbusRes );
-                  file.println( a );
+                  file.println( buff );
                   file.close();
                }
-            }
-            else if ( i % 128 != 0 )
-            {
-               PW_ERROR( "!input: %d %u",i,mbusRes );
+#endif
             }
          }
-         x += 8;
+
+         s_modbusScanAddr = addr;
+         if ( addr == 65536 )
+         {
+            completed = true;
+            PW_DEBUG( "Completed");
+         }
       }
    }
+}
+
+void LGHeatPump::scanModbus()
+{
+   scanLGModbus();
 }

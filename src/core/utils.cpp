@@ -107,6 +107,51 @@ void  replaceFile( const String &origFile,const String &newFile )
    }
 }
 
+cJSON * readJSONFromFile( const String &fileName )
+{
+   if ( !tvmgFileSys )
+   {
+      PW_WARN( "No filesystem !" );
+      return nullptr;
+   }
+
+   File file = tvmgFileSys.open( fileName,FILE_READ );
+   if ( !file )
+   {
+      PW_DEBUG( "readJSON %s not found",fileName.c_str() );
+      return nullptr;
+   }
+
+   size_t size = file.size();
+   char *buffer = (char *)malloc( size + 1 );
+   if ( !buffer )
+   {
+      file.close();
+      PW_ERROR( "readJSON failed to allocate buffer for %s",fileName.c_str() );
+      return nullptr;
+   }
+
+   file.readBytes( buffer, size );
+   file.close();
+   buffer[ size ] = 0;
+
+   // legacy files may have a terminating '@' - so remove it before parsing.
+   if ( buffer[ size - 1 ] == '@' )
+   {
+      buffer[ size -1 ] = 0;
+   }
+
+   cJSON *root = cJSON_Parse( buffer );
+   free( buffer );
+
+   if ( !root )
+   {
+      PW_ERROR( "Failed to parse JSON from %s",fileName.c_str() );
+   }
+   
+   return root;
+}
+
 cJSON *getAllSensorJSON()
 {
    if ( sensorJSON )
@@ -114,38 +159,24 @@ cJSON *getAllSensorJSON()
       return sensorJSON;
    }
 
-   if ( iscJSONFileOk( SENSORS_FILENAME ) )
+   sensorJSON = readJSONFromFile( SENSORS_FILENAME );
+
+   if ( sensorJSON && cJSON_IsArray( sensorJSON ) )
    {
-      File file = tvmgFileSys.open( SENSORS_FILENAME,FILE_READ );
-      if ( !file )
-      {
-         PW_WARN( "%s is missing",SENSORS_FILENAME );
-      }
-      else
-      {
-         PW_MSG( "Reading %s",SENSORS_FILENAME );
+      PW_MSG( "cJSON array read ok" );
+   }
+   else if ( sensorJSON )
+   {
+      cJSON_Delete( sensorJSON );
+      sensorJSON = nullptr;
 
-         String data = file.readStringUntil( '@' );
-
-         file.close();
-
-         sensorJSON = cJSON_Parse( data.c_str() );
-
-         if ( sensorJSON && cJSON_IsArray( sensorJSON ) )
-         {
-            PW_MSG( "cJSON array read ok" );
-         }
-         else if ( sensorJSON )
-         {
-            cJSON_Delete( sensorJSON );
-            sensorJSON = nullptr;
-
-            PW_ERROR( "cJSON from %s was not an array",SENSORS_FILENAME );
-         }
-      }
+      PW_ERROR( "cJSON from %s was not an array",SENSORS_FILENAME );
    }
 
-   PW_DEBUG( "JSON at 0x%x",sensorJSON );
+   if ( sensorJSON )
+   {
+      PW_DEBUG( "JSON at 0x%x",sensorJSON );
+   }
 
    return sensorJSON;
 }
@@ -159,66 +190,6 @@ void  releaseSensorJSON()
       cJSON_Delete( sensorJSON );
       sensorJSON = nullptr;
    }
-}
-
-// very basic file checking, only making sure braces are balanced -
-// so braces can't be used in name strings
-
-bool  iscJSONFileOk( const String &fileName )
-{
-   bool  isOk = false;
-
-   if ( !tvmgFileSys || !tvmgFileSys.exists( fileName ) )
-   {
-      PW_WARN( "%s is missing",fileName.c_str() );
-      return false;
-   }
-
-   File file = tvmgFileSys.open( fileName,FILE_READ );
-   if ( !file )
-   {
-      PW_WARN( "%s failed to open",fileName );
-   }
-   else
-   {
-      String data = file.readStringUntil( '@' );
-
-      if ( data.length() )
-      {
-         const char *buf = data.c_str();
-
-         isOk = true;
-
-         // check for equal opening/closing braces
-
-         int openBraces = numChars( '{',buf );
-         int closeBraces = numChars( '}',buf );
-
-         if ( openBraces != closeBraces )
-         {
-            PW_ERROR( "%s {} == %d %d",fileName.c_str(),openBraces,closeBraces );
-            isOk = false;
-         }
-
-         if ( isOk )
-         {
-            // check for equal opening/closing square braces
-
-            int openBraces = numChars( '[',buf );
-            int closeBraces = numChars( ']',buf );
-
-            if ( openBraces != closeBraces )
-            {
-               PW_ERROR( "%s [] == %d %d",fileName.c_str(),openBraces,closeBraces );
-               isOk = false;
-            }
-         }
-      }
-
-      file.close();
-   }
-
-   return isOk;
 }
 
 bool  isSensorRequired( const char *sensorName )

@@ -18,12 +18,12 @@ class Measurement
 {
 public:
    struct Sample {
-      time_t       m_sampleTime;
-      std::vector<TempSensor>          m_tempSensors;
-      std::vector<PowerSensor>         m_powerSensors;
-      std::vector<ShellyPowerSensor>   m_shellyPowerSensors;
-      std::vector<LGRegister>          m_lgRegisters;
-      std::vector<HeatMeterSensor>     m_heatMeterSensors;
+      time_t                              m_sampleTime;
+      std::vector<TempSensor>             m_tempSensors;
+      std::vector<PowerSensor>            m_powerSensors;
+      std::vector<ShellyPowerSensor>      m_shellyPowerSensors;
+      std::vector<LGHeatPump::LGRegister> m_lgRegisters;
+      std::vector<HeatMeterSensor>        m_heatMeterSensors;
 
       Sample();
       Sample( const Sample &other );

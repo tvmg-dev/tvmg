@@ -12,7 +12,7 @@
 #include "src/userio/Indicator.h"
 #include "src/core/utils.h"
 
-const char *k_versionStr = "v26.02.08b";
+const char *k_versionStr = "v26.02.08c";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";
@@ -440,53 +440,15 @@ bool Config::migrateFromFlatFile()
    }
 }
 
+// Read config.json and populate the registry
+// Returns true if successful
+
 bool Config::loadFromJSON()
 {
-   const char *jsonFileName = JSON_CONFIG_FILENAME;
-
-   // Read config.json and populate the registry
-   // Returns true if successful
-
-   if ( !tvmgFileSys )
-   {
-      PW_WARN( "loadFromJSON() : No filesystem !" );
-      return false;
-   }
-
-   File file = tvmgFileSys.open( jsonFileName,FILE_READ );
-   if ( !file )
-   {
-      PW_DEBUG( "loadFromJSON() : %s not found",jsonFileName );
-      return false;
-   }
-
-   // this is in early boot so we should have the memory to load a decent config file
-   size_t size = file.size();
-   if ( size > MAX_CONFIG_FILESIZE )
-   {
-      PW_ERROR( "file is too large, aborting..." );
-      file.close();
-      return false;
-   }
-
-   char *buffer = (char *)malloc( size + 1 );
-   if ( !buffer )
-   {
-      file.close();
-      PW_ERROR( "loadFromJSON() : Failed to allocate buffer" );
-      return false;
-   }
-
-   file.readBytes( buffer, size );
-   file.close();
-   buffer[ size ] = 0;
-
-   cJSON *root = cJSON_Parse( buffer );
-   free( buffer );
+   cJSON *root = readJSONFromFile( JSON_CONFIG_FILENAME );
 
    if ( !root )
    {
-      PW_ERROR( "loadFromJSON() : Failed to parse JSON" );
       return false;
    }
 

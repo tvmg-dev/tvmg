@@ -884,6 +884,17 @@ void setup( void )
    config = Config::instance( true );
    selectHardware();
 
+   // We're going to rename the sensors.dat and lg.dat if to json extensions
+
+   if ( tvmgFileSys.exists( "/lg.dat" ) )
+   {
+      tvmgFileSys.rename( "/lg.dat","/lg.json" );
+   }
+   if ( tvmgFileSys.exists( "/sensors.dat" ) )
+   {
+      tvmgFileSys.rename( "/sensors.dat","/sensors.json" );
+   }
+
    // prepare the display and indicators for output
 
 #if defined(TVMG_OLED)   
@@ -1038,7 +1049,7 @@ void  loopTest()
 #if 0
 
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data","/20251225.dat" );
-//   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Sensor Data","Sensors","/sensors.dat",true );
+//   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Sensor Data","Sensors","/sensors.json",true );
    handleTouch1();
 #endif
 
@@ -1154,6 +1165,8 @@ void loop(void)
       lgSimulator->heartbeat();
    }
 
+   LGHeatPump::scanModbus();
+   
    // our target MS is our original millis at entry of this loop, plus
    // our sampling delay
 
