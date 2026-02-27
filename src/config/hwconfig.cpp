@@ -26,8 +26,8 @@ HardwareConfig MasterDevice =
    4,             // ModBus485EnGPIO
    32,            // OLEDClkGPIO
    33,            // OLEDDataGPIO
-   T6,            // TouchButton1
-   T5,            // TouchButton2
+   -1,            // TouchButton1
+   -1,            // TouchButton2
    -1,            // PWM GPIO
    true           // has SD card
 };
@@ -48,7 +48,7 @@ HardwareConfig TemperatureNode =
    -1,            // ModBus485EnGPIO
    4,             // OLEDClkGPIO
    5,             // OLEDDataGPIO
-   T2,            // TouchButton1
+   -1,            // TouchButton1
    -1,            // TouchButton2
    25,            // PWM GPIO
    false          // has SD card
@@ -69,7 +69,7 @@ HardwareConfig ExternalBoard =
    -1,            // ModBus485EnGPIO
    4,             // OLEDClkGPIO
    5,             // OLEDDataGPIO
-   T2,            // TouchButton1
+   -1,            // TouchButton1
    -1,            // TouchButton2
    -1,            // PWM GPIO
    false          // has SD card
@@ -91,7 +91,7 @@ HardwareConfig MonitorBoard =
    12,            // ModBus485EnGPIO
    4,             // OLEDClkGPIO
    5,             // OLEDDataGPIO
-   T2,            // TouchButton1 (esp32 touch 2)
+   -1,            // TouchButton1 (esp32 touch 2)
    -1,            // TouchButton2
    16,            // PWM GPIO
    false          // has SD card

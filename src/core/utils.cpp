@@ -38,7 +38,6 @@ static bool *logToUDP = nullptr;
 static bool *debugLevelEnabled = nullptr;
 static bool *hpModBusEnabled = nullptr;
 static bool *logTimestamps = nullptr;
-static bool *logToFile = nullptr;
 static bool *logTiming = nullptr;
 static bool *logMemStats = nullptr;
 
@@ -534,7 +533,6 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       debugLevelEnabled = isFalse;
       hpModBusEnabled = isFalse;
       logTimestamps = isFalse;
-      logToFile = isFalse;
       logTiming = isFalse;
       logToUDP = isFalse;
       logMemStats = isFalse;
@@ -552,18 +550,6 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       if ( GET_REGISTRY_INT( LOG_TIMESTAMP ) == 1 )
       {
          logTimestamps = isTrue;
-      }
-
-      if ( GET_REGISTRY_INT( LOG_TO_FILE ) == 1 )
-      {
-         if( ! boardHasSDCard() )
-         {
-            Serial.println( "Can't debug log to file, no SD" );
-         }
-         else
-         {
-            logToFile = isTrue;
-         }
       }
 
       if ( GET_REGISTRY_INT( LOG_TIMING ) == 1 )
@@ -604,10 +590,9 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    // We also return if the serial port has been disabled by h/w and we
    // would otherwise have been sending debug to the serial port
 
-   if ( ( (isBootSerialEnabled == false || serialLoggingEnabled == isFalse) && logToFile == isFalse && logToUDP == isFalse )
+   if ( ( (isBootSerialEnabled == false || serialLoggingEnabled == isFalse) && logToUDP == isFalse )
                   || (level == LOGGING_LEVEL::DEBUG && debugLevelEnabled == isFalse)
-                  || (level == LOGGING_LEVEL::TIMING && logTiming == isFalse)
-                  || (level == LOGGING_LEVEL::HP_MODBUS && hpModBusEnabled == isFalse) )
+                  || (level == LOGGING_LEVEL::TIMING && logTiming == isFalse) )
    {
       return;
    }
@@ -678,10 +663,6 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    {
       debugString += "TIMING: ";
    }
-   else if ( level == LOGGING_LEVEL::HP_MODBUS )
-   {
-      debugString += "HPMOD: ";
-   }
 
    va_list args;
    va_start( args,format );
@@ -714,26 +695,6 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       }
 
       (void) Networking::getUDP()->writeTo( (const uint8_t *) debugString.c_str(),len,subNet,UDPDebugPort );
-   }
-
-   if ( logToFile == isTrue )
-   {
-     File file = SD.open( DEBUG_LOG,FILE_APPEND );
-     if ( file )
-     {
-         file.println( debugString.c_str() );
-         file.close();
-     }
-   }
-
-   if ( level == LOGGING_LEVEL::HP_MODBUS )
-   {
-      File file = SD.open( LGMODBUS_LOG,FILE_APPEND );
-      if ( file )
-      {
-         file.println( debugString.c_str() );
-         file.close();
-      }
    }
 }
 

@@ -1,0 +1,253 @@
+{
+  "version": "1.0",
+  "description": "Registry schema for ThermaV configuration - independent JSON structure",
+  "registry": {
+    "network": {
+      "description": "Network and connectivity settings",
+      "wifi": {
+        "description": "WiFi configuration",
+        "WIFI_SSID": {
+          "type": "string",
+          "default": "",
+          "description": "WiFi SSID to connect to"
+        },
+        "WIFI_PASSWORD": {
+          "type": "string",
+          "default": "",
+          "description": "WiFi password"
+        },
+        "WIFI_CONNECT_TIMEOUT": {
+          "type": "int",
+          "default": 20,
+          "description": "WiFi connection timeout in seconds"
+        }
+      },
+      "mdns": {
+        "description": "mDNS configuration",
+        "MDNS_NAME": {
+          "type": "string",
+          "default": "thermav",
+          "description": "mDNS hostname for device discovery"
+        }
+      },
+      "ntp": {
+        "description": "NTP time synchronization settings",
+        "NTP_UPDATE_TIMEOUT": {
+          "type": "int",
+          "default": 30,
+          "description": "NTP update timeout in seconds"
+        }
+      },
+      "udp": {
+        "description": "UDP broadcast/listen settings",
+        "BROADCAST_UDP_PORT": {
+          "type": "int",
+          "default": 9999,
+          "description": "UDP broadcast port for sending data"
+        },
+        "LISTEN_UDP_PORT": {
+          "type": "int",
+          "default": 9998,
+          "description": "UDP listen port for receiving data"
+        }
+      }
+    },
+    "email": {
+      "description": "Email/SMTP configuration",
+      "smtp": {
+        "description": "SMTP server settings",
+        "SMTP_HOST": {
+          "type": "string",
+          "default": "smtp.gmail.com",
+          "description": "SMTP server hostname"
+        },
+        "SMTP_PORT": {
+          "type": "int",
+          "default": 587,
+          "description": "SMTP server port"
+        }
+      },
+      "account": {
+        "description": "Email account credentials",
+        "ACCOUNT_EMAIL": {
+          "type": "string",
+          "default": "",
+          "description": "Email account for sending emails"
+        },
+        "ACCOUNT_PASSWORD": {
+          "type": "string",
+          "default": "",
+          "description": "Email account password or app-specific password"
+        }
+      },
+      "delivery": {
+        "description": "Email delivery settings",
+        "SEND_EMAILS": {
+          "type": "bool",
+          "default": 0,
+          "description": "Enable/disable email sending (0=disabled, 1=enabled)"
+        },
+        "RECIPIENT_EMAIL": {
+          "type": "string",
+          "default": "",
+          "description": "Primary recipient email address"
+        },
+        "DAILY_EMAIL_HOUR": {
+          "type": "int",
+          "default": 18,
+          "description": "Hour of day (0-23) to send daily email report"
+        }
+      }
+    },
+    "logging": {
+      "description": "Logging and debugging output settings",
+      "output": {
+        "description": "Logging output destinations",
+        "ENABLE_SERIAL_LOGGING": {
+          "type": "bool",
+          "default": 1,
+          "description": "Enable logging to serial console"
+        },
+        "UDP_LOGGING_ENABLE": {
+          "type": "bool",
+          "default": 0,
+          "description": "Enable logging to UDP network"
+        },
+        "LOG_TO_UDP_PORT": {
+          "type": "int",
+          "default": 5000,
+          "description": "UDP port for network logging"
+        }
+      },
+      "levels": {
+        "description": "Logging level and content settings",
+        "DEBUG_LEVEL_ENABLED": {
+          "type": "bool",
+          "default": 0,
+          "description": "Enable debug-level logging output"
+        },
+        "LOG_TIMESTAMP": {
+          "type": "bool",
+          "default": 1,
+          "description": "Include timestamps in log messages"
+        },
+        "LOG_TIMING": {
+          "type": "bool",
+          "default": 0,
+          "description": "Log timing information (performance metrics)"
+        },
+        "LOG_MEMSTATS": {
+          "type": "bool",
+          "default": 0,
+          "description": "Log memory statistics"
+        }
+      }
+    },
+    "integrations": {
+      "description": "Third-party service integrations",
+      "emoncms": {
+        "description": "Emoncms integration settings",
+        "UPDATE_EMONCMS": {
+          "type": "bool",
+          "default": 1,
+          "description": "Enable/disable Emoncms updates"
+        },
+        "EMONCMS_APIKEY": {
+          "type": "string",
+          "default": "",
+          "description": "API key for Emoncms"
+        },
+        "EMON_INSECURE": {
+          "type": "bool",
+          "default": 0,
+          "description": "Allow insecure SSL connections to Emoncms (1=insecure, 0=secure)"
+        }
+      },
+      "openweather": {
+        "description": "OpenWeather API settings",
+        "OPENWEATHER_INSECURE": {
+          "type": "bool",
+          "default": 0,
+          "description": "Allow insecure SSL connections to OpenWeather (1=insecure, 0=secure)"
+        }
+      }
+    },
+    "ui": {
+      "description": "User interface settings",
+      "display": {
+        "description": "Display/screensaver settings",
+        "USERIO_SCREENSAVER": {
+          "type": "int",
+          "default": 300,
+          "description": "Screensaver timeout in seconds (0=disabled)"
+        }
+      }
+    },
+    "debug": {
+      "description": "Debug and diagnostic settings",
+      "web": {
+        "description": "Web interface debug settings",
+        "HIDDEN_WEB_PAGE": {
+          "type": "string",
+          "default": "",
+          "description": "Hidden web page path accessible only to admin"
+        },
+        "WEBPAGE_DEBUG_SECTION": {
+          "type": "bool",
+          "default": 0,
+          "description": "Show debug section on web pages"
+        },
+        "SHOW_ALL_FILES": {
+          "type": "bool",
+          "default": 0,
+          "description": "Show all filesystem files in web interface"
+        }
+      },
+      "hardware": {
+        "description": "Hardware debug controls",
+        "DEBUGPAGE_HWRESET": {
+          "type": "bool",
+          "default": 0,
+          "description": "Enable hardware reset button on debug page"
+        },
+        "DEBUGPAGE_CPU0_TASKWDT": {
+          "type": "bool",
+          "default": 0,
+          "description": "Enable task watchdog timer test on debug page"
+        }
+      },
+      "diagnostics": {
+        "description": "Diagnostic tests and monitoring",
+        "HEAP_TEST_SIZE": {
+          "type": "int",
+          "default": 0,
+          "description": "Heap allocation test size in bytes (0=disabled)"
+        },
+        "ASSERT_FOR_FAST_BOOT": {
+          "type": "int",
+          "default": 0,
+          "description": "Assert for debugging fast boot sequence"
+        }
+      },
+      "reporting": {
+        "description": "Debug reporting settings",
+        "SEND_DAILY_DEBUG": {
+          "type": "bool",
+          "default": 0,
+          "description": "Send daily debug log via email"
+        },
+        "KEEP_DEBUG_LOG": {
+          "type": "bool",
+          "default": 1,
+          "description": "Persist debug log across reboots (1=keep, 0=clear)"
+        }
+      }
+    }
+  },
+  "migration_notes": {
+    "format": "This schema defines the JSON structure for config.json",
+    "flat_keys": "All registry keys are converted from flat key/value pairs in config.dat",
+    "independence": "This registry JSON is completely independent from other project JSON files (sensors.json, etc)",
+    "backward_compatibility": "On first boot, config.dat is parsed and converted to config.json automatically"
+  }
+}

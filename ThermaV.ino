@@ -197,104 +197,6 @@ void newConfiguration( void )
 }
 
 // ---------------------------------------------------------------------
-// Handle button presses
-// button 1 is for debug emails, button 2 is unused
-
-int  touchThreshold = 32;
-bool wasButton1Pressed = false;
-bool wasButton2Pressed = false;
-
-int  touch1Value = 0;
-
-void IRAM_ATTR gotTouch1Event()
-{
-  wasButton1Pressed = true;
-  touch1Value = touchRead( hwConfig->TouchButton1 );
-}
-
-void IRAM_ATTR gotTouch2Event()
-{
-  wasButton2Pressed = true;
-}
-
-void  handleTouch1()
-{
-   PW_MSG( "Button-1 was pressed" );
-
-   PW_DEBUG( "Touch 1 value %d",touch1Value );
-
-   wasButton1Pressed = false;
-
-   display->clear();
-   display->updateLine( 1, "BT-1 pressed" );
-
-   String   msgString;
-   const Measurement::Sample sample = measurement->getLastSample();
-   char     message[ 128 ];
-
-   snprintf( message,sizeof(message),"Button samplen\n"
-                    "IP : %s [%s]\n"
-                    "Free Bytes : %u\n"
-                    "Time signature %u\n\n",
-                    networking->getLocalMDNSName().c_str(),
-                    networking->getIPAddress().c_str(),
-                    ESP.getFreeHeap(),
-                    sample.m_sampleTime );
-
-   msgString = message;
-
-   for ( int i = 0; i < sample.m_tempSensors.size(); i++ )
-   {
-      const TempSensor &sensor = sample.m_tempSensors[ i ];
-
-      snprintf( message,sizeof(message),"%30s,%.1f\n",getSensorName( THERM,sensor.m_id ).c_str(),sensor.m_temp );
-      msgString += message;
-   }
-
-   int i = 0;
-   for ( int i = 0; i < sample.m_powerSensors.size(); i++ )
-   {
-      const PowerSensor &sensor = sample.m_powerSensors[ i ];
-
-      snprintf( message,sizeof(message),"%30s,%.1f\n",getSensorName( POWER,sensor.m_id ).c_str(),sensor.m_power,sensor.m_energy );
-      msgString += message;
-   }
-
-   networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Btn Press",msgString );
-
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data",storageModule->getCurrentFileName(),true );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Debug Log","Debug log",DEBUG_LOG,true );
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"HP Modbus","Modbus Data",LGMODBUS_LOG,true );
-   networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log",LGSTATUS_LOG_HTML );
-}
-
-void  handleTouch2()
-{
-   PW_MSG( "Button-2 was pressed" );
-}
-
-void  processButtons()
-{
-   // process button presses
-
-   if ( wasButton1Pressed )
-   {
-      START_TIMING( "Handle Touch1" );
-      handleTouch1();
-      wasButton2Pressed = false;
-      END_TIMING;
-   }
-
-   if ( wasButton2Pressed )
-   {
-      START_TIMING( "Handle Touch2" );
-      handleTouch2();
-      wasButton1Pressed = false;
-      END_TIMING;
-   }
-}
-
-// ---------------------------------------------------------------------
 // Configure modbus
 
 void modbusPreTransmission()
@@ -602,27 +504,6 @@ void startNetworking()
 }
 
 // ---------------------------------------------------------------------
-// did we boot with button down pressed, if so hold - allows webserver
-// to be used to re-configure the unit.  We don't exit this method.
-
-void checkBootHold()
-{
-   if ( hwConfig->TouchButton1 != -1 )
-   {
-      touch_value_t  touchVal = touchRead( hwConfig->TouchButton1 );
-      if ( touchVal < touchThreshold )
-      {
-         while( 1 )
-         {
-            display->show( Display::NETWORK_STATUS );
-            display->updateLine( 3,"  !! BOOT HOLD !!",false );
-            delay( 5000 );
-         }
-      }
-  }
-}
-
-// ---------------------------------------------------------------------
 // Initialise measurement
 //
 // This sets up any configured sensors, thermocouples, modbus, power
@@ -714,23 +595,6 @@ void  initialiseMeasurement()
 }
 
 // ---------------------------------------------------------------------
-// intialise touch for boards if active
-// Touch ISR will be activated when reading is lower than the touchThreshold
-
-void setupTouch()
-{
-   if ( hwConfig->TouchButton1 != -1 )
-   {
-      touchAttachInterrupt( hwConfig->TouchButton1,gotTouch1Event,touchThreshold );
-   }
-
-   if ( hwConfig->TouchButton2 != -1 )
-   {
-      touchAttachInterrupt( hwConfig->TouchButton2,gotTouch2Event,touchThreshold );
-   }
-}
-
-// ---------------------------------------------------------------------
 // send any startup email if enabled
 
 void handleBootEmail( const String &rebootStr )
@@ -769,50 +633,27 @@ void handleBootEmail( const String &rebootStr )
 
 void handleDataLogs()
 {
-   // Send register scan logs, modbus log and lg registers read so far, removing after sending
+   // Send register scan logs, lg registers read so far
 
-   if ( SD.exists( LGREGISTER_SCAN_LOG ) )
+   if ( tvmgFileSys.exists( LGREGISTER_SCAN_LOG ) )
    {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "HP Modbus Registers","Modbus regs",LGREGISTER_SCAN_LOG,true ) )
-      {
-         SD.remove( LGREGISTER_SCAN_LOG);
-      }
+      networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                        "HP Modbus Registers","Modbus regs",LGREGISTER_SCAN_LOG );
    }
 
-   if ( SD.exists( LGMODBUS_LOG ) )
+   if ( tvmgFileSys.exists( LGREGISTERS_LOG ) )
    {
       if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "HP Modbus Log","Modbus Logs",LGMODBUS_LOG,true ) )
-      {
-         SD.remove( LGMODBUS_LOG );
-      }
-   }
-
-   if ( SD.exists( LGREGISTERS_LOG ) )
-   {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG,true ) )
+                        "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG ) )
       {
          if ( lgThermaV && lgThermaV->isLogging() )
          {
-            SD.remove( LGREGISTERS_LOG );
+            tvmgFileSys.remove( LGREGISTERS_LOG );
             PW_DEBUG( "Removed %s as logging LG",LGREGISTERS_LOG );
          }
       }
    }
-
-   if ( SD.exists ( DEBUG_LOG ) )
-   {
-      if ( networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "Debug log","Debug Logs",DEBUG_LOG,true ) )
-      {
-         if ( GET_REGISTRY_INT( KEEP_DEBUG_LOG ) != 1 )
-         {
-            SD.remove( DEBUG_LOG );
-         }
-      }
-   }
+   // Send our LG status logs if we have any 
 
    if ( tvmgFileSys.exists( LGSTATUS_LOG_HTML ) )
    {
@@ -955,15 +796,9 @@ void setup( void )
    storageModule = new Storage();
    storageModule->initialise();
 
-   // check whether we need to stop the boot (key press) - this function
-   // may not return.
-
-   checkBootHold();
-
-   // Now initialise all sensors etc, then touch sensors.
+   // Now initialise all sensors
 
    initialiseMeasurement();
-   setupTouch();
 
    // Perhaps send startup email
 
@@ -1050,10 +885,9 @@ void  loopTest()
 
    networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data","/20251225.dat" );
 //   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Sensor Data","Sensors","/sensors.json",true );
-   handleTouch1();
-#endif
 
    handleDataLogs();
+#endif
 }
 
 void loop(void)
@@ -1124,10 +958,6 @@ void loop(void)
       }
    }
 
-   // Handle any button presses
-
-   processButtons();
-
    // take measurement, if we performed a daily update in sample then
    // set local daily update flag and reset LG event log if LG present.
    // The storage didDailyUpdate() will be true for the update hour,
@@ -1166,7 +996,7 @@ void loop(void)
    }
 
    LGHeatPump::scanModbus();
-   
+
    // our target MS is our original millis at entry of this loop, plus
    // our sampling delay
 

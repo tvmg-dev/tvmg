@@ -69,7 +69,7 @@ if ( isDebugEnabled() ) {
 #define END_DEBUG \
 } while( 0 );
 
-enum LOGGING_LEVEL { MSG, DEBUG, WARNING, ERROR, TIMING, HP_MODBUS };
+enum LOGGING_LEVEL { MSG, DEBUG, WARNING, ERROR, TIMING };
 
 extern void msgLog( LOGGING_LEVEL level,const char *format,... );
 

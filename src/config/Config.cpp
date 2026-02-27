@@ -12,7 +12,7 @@
 #include "src/userio/Indicator.h"
 #include "src/core/utils.h"
 
-const char *k_versionStr = "v26.02.08c";
+const char *k_versionStr = "v26.02.08f";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";
@@ -108,7 +108,6 @@ static const KeyPathMapping k_keyMappings[] = {
    // logging
    //    output
    { "ENABLE_SERIAL_LOGGING", "logging", "output", "ENABLE_SERIAL_LOGGING", "bool" },
-   { "LOG_TO_FILE",           "logging", "output", "LOG_TO_FILE", "bool" },
    { "UDP_LOGGING_ENABLE",    "logging", "output", "UDP_LOGGING_ENABLE", "bool" },
    { "LOG_TO_UDP_PORT",       "logging", "output", "LOG_TO_UDP_PORT", "int" },
    //    levels
@@ -143,11 +142,6 @@ static const KeyPathMapping k_keyMappings[] = {
    //    diagnostics
    { "HEAP_TEST_SIZE",        "debug", "diagnostics", "HEAP_TEST_SIZE", "int" },
    { "ASSERT_FOR_FAST_BOOT",  "debug", "diagnostics", "ASSERT_FOR_FAST_BOOT", "int" },
-   // debug
-   //    reporting
-   { "SEND_DAILY_DEBUG",      "debug", "reporting", "SEND_DAILY_DEBUG", "bool" },
-   { "KEEP_DEBUG_LOG",        "debug", "reporting", "KEEP_DEBUG_LOG", "bool" },
-
    { nullptr, nullptr, nullptr, nullptr, nullptr }  // Sentinel
 };
 

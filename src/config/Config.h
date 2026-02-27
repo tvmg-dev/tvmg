@@ -13,8 +13,6 @@ extern const char *k_versionStr;
 #define MAX_KEY_LENGTH       32
 #define MAX_VALUE_LENGTH     48
 
-#define DEBUG_LOG          "/debug.log"
-
 extern void    setRegistryEntry( char *key,char *value );
 extern int32_t getRegistryInt( char *key );
 extern char    *getRegistryString( char *key );

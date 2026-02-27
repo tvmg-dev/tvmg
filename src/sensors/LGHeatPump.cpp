@@ -771,11 +771,6 @@ void  LGHeatPump::getLGData()
          }
       }
 
-      for ( int i = 0; i < m_numRegisters; i++ )
-      {
-         PW_HP_MODBUS( "%s %.1f",getSensorName( HEATPUMP,m_registers[ i ].m_id ).c_str(),m_registers[ i ].m_value );
-      }
-
       updateStatus();
    }
    while( 0 );

@@ -11,11 +11,11 @@
 #define  MAX_HP_REGISTERS      50
 #define  MAX_LGSOFTWARE_LENGTH 32
 
-#define  LGREGISTER_SCAN_LOG  "/lgregscan.txt"
-#define  LGMODBUS_LOG         "/lgmodbus.txt"
+#define  LGREGISTER_SCAN_LOG  "/lgregscan.txt"     // When we scan modbus for any registers
+#define  LGREGISTERS_LOG      "/lgreg.txt"         // When we save LG modbus data collected during operation
+
 #define  LGSTATUS_LOG_HTML    "/lgstatus.html"
 #define  LGSTATUS_YESTERDAY   "/lgstatus2.html"
-#define  LGREGISTERS_LOG      "/lgreg.txt"
 
 #define  LGHEATPUMP_SENSOR_NAME  "LGHEATPUMP"
 
