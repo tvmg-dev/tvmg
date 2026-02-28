@@ -8,6 +8,12 @@
 
 #define SENSORS_FILENAME   "/sensors.json"
 
+// Early boot logging support
+#define EARLY_BOOT_LOGFILE             "/bootlog.txt"
+#define EARLY_BOOT_LOG_TIMEOUT_MS      (150 * 1000UL)   // 2.5 minutes
+#define EARLY_BOOT_LOG_SEND_MARGIN_MS  (60UL * 1000UL)  // add one minute before sending
+
+
 //----------------------------------------------------------------------
 // General buffer - also used by the external email sender library
 // this is used to try and keep RAM usage to a minimum
@@ -39,6 +45,9 @@ extern bool  isBootSerialEnabled;
 extern bool  isDebugEnabled();
 extern void  setUdpDebugState( DebugState state );
 extern DebugState getUdpDebugState();
+
+// helpers for early boot logging
+extern bool shouldSendBootLog();     // boot log period + margin and bootlog enabled
 
 //----------------------------------------------------------------------
 // Reading cJSON fields etc

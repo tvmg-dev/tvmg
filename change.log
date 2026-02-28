@@ -1,3 +1,9 @@
+v26.02.08 - Early boot log support (with optional email).
+            Fast boot failure - board halt if fails arise before config
+            processing put the device into AP mode. 
+            Flat config.dat replaced with json, and sensor/lg configs now using
+            json extension.
+            Waveshare relay board fully operational.
 v26.02.07 - Protect OLED from multi-thread access.
             Initial Waveshare Relay board support (ESP32S3 with RS485).
             Fix flash programmer (python) flash size detection.

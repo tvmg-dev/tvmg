@@ -239,3 +239,29 @@ bool  boardHasSDCard()
 
    return( false );
 }
+
+// A fault has arisen such that we never entered the reboot detection logic that would
+// ordinarily place the system in AP mode.  There must have been some very early
+// fault that's causing continuous rebooting.
+//
+// So all we can do is simply stop continuously rebooting by looping indefinately
+
+bool boardHalt()
+{
+#if defined(TVMG_WAVESHARE_RELAY)
+   bool on = true;
+   pinMode( 17,OUTPUT );
+   while ( 1 )
+   {
+      digitalWrite( 17,HIGH );
+      delay( 1000 );
+      digitalWrite( 17,LOW );
+      delay( 1000 );
+   }
+#else
+   while( 1 )
+   {
+      delay( 5000 );
+   }
+#endif
+}

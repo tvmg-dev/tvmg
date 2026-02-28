@@ -30,4 +30,6 @@ extern void selectHardware();
 
 extern bool boardHasSDCard();
 
+extern bool boardHalt();
+
 #endif

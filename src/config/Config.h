@@ -20,6 +20,7 @@ extern void    hwReset();
 extern void    reboot();
 extern void    setRebootRequired();
 extern bool    isRebootRequired();
+extern void    checkEarlyRebootFailure();
 
 // for nvs data
 

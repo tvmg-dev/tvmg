@@ -12,7 +12,7 @@
 #include "src/userio/Indicator.h"
 #include "src/core/utils.h"
 
-const char *k_versionStr = "v26.02.08f";
+const char *k_versionStr = "v26.02.08";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";
@@ -66,6 +66,20 @@ RTC_NOINIT_ATTR   uint32_t s_lastResetSeconds;
 // info under system namespace in non-volatile store partition
 
 static const char k_nvsNamespace[] = "sysinfo";
+
+// For *very* early fault detection.
+// The s_earlyResets will get incremented as first part of setup() and if this
+// count exceeds our fast resets (+ margin) then our code is not robustly handing
+// some very early fault code (e.g. a fault when setting up serial port).
+// In which case we enter a recovery mode of some description.
+//
+// If the magicResetWord isn't our MAGIC_WORD then it's a power cycle start
+
+#define  ALLOWED_EARLY_RESETS (ALLOWED_FAST_RESETS + 5)
+#define  MAGIC_WORD  0xFACEFEED
+
+RTC_NOINIT_ATTR   uint32_t s_earlyResets;
+RTC_NOINIT_ATTR   uint32_t s_magicResetWord;       
 
 //----------------------------------------------------------------------
 // Registry key to JSON path mapping
@@ -142,6 +156,8 @@ static const KeyPathMapping k_keyMappings[] = {
    //    diagnostics
    { "HEAP_TEST_SIZE",        "debug", "diagnostics", "HEAP_TEST_SIZE", "int" },
    { "ASSERT_FOR_FAST_BOOT",  "debug", "diagnostics", "ASSERT_FOR_FAST_BOOT", "int" },
+   { "EARLY_BOOT_LOG",        "debug", "diagnostics", "EARLY_BOOT_LOG", "bool" },
+   { "SEND_BOOT_LOG",         "debug", "diagnostics", "SEND_BOOT_LOG", "bool" },
    { nullptr, nullptr, nullptr, nullptr, nullptr }  // Sentinel
 };
 
@@ -262,6 +278,8 @@ Config::Config()
    if ( tvmgFileSys )
    {
       PW_MSG( "Filesystem is ok" );
+      // clear any previous boot log so we start fresh each run
+      tvmgFileSys.remove( EARLY_BOOT_LOGFILE );
    }
 
    PW_MSG( "Config():" );
@@ -807,13 +825,14 @@ String  Config::getRebootReason( RebootType *type )
 
    // power cycle doesn't necessarily clear the RTC RAM, that appears to happen
    // if we h/w reset via the RTC watchdog.  But in both cases we will reset our
-   // soft reset counter and last cycle time.  We also reset if we've had an
+   // soft reset counters and last cycle time.  We also reset if we've had an
    // OTA update or server reboot
 
    if ( reboot == POWER_CYCLE || reboot == SERVER_OTA_UPDATE || reboot == SERVER_REBOOT  || reboot == SERVER_RESET )
    {
       PW_DEBUG( "Resetting soft reboot data" );
       s_softResets = 0;
+      s_earlyResets = 0;
       lastCycleSecs = 0;
    }
 
@@ -822,12 +841,13 @@ String  Config::getRebootReason( RebootType *type )
    s_lastResetSeconds = secs;
 
    // if the time since the last soft reset was greater than a minimum we reset
-   // soft reset counter again
+   // soft reset counters again
 
    if ( lastCycleSecs > MINIMUM_RUNTIME_SECS )
    {
       PW_DEBUG( "Long last cycle, resetting data" );
       s_softResets = 0;
+      s_earlyResets = 0;
    }
 
    // increment our reboot counter, and re-display info:
@@ -842,6 +862,7 @@ String  Config::getRebootReason( RebootType *type )
    PW_MSG( "App Reset      : %s",appReason.c_str() );
    PW_MSG( "Soft Resets    : %u",s_softResets );
    PW_MSG( "Last Reset @   : %u",s_lastResetSeconds );
+   PW_MSG( "Early Resets   : %u",s_earlyResets );
    PW_MSG( "-----------------------------\n" );
 
    if ( s_softResets >= ALLOWED_FAST_RESETS )
@@ -916,3 +937,20 @@ bool isRebootRequired()
    return s_isRebootRequired;
 }
 
+void  checkEarlyRebootFailure()
+{
+   if ( s_magicResetWord != MAGIC_WORD )
+   {
+      s_earlyResets = 0;
+      s_magicResetWord = MAGIC_WORD;
+   }
+   
+   s_earlyResets++;
+
+   // halt the board if real trouble
+
+   if ( s_earlyResets >= ALLOWED_EARLY_RESETS )
+   {
+      boardHalt();
+   }
+}

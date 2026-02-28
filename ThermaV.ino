@@ -713,9 +713,27 @@ bool shouldPrintChipDebugReport(void)
 // ---------------------------------------------------------------------
 // Create/initialise all modules prior to main loop
 
+#undef TEST_EARLY_RESET
+
 void setup( void )
 {
    char line[ MAX_DISPLAY_COLUMNS ];
+
+   // Before anything we check early reboot.
+
+   checkEarlyRebootFailure();
+
+   // For a failure for testing early error detection
+#if defined(TEST_EARLY_RESET)   
+   {
+      volatile int x = 0;
+      volatile int y = 5 / x;
+
+      Serial.printf( "hello %d",y );
+   }
+#endif
+
+   // We may never get here if the above halts the system.
 
    setupSerial();
 
@@ -936,7 +954,7 @@ void loop(void)
 
    // Check network is alive
    restartRequired |= !isNetworkOk();
-
+   
    // If we've been up for 24 days then reboot - just to sure we
    // don't have millis() (32 bits) causing issues.
 
@@ -995,7 +1013,29 @@ void loop(void)
       lgSimulator->heartbeat();
    }
 
+   // Scan modbus for LG, will typically be a no-op
    LGHeatPump::scanModbus();
+
+   // after initial uptime, if user requested send of boot log and we've
+   // passed the timeout+margin, email the file once
+
+   static bool bootLogEmailSent = false;
+   if ( !bootLogEmailSent && shouldSendBootLog() && GET_REGISTRY_INT( SEND_BOOT_LOG ) == 1 )
+   {
+      if ( tvmgFileSys.exists( EARLY_BOOT_LOGFILE ) )
+      {
+         if ( networking && networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
+                                                      "Boot Log","Boot log attached", EARLY_BOOT_LOGFILE ) )
+         {
+            PW_MSG( "Boot log emailed" );
+         }
+         else
+         {
+            PW_WARN( "Failed to email boot log" );
+         }
+      }
+      bootLogEmailSent = true;
+   }
 
    // our target MS is our original millis at entry of this loop, plus
    // our sampling delay

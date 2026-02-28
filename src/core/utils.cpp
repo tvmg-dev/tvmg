@@ -40,8 +40,12 @@ static bool *hpModBusEnabled = nullptr;
 static bool *logTimestamps = nullptr;
 static bool *logTiming = nullptr;
 static bool *logMemStats = nullptr;
+static bool *logEarlyBoot = nullptr;
 
-static bool logFileOk = true;
+
+// early boot logging state
+static uint32_t s_bootLogStartMS = 0;
+static bool     logFileOk = true;
 
 static IPAddress   subNet;
 static uint16_t    UDPDebugPort = 0;
@@ -536,6 +540,7 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       logTiming = isFalse;
       logToUDP = isFalse;
       logMemStats = isFalse;
+      logEarlyBoot = isFalse;
 
       if ( GET_REGISTRY_INT( ENABLE_SERIAL_LOGGING ) == 1 )
       {
@@ -583,6 +588,12 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       if ( GET_REGISTRY_INT( UDP_LOGGING_ENABLE ) > 0 )
       {
          logToUDP = isTrue;
+      }
+      
+      if ( GET_REGISTRY_INT( EARLY_BOOT_LOG ) > 0 )
+      {
+         logEarlyBoot = isTrue;
+         s_bootLogStartMS = millis();
       }
    }
 
@@ -696,6 +707,38 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
       (void) Networking::getUDP()->writeTo( (const uint8_t *) debugString.c_str(),len,subNet,UDPDebugPort );
    }
+
+   // append to boot log file if requested and we're still within early period
+   if (logEarlyBoot == isTrue && (millis() - s_bootLogStartMS) < EARLY_BOOT_LOG_TIMEOUT_MS)
+   {
+      if (tvmgFileSys)
+      {
+         File f = tvmgFileSys.open(EARLY_BOOT_LOGFILE, FILE_APPEND);
+         if (f)
+         {
+            f.println(debugString);
+            f.close();
+         }
+         else
+         {
+            // if we can't open the file once, avoid further attempts
+            logFileOk = false;
+         }
+      }
+   }
+}
+
+// indicates we should attempt to send the boot log (timeout + margin elapsed, enabled)
+bool shouldSendBootLog()
+{
+   bool send = false;
+
+   if ( logEarlyBoot == isTrue )
+   {
+      send = millis() > s_bootLogStartMS + EARLY_BOOT_LOG_TIMEOUT_MS + EARLY_BOOT_LOG_SEND_MARGIN_MS;
+   }
+
+   return send;
 }
 
 Timing::Timing( const String &name )
