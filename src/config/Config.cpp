@@ -12,7 +12,7 @@
 #include "src/userio/Indicator.h"
 #include "src/core/utils.h"
 
-const char *k_versionStr = "v26.02.08";
+const char *k_versionStr = "v26.03.01";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";

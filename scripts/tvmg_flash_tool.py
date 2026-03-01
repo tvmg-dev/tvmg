@@ -11,7 +11,7 @@ from serial.tools import list_ports
 
 from esptool.cmds import detect_chip, run_stub, attach_flash, flash_id
 
-VERSION = "1.6.2"
+VERSION = "1.6.3"
 
 def find_esp_port():
     ports = list_ports.comports()
@@ -83,7 +83,7 @@ def main():
     parser.add_argument("-o", "--ota", default="0xe000", help="OTA start address (default 0xe000)")
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {VERSION}")
 
-    parser.add_argument("imagefile", help="Path to the binary (.bin) file")
+    parser.add_argument("imagefile", nargs="?", help="Path to the binary (.bin) file (optional with --upload only)")
 
     args = parser.parse_args()
 
@@ -91,6 +91,12 @@ def main():
     if not target_port:
         print("--- Error: No ESP32 found. ---")
         sys.exit(1)
+
+    # validate arguments
+    if not args.upload and not args.imagefile:
+        parser.error("the following argument is required: imagefile (unless --upload is specified)")
+    if args.factory and not args.imagefile:
+        parser.error("factory mode requires an imagefile")
 
     try:
         # Detect actual flash size for validation and backup
@@ -117,8 +123,13 @@ def main():
             print("--- Backup Complete ---")
             time.sleep(1)
 
+            # if the user only wanted to upload/backup, quit now
+            if not args.imagefile:
+                print("\n--- Upload only completed, no flashing requested. Exiting. ---")
+                return
+
         # --- PHASE 2: OTA RESET (APP ONLY) ---
-        if not args.factory:
+        if not args.factory and args.imagefile:
             print(f"--- Resetting OTA Selection at {args.ota} ---")
             # Changed 'erase_region' to 'erase-region' to fix deprecation warning
             ota_args = [
@@ -128,13 +139,16 @@ def main():
             esptool.main(ota_args)
 
         # --- PHASE 3: FLASH (DOWNLOAD) ---
-        print(f"\n--- Flashing {args.imagefile} to {args.chip} at {target_addr} ---")
-        flash_args = [
-            '--chip', args.chip, '--port', target_port, '--baud', '921600',
-            '--before', 'default-reset', '--after', 'hard-reset',
-            'write-flash', '-z', target_addr, args.imagefile
-        ]
-        esptool.main(flash_args)
+        if args.imagefile:
+            print(f"\n--- Flashing {args.imagefile} to {args.chip} at {target_addr} ---")
+            flash_args = [
+                '--chip', args.chip, '--port', target_port, '--baud', '921600',
+                '--before', 'default-reset', '--after', 'hard-reset',
+                'write-flash', '-z', target_addr, args.imagefile
+            ]
+            esptool.main(flash_args)
+        else:
+            print("--- No imagefile provided; skipping flash step ---")
 
         # --- PHASE 4: MONITOR ---
         if args.monitor:

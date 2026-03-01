@@ -2,6 +2,8 @@
 
 #include <map>
 
+#include "driver/mcpwm_cap.h"
+
 #include "GrundfosUPS3.h"
 #include "HeatMeter.h"
 
@@ -10,21 +12,6 @@
 // pin we need to read to get the level, needed by ISR
 
 static uint8_t s_pwmGPIO = 0;
-
-// times in microsecs from ESP high res timer
-
-static int64_t  lastPositiveEdge;
-static int64_t  timeBetweenPositiveEdges;
-static int64_t  timeHigh;
-
-// HIGH or LOW level expected in the ISR.
-
-static int        expectedLevel;
-
-// Counters for errors and how many edges processed
-
-static uint16_t   highCount,lowCount;
-static uint16_t   levelDiscards,timeDiscards;
 
 // map strings to operating modes
 
@@ -62,67 +49,57 @@ static std::map <GrundfosUPS3::Mode,UPS3FlowCoefficients> UPS3Coeffs = {
    { GrundfosUPS3::PROPORTIONAL_PRESSURE1,{ 4.7,17,-1.04,0.306,-0.00901 } }
 };
 
+//------------------------------------------------------------------------------
+// MCPWM capture processing
+// Using the capture block as it latches the clock value (80 MHz) on edge changes.
 
-// handle change in GPIO
-// time between +ve edges should be 75Hz as this is the UPS3 PMW
-// frequency, and the duty cycle can be realistically as low as 1%
-// (133 us) - up to 70%, with 1 percent being 1W of power.  Above 75%
-// represents error condition for the pump.
+static mcpwm_cap_timer_handle_t   s_captureTimer = NULL;
+static mcpwm_cap_channel_handle_t s_captureChannel = NULL;
 
-// We start a duty cycle measurement looking for +ve edge, then time
-// how long to a negative edge.  When the next +ve edge occurs we
-// measure the time since the last +ve edge and discard if > 75Hz (+ margin)
+// Data variables (volatile because they are modified in ISR)
 
-void  IRAM_ATTR   handleEdge()
+static volatile uint32_t lastRisingEdgeTick = 0;
+static volatile uint32_t totalPeriodTicks = 0;
+static volatile uint32_t totalHighTicks = 0;
+static volatile uint32_t lastTick = 0;
+static volatile uint32_t highCount = 0;
+static volatile uint32_t lowCount = 0;
+
+// ISR Callback: Runs on every edge 
+static bool IRAM_ATTR captureCallback(mcpwm_cap_channel_handle_t capChannel, const mcpwm_capture_event_data_t *edata, void *user_data)
 {
-   int64_t  currentTime = esp_timer_get_time();
+   uint32_t now = edata->cap_value;
 
-   int pin = digitalRead( s_pwmGPIO );
-
-   // discard if not at the expected level, reset to search for high
-   if ( pin != expectedLevel )
+   if ( now - lastTick < 40000 )  // 500us glitch filter
    {
-      levelDiscards++;
-      expectedLevel = HIGH;
-      lastPositiveEdge = 0;
-      return;
+      return false;
    }
 
-   // If its the first positive edge then we start the search, so
-   // record the time and set the next level as LOW then exit
+   // Spurious edges detected, possibly worse on slow slew rates ?
+   // https://esp32.com/viewtopic.php?t=38478
+   // So don't rely on edge from the capture block, i.e. edata->cap_edge == MCPWM_CAP_EDGE_POS
 
-   if ( lastPositiveEdge == 0 && pin == HIGH )
-   {
-      lastPositiveEdge = currentTime;
-      expectedLevel = LOW;
-      return;
-   }
+   bool isHigh = ( gpio_get_level( static_cast<gpio_num_t>(s_pwmGPIO) ) == 1 ? true : false );
 
-   // We expect at most 13333 microsecs (75 Hz) from the last positive
-   // edge, add some allowed overhead, otherwise we reset the search
+   lastTick = now;
 
-   if ( (currentTime - lastPositiveEdge > 15000) )
-   {
-      timeDiscards++;
-      lastPositiveEdge = 0;
-      expectedLevel = HIGH;
-      return;
-   }
-
-   if ( pin == HIGH )
+   if ( isHigh )
    {
       highCount++;
-      timeBetweenPositiveEdges += currentTime - lastPositiveEdge;
-      lastPositiveEdge = currentTime;
-      expectedLevel = LOW;
+
+      // Calculate period from previous rising edge
+
+      totalPeriodTicks = now - lastRisingEdgeTick;
+      lastRisingEdgeTick = now;
    }
    else
    {
-      // level dropped LOW, so the time represents how long in high state
       lowCount++;
-      timeHigh += currentTime - lastPositiveEdge;
-      expectedLevel = HIGH;
+      // Calculate high pulse width
+
+      totalHighTicks = now - lastRisingEdgeTick;
    }
+   return false;
 }
 
 GrundfosUPS3::GrundfosUPS3( uint8_t pwmGPIO,const char *mode )
@@ -156,35 +133,78 @@ GrundfosUPS3::~GrundfosUPS3()
 void  GrundfosUPS3::initialise()
 {
    pinMode( m_pwmGPIO,INPUT_PULLUP );
+
+   mcpwm_capture_timer_config_t timer_conf = {
+       .group_id = 0,
+       .clk_src = MCPWM_CAPTURE_CLK_SRC_DEFAULT,
+   };
+
+   if ( mcpwm_new_capture_timer(&timer_conf, &s_captureTimer) != ESP_OK )
+   {
+      PW_ERROR( "Failed to get new capture timer");
+      return;
+   }
+
+   // Initialize Capture Channel with our GPIO - capturing both edges in the ISR
+
+   mcpwm_capture_channel_config_t channelConfig = {};
+   channelConfig.gpio_num = m_pwmGPIO;
+   channelConfig.prescale = 1;
+   channelConfig.flags.neg_edge = 1;
+   channelConfig.flags.pos_edge = 1;
+   channelConfig.flags.pull_up = 1;
+
+   if ( mcpwm_new_capture_channel(s_captureTimer, &channelConfig, &s_captureChannel) != ESP_OK )
+   {
+      PW_ERROR( "Failed to get a capture channel" );
+      return;
+   }
+
+   // Register our callback (ISR)
+   mcpwm_capture_event_callbacks_t cbs = { .on_cap = captureCallback, };
+
+   if ( mcpwm_capture_channel_register_event_callbacks(s_captureChannel, &cbs, NULL) != ESP_OK )
+   {
+      PW_ERROR( "Failed to register callback with capture channel" );
+      return;
+   }
+
+   if ( mcpwm_capture_timer_enable(s_captureTimer) != ESP_OK )
+   {
+      PW_ERROR( "Failed to enable the capture timer" );
+      return;
+   }
+
+   if ( mcpwm_capture_timer_start(s_captureTimer) != ESP_OK )
+   {
+      PW_ERROR( "Failed to start the capture timer" );
+      return;
+   }
 }
 
-void  GrundfosUPS3::sample()
+void GrundfosUPS3::sample()
 {
    PW_DEBUG( "UPS3 Sample (pin %u)",m_pwmGPIO );
 
-   // start the sample looking for +ve edge, i.e. HIGH pin level
-
-   expectedLevel = HIGH;
-
-   // Reset counters
-
    highCount = 0;
    lowCount = 0;
-   lastPositiveEdge = 0;
-   timeBetweenPositiveEdges = 0;
-   timeHigh = 0;
-   levelDiscards = 0;
-   timeDiscards = 0;
+   totalPeriodTicks = 0;
+   totalHighTicks = 0;
+   lastRisingEdgeTick = 0;
+   lastTick = 0;
 
-   // Attach the interrupt handler for our pin, looking for any change
-   // and sample for 670ms (~ 50 samples at 75Hz),  then detach the interrupt.
+   // Start the hardware capture
+   mcpwm_capture_channel_enable( s_captureChannel );
 
-   attachInterrupt( m_pwmGPIO,handleEdge,CHANGE );
+   // Give it 670ms to gather data - ~ 100 edges at 75 Hz
    delay( 670 );
-   detachInterrupt( m_pwmGPIO );
 
-   PW_DEBUG( "high %u low %u", highCount,lowCount );
-   PW_DEBUG( "Discards: time %u level %u",timeDiscards,levelDiscards );
+   // Stop the hardware capture (ISRs cease immediately), wait 30ms (2x75Hz periods) to settle
+   mcpwm_capture_channel_disable( s_captureChannel );
+   delay( 30 );
+
+   PW_DEBUG( "Counts : high %u, low %u", highCount,lowCount );
+   PW_DEBUG( "Ticks : period %u, high %u", totalPeriodTicks,totalHighTicks );
 
    // quality is 0 - 100, we expect ~ 50 samples, roughly an equal number
    // of high and low counts.  A quality of < 5 suggests pump is off
@@ -199,22 +219,17 @@ void  GrundfosUPS3::sample()
    }
 
    // We allow some problematic samples, 70% ?
-   if ( m_quality < 70 || !timeBetweenPositiveEdges || ! highCount || ! lowCount )
+   if ( m_quality < 70 || ! highCount || ! lowCount || !totalPeriodTicks)
    {
       PW_WARN( "Poor quality from UPS3 - quality %u",m_quality );
       m_power = HM_POWER_ERROR;
       return;
    }
 
-   PW_DEBUG( "time between %lld time high %lld",timeBetweenPositiveEdges,timeHigh );
+   float freq = 80000000.0 / totalPeriodTicks;
+   m_power = (totalHighTicks * 100.0) / totalPeriodTicks;
 
-   uint32_t averagePulse =  static_cast<uint32_t>(timeBetweenPositiveEdges / highCount);
-   uint32_t highAverage = static_cast<uint32_t>(timeHigh / lowCount);
-
-   PW_DEBUG( "Total duration %llu : pulse %u : high %u",timeBetweenPositiveEdges,averagePulse,highAverage );
-
-   m_power = (100.0F * highAverage) / averagePulse;
-   PW_MSG( "UPS3 power %.2f W",m_power );
+   PW_MSG( "Frequency %.1f Hz, UPS3 Power %.2f W",freq,m_power );
 }
 
 float_t  GrundfosUPS3::getFlowRate()
