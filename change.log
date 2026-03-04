@@ -1,3 +1,5 @@
+v26.03.01 - Use MCPWM capture block for PWM.
+            Flashing script allows upload only option.
 v26.02.08 - Early boot log support (with optional email).
             Fast boot failure - board halt if fails arise before config
             processing put the device into AP mode. 
