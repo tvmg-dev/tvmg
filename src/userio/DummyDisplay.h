@@ -3,7 +3,7 @@
 
 #if !defined(TVMG_OLED) && !defined(TVMG_WAVESHARE_LCDB)
 
-#include "Display.h"
+#include "src/userio/Display.h"
 
 class DummyDisplay : public Display
 {

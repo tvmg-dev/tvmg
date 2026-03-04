@@ -1,10 +1,9 @@
 #include <ModbusRTU.h>
 #include <cJSON.h>
 
-#include "LGHeatPumpSim.h"
-
-#include "src/config/hwconfig.h"
 #include "src/config/Config.h"
+
+#include "src/sensors/LGHeatPumpSim.h"
 
 Indicator *LGHeatPumpSimulator::s_indicator = nullptr;
 
@@ -60,7 +59,7 @@ LGHeatPumpSimulator::LGHeatPumpSimulator( HardwareSerial *serial ) :
                      m_recordSize( 0 ),
                      m_softwareVersion()
 {
-   PW_DEBUG( "LGHeatPumpSimulator::LGHeatPumpSimulator()" );
+   TVMG_DEBUG( "LGHeatPumpSimulator::LGHeatPumpSimulator()" );
 
    cJSON *root = getAllSensorJSON();
 
@@ -86,10 +85,10 @@ LGHeatPumpSimulator::LGHeatPumpSimulator( HardwareSerial *serial ) :
             }
             else
             {
-               PW_WARN( "Unsupported LG series (%d)", series );
+               TVMG_WARN( "Unsupported LG series (%d)", series );
             }
 
-            PW_DEBUG( "address %u, series %d version %s - start at %d",m_modbusAddress,m_series,m_softwareVersion,m_recordIndex );
+            TVMG_DEBUG( "address %u, series %d version %s - start at %d",m_modbusAddress,m_series,m_softwareVersion,m_recordIndex );
             break;
          }
       }
@@ -114,7 +113,7 @@ LGHeatPumpSimulator::MaxRegisterAddresses LGHeatPumpSimulator::scanForMaxAddress
 
    if ( !tvmgFileSys || !(file = tvmgFileSys.open( path,FILE_READ)) )
    {
-      PW_ERROR( "Failed to open %s",path );
+      TVMG_ERROR( "Failed to open %s",path );
       m_recordIndex = -1;
       return mapping;
    }
@@ -134,12 +133,12 @@ LGHeatPumpSimulator::MaxRegisterAddresses LGHeatPumpSimulator::scanForMaxAddress
       m_recordSize++;
    }
 
-   PW_DEBUG( "Modbus file has padded sample length %d",m_recordSize );
+   TVMG_DEBUG( "Modbus file has padded sample length %d",m_recordSize );
 
    char *buffer = (char*) malloc( m_recordSize + 1 );
    if ( !buffer )
    {
-      PW_ERROR( "Insufficient memory for max address scan");
+      TVMG_ERROR( "Insufficient memory for max address scan");
       file.close();
       m_recordIndex = -1;
       return mapping;
@@ -219,7 +218,7 @@ void LGHeatPumpSimulator::updateModbusFromFile( const char* path )
 
    if ( !tvmgFileSys || !(file = tvmgFileSys.open( path,FILE_READ)) )
    {
-      PW_ERROR( "Failed to open %s",path );
+      TVMG_ERROR( "Failed to open %s",path );
       m_recordIndex = -1;
       return;
    }
@@ -227,7 +226,7 @@ void LGHeatPumpSimulator::updateModbusFromFile( const char* path )
    char* buffer = (char*)malloc( m_recordSize + 1 );
    if ( !buffer )
    {
-      PW_ERROR( "Insufficient memory for max address scan" );
+      TVMG_ERROR( "Insufficient memory for max address scan" );
       m_recordIndex = -1;
       file.close();
       return;
@@ -237,12 +236,12 @@ void LGHeatPumpSimulator::updateModbusFromFile( const char* path )
    size_t offset = m_recordIndex * m_recordSize;
    if ( offset >= file.size() )
    {
-      PW_DEBUG( "Record %d exceeds file size. Resetting to 0", m_recordIndex );
+      TVMG_DEBUG( "Record %d exceeds file size. Resetting to 0", m_recordIndex );
       offset  = 0;
       m_recordIndex = 0;
    }
 
-   PW_MSG( "Reading sample %d from %s",m_recordIndex,path );
+   TVMG_MSG( "Reading sample %d from %s",m_recordIndex,path );
 
    // seek to the record & then read the comma separated triplets - type,address,value
    // until we hit the end marker ",5,x"
@@ -272,7 +271,7 @@ void LGHeatPumpSimulator::updateModbusFromFile( const char* path )
             case 0: t = val;  break;
             case 1: a = val;  break;
             case 2: v = val;
-//                    PW_DEBUG( "modbus %d %d %d",t,a,val );
+//                    TVMG_DEBUG( "modbus %d %d %d",t,a,val );
                     switch( t )
                     {
                        case 1: m_slave->Coil(a, v); break;
@@ -301,19 +300,19 @@ void LGHeatPumpSimulator::initialise()
 {
    if ( !m_series )
    {
-      PW_WARN( "Not initialising, invalid LG series" );
+      TVMG_WARN( "Not initialising, invalid LG series" );
       return;
    }
 
    if ( !tvmgFileSys )
    {
-      PW_WARN( "No FS, can't simulate LG" );
+      TVMG_WARN( "No FS, can't simulate LG" );
       return;
    }
 
    if ( tvmgFileSys.exists( LGREGISTERS_LOG ) )
    {
-      PW_MSG( "LG register log opened" );
+      TVMG_MSG( "LG register log opened" );
 
       MaxRegisterAddresses reg = scanForMaxAddresses( LGREGISTERS_LOG );
 
@@ -328,7 +327,7 @@ void LGHeatPumpSimulator::initialise()
       m_slave = new ModbusRTU();
       if ( m_slave )
       {
-         PW_DEBUG( "Mapping : coils %d : discretes %d : holding %d : input %d",
+         TVMG_DEBUG( "Mapping : coils %d : discretes %d : holding %d : input %d",
                                           reg.coils,reg.discretes,reg.holding,reg.inputs );
 
          m_slave->begin( m_serial,hwConfig->ModBus485EnGPIO );
@@ -343,7 +342,7 @@ void LGHeatPumpSimulator::initialise()
 
          if ( m_recordIndex == -1 )
          {
-            PW_ERROR( "Failed to read modbus register file" );
+            TVMG_ERROR( "Failed to read modbus register file" );
             delete m_slave;
             m_slave = nullptr;
          }

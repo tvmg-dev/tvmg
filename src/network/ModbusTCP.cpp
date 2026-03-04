@@ -2,11 +2,8 @@
 
 #include <cJSON.h>
 
-#include "src/config/hwconfig.h"
-#include "src/config/Config.h"
-
-#include "ModbusTCP.h"
-#include "Networking.h"
+#include "src/network/Networking.h"
+#include "src/network/ModbusTCP.h"
 
 #define  MODBUS_TCP_DEFAULT_PORT 500
 #define  MODBUS_TC_DEFAULT_DELAY 10
@@ -27,7 +24,7 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
            m_transactionId( 0 ),
            m_wifiClient( nullptr )
 {
-   PW_DEBUG( "ModbusTCP::ModbusTCP()" );
+   TVMG_DEBUG( "ModbusTCP::ModbusTCP()" );
 
    m_sensor.m_isValid = false;
 
@@ -53,7 +50,7 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
 
             if ( ! m_sensor.m_tcpServerAddress.fromString( getStringFromcJSON( sensor,"tcpServerAddress" ) ) )
             {
-               PW_ERROR( "Failed to convert TCP server IP address" );
+               TVMG_ERROR( "Failed to convert TCP server IP address" );
                m_sensor.m_isValid = false;
             }
 
@@ -61,7 +58,7 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
             m_sensor.m_tcpServerPort = getIntFromcJSON( sensor,"tcpServerPort",MODBUS_TCP_DEFAULT_PORT );
             m_sensor.m_requestDelay = getIntFromcJSON( sensor,"tcpServerDelay",MODBUS_TC_DEFAULT_DELAY );
 
-            PW_MSG( "ModbusTCP : name %s, Server : %s, port %u",name.c_str(),
+            TVMG_MSG( "ModbusTCP : name %s, Server : %s, port %u",name.c_str(),
                               m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort );
 
             break;
@@ -71,22 +68,22 @@ ModbusTCP::ModbusTCP() : ModbusMaster(),
 
    if ( m_sensor.m_isValid )
    {
-      PW_MSG( "Registered ModbusTCP" );
+      TVMG_MSG( "Registered ModbusTCP" );
    }
    else
    {
-      PW_WARN( "Failed to register ModbusTCP" );
+      TVMG_WARN( "Failed to register ModbusTCP" );
    }
 }
 
 ModbusTCP::~ModbusTCP()
 {
-   PW_DEBUG( "ModbusTCP::~ModbusTCP()" );
+   TVMG_DEBUG( "ModbusTCP::~ModbusTCP()" );
 }
 
 void ModbusTCP::initialise()
 {
-   PW_DEBUG( "%s - nothing to do",__FUNCTION__ );
+   TVMG_DEBUG( "%s - nothing to do",__FUNCTION__ );
 }
 
 bool ModbusTCP::isOk()
@@ -112,21 +109,21 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
       case READ_COILS:
       case READ_DISCRETES:
             bytesExpected += 1 + (request.numRegisters -1) / 8;
-            PW_DEBUG( "Coils/Discretes : want %u regs, (%u data bytes)",request.numRegisters,bytesExpected - 9 );
+            TVMG_DEBUG( "Coils/Discretes : want %u regs, (%u data bytes)",request.numRegisters,bytesExpected - 9 );
          break;
       case READ_HOLDING:
       case READ_INPUTS:
             bytesExpected += request.numRegisters * 2;
             break;
       default:
-            PW_ERROR( "Unsupported transaction type %u",request.transactionType );
+            TVMG_ERROR( "Unsupported transaction type %u",request.transactionType );
             return false;
             break;
    }
 
    if ( bytesExpected > sizeof( buff ) )
    {
-      PW_ERROR( "Invalid request, expected bytes %u",bytesExpected );
+      TVMG_ERROR( "Invalid request, expected bytes %u",bytesExpected );
       return false;
    }
 
@@ -140,7 +137,7 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
       if ( millis() - lastConnectionMillis > KEEP_MODBUS_TCP_ALIVE_MS && m_wifiClient )
       {
-         PW_DEBUG( "ModbusTCP: Closing connection (%u ms elapsed)",millis() - lastConnectionMillis );
+         TVMG_DEBUG( "ModbusTCP: Closing connection (%u ms elapsed)",millis() - lastConnectionMillis );
          m_wifiClient->stop();
          delete m_wifiClient;
          m_wifiClient = nullptr;
@@ -148,11 +145,11 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
       if ( !m_wifiClient )
       {
-         PW_DEBUG( "ModbusTCP: Create new WifiClient" );
+         TVMG_DEBUG( "ModbusTCP: Create new WifiClient" );
          m_wifiClient = new WiFiClient();
          if ( !m_wifiClient->connect( m_sensor.m_tcpServerAddress.toString().c_str(),m_sensor.m_tcpServerPort,TCP_SERVER_CONNECT_TIMEOUT_MS ) )
          {
-            PW_ERROR( "Failed to connect to ModbusTCP server" );
+            TVMG_ERROR( "Failed to connect to ModbusTCP server" );
             delete m_wifiClient;
             m_wifiClient = nullptr;
             continue;
@@ -184,7 +181,7 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
       buff[ size++ ] = highByte( request.numRegisters );
       buff[ size++ ] = lowByte( request.numRegisters );
 
-      PW_MSG( "ModBus request %u, %u registers, type %u",m_transactionId,request.numRegisters,request.transactionType );
+      TVMG_MSG( "ModBus request %u, %u registers, type %u",m_transactionId,request.numRegisters,request.transactionType );
 
       START_DEBUG;
       String dbg = "Tx ";
@@ -195,14 +192,14 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
          sprintf( byteBuff,"%02X ",buff[ i ] );
          dbg += byteBuff;
       }
-      PW_DEBUG( dbg.c_str() );
+      TVMG_DEBUG( dbg.c_str() );
       END_DEBUG;
 
       uint8_t written = m_wifiClient->write( buff,size );
 
       if ( written != size )
       {
-         PW_ERROR( "Failed to transmit Modbus request" );
+         TVMG_ERROR( "Failed to transmit Modbus request" );
          continue;
       }
 
@@ -219,11 +216,11 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
       if ( m_wifiClient->available() != bytesExpected )
       {
-         PW_ERROR( "Only received %d bytes,expected %d",m_wifiClient->available(),bytesExpected );
+         TVMG_ERROR( "Only received %d bytes,expected %d",m_wifiClient->available(),bytesExpected );
          continue;
       }
 
-      PW_DEBUG( "Took %u ms to acquire %u bytes from ModBusTCP", millis() - startMillis,bytesExpected );
+      TVMG_DEBUG( "Took %u ms to acquire %u bytes from ModBusTCP", millis() - startMillis,bytesExpected );
 
       int numRead = m_wifiClient->read( buff,bytesExpected );
 
@@ -236,12 +233,12 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
          sprintf( byteBuff,"%02X ",buff[ i ] );
          dbg += byteBuff;
       }
-      PW_DEBUG( dbg.c_str() );
+      TVMG_DEBUG( dbg.c_str() );
       END_DEBUG;
 
       if ( numRead != bytesExpected )
       {
-         PW_ERROR( "Failed to read response data" );
+         TVMG_ERROR( "Failed to read response data" );
          continue;
       }
 
@@ -254,13 +251,13 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
       if ( response.transactionId != m_transactionId )
       {
-         PW_ERROR( "Invalid transaction ID, rejecting" );
+         TVMG_ERROR( "Invalid transaction ID, rejecting" );
          continue;
       }
 
       if ( response.transactionType != request.transactionType )
       {
-         PW_ERROR( "Invalid transaction type, rejecting" );
+         TVMG_ERROR( "Invalid transaction type, rejecting" );
          continue;
       }
 
@@ -269,7 +266,7 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
 
       response.dataBytes = buff[ 8 ];
 
-      PW_DEBUG( "trans id 0x%0x, slave addr %u, type %u, bytes %u",response.transactionId,response.slaveAddress,response.transactionType,response.dataBytes );
+      TVMG_DEBUG( "trans id 0x%0x, slave addr %u, type %u, bytes %u",response.transactionId,response.slaveAddress,response.transactionType,response.dataBytes );
 
       if ( response.transactionType == READ_HOLDING || response.transactionType == READ_INPUTS )
       {
@@ -313,16 +310,16 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
       switch( response.transactionType )
       {
          case READ_COILS:
-               PW_DEBUG( "COILS:" );
+               TVMG_DEBUG( "COILS:" );
                break;
          case READ_DISCRETES:
-               PW_DEBUG( "DISCRETES" );
+               TVMG_DEBUG( "DISCRETES" );
                break;
          case READ_HOLDING:
-               PW_DEBUG( "HOLDING" );
+               TVMG_DEBUG( "HOLDING" );
                break;
          case READ_INPUTS:
-               PW_DEBUG( "INPUTS" );
+               TVMG_DEBUG( "INPUTS" );
                break;
          default:
                break;
@@ -333,7 +330,7 @@ bool  ModbusTCP::getData( const ModBusRequest &request )
          char byteBuff[ 20 ];
 
          sprintf( byteBuff,"   %u: %u ",i,response.registers[ i ] );
-         PW_DEBUG( byteBuff );
+         TVMG_DEBUG( byteBuff );
       }
       END_DEBUG;
 
@@ -349,9 +346,9 @@ uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uin
 {
    ModBusRequest  request;
 
-   PW_DEBUG( "MB: %u sent, %u failed",_u32TotalTransactions,_u32FailedTransactions  );
+   TVMG_DEBUG( "MB: %u sent, %u failed",_u32TotalTransactions,_u32FailedTransactions  );
 
-   PW_DEBUG( "MB: getData %d %d %d",transactionType,u16ReadAddress,u16ReadQty );
+   TVMG_DEBUG( "MB: getData %d %d %d",transactionType,u16ReadAddress,u16ReadQty );
 
    request.transactionType = transactionType;
    request.slaveAddress = _u8MBSlave;        // from ModbusMaster
@@ -362,7 +359,7 @@ uint8_t  ModbusTCP::getData( uint8_t transactionType,uint16_t u16ReadAddress,uin
 
    if ( !getData( request ) )
    {
-      PW_ERROR( "Modbus failed to read words for slave %d",_u8MBSlave );
+      TVMG_ERROR( "Modbus failed to read words for slave %d",_u8MBSlave );
       _u32FailedTransactions++;
       return ku8MBResponseTimedOut;
    }

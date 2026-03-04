@@ -1,9 +1,6 @@
 #include <SD.h>
 
-#include "src/core/utils.h"
-
-#include "Config.h"
-#include "hwconfig.h"
+#include "src/config/Config.h"
 
 // For modbus, what are the transmit & receive pins - using h/w serial #2
 // The RS485 - TTL module has its TX connected to ESP's RX, and obviously
@@ -166,16 +163,16 @@ HardwareConfig *hwConfig = nullptr;
 
 void  selectHardware()
 {
-   PW_MSG( "Board selection..." );
+   TVMG_MSG( "Board selection..." );
 
 #if defined(TVMG_WAVESHARE_LCDB)
-   PW_MSG( "Waveshare LCD" );
+   TVMG_MSG( "Waveshare LCD" );
    hwConfig = &WaveshareLCD;
 #elif defined(TVMG_WAVESHARE_RELAY)
-   PW_MSG( "Waveshare Relay" );
+   TVMG_MSG( "Waveshare Relay" );
    hwConfig = &WaveshareRelay;
 #elif defined(TVMG_ESP32S3) && defined(TVMG_RS485)
-   PW_MSG( "ESP32S3 with RS485" );
+   TVMG_MSG( "ESP32S3 with RS485" );
    hwConfig = &ESP32S3Rs485;
 #else
    // Must be an older ESP32 board - runtime detect based on file
@@ -183,26 +180,26 @@ void  selectHardware()
 
    if ( !Config::instance() || ! tvmgFileSys )
    {
-      PW_WARN( "No Config available" );
+      TVMG_WARN( "No Config available" );
    }
    else if ( tvmgFileSys.exists( MASTER_BOARD_FILE ) )
    {
-      PW_MSG( "Master Device" );
+      TVMG_MSG( "Master Device" );
       hwConfig = &MasterDevice;
    }
    else if ( tvmgFileSys.exists( EXTERNAL_BOARD_FILE ) )
    {
-      PW_MSG( "External Board" );
+      TVMG_MSG( "External Board" );
       hwConfig = &ExternalBoard;
    }
    else if ( tvmgFileSys.exists( MONITOR_BOARD_FILE ) )
    {
-      PW_MSG( "Monitor Board" );
+      TVMG_MSG( "Monitor Board" );
       hwConfig = &MonitorBoard;
    }
    else if ( tvmgFileSys.exists( TNODE_BOARD_FILE ) )
    {
-      PW_MSG( "TNode" );
+      TVMG_MSG( "TNode" );
       hwConfig = &TemperatureNode;
    }
 #endif
@@ -210,13 +207,13 @@ void  selectHardware()
 #ifdef TVMG_OLED
    if ( !hwConfig )
    {
-      PW_MSG( "No board file - default to TNode" );
+      TVMG_MSG( "No board file - default to TNode" );
       hwConfig = &TemperatureNode;
    }
 #else
    if ( !hwConfig )
    {
-      PW_MSG( "No board file - default to ESP32S3" );
+      TVMG_MSG( "No board file - default to ESP32S3" );
       hwConfig = &ESP32S3Rs485;
    }
 #endif

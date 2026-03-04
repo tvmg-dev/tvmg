@@ -5,12 +5,11 @@
 
 #include <ModbusMaster.h>
 
-#include "LGHeatPump.h"
-
-#include "src/config/hwconfig.h"
 #include "src/config/Config.h"
 
 #include "src/userio/Indicator.h"
+
+#include "src/sensors/LGHeatPump.h"
 
 // Some statics for quick bodge on register sampling
 
@@ -205,7 +204,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
      m_logHeatingTargetChanges( true ),
      m_indicator( nullptr )
 {
-   PW_DEBUG( "LGHeatPump::LGHeatPump()" );
+   TVMG_DEBUG( "LGHeatPump::LGHeatPump()" );
 
    cJSON *root = getAllSensorJSON();
 
@@ -241,13 +240,13 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
             }
             else
             {
-               PW_WARN( "Unsupported LG series (%d)", series );
+               TVMG_WARN( "Unsupported LG series (%d)", series );
             }
 
-            PW_DEBUG( "address %u, write %d series %d",m_modbusAddress,m_logRegisters,series );
-            PW_DEBUG( "flow in !heating %d, %s heating target changes",
+            TVMG_DEBUG( "address %u, write %d series %d",m_modbusAddress,m_logRegisters,series );
+            TVMG_DEBUG( "flow in !heating %d, %s heating target changes",
                                     m_flowRateWhenNotHeating,(m_logHeatingTargetChanges ? "log" : "ignore" ) );
-            PW_DEBUG( "scan type %u, from %u",s_modbusScanRegisterType,s_modbusScanAddr );
+            TVMG_DEBUG( "scan type %u, from %u",s_modbusScanRegisterType,s_modbusScanAddr );
             break;
          }
       }
@@ -267,7 +266,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
       cJSON *root = readJSONFromFile( "/lg.json");
       if ( !root )
       {
-         PW_ERROR( "Failed to parse lg.json" );
+         TVMG_ERROR( "Failed to parse lg.json" );
          return;
       }
 
@@ -301,7 +300,7 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
 
                   setSensorName( HEATPUMP,lgReg.m_id,name );
 
-                  PW_DEBUG( "LG %u %u %s %u %.1f %x %i",
+                  TVMG_DEBUG( "LG %u %u %s %u %.1f %x %i",
                            lgReg.m_type,lgReg.m_address,name.c_str(),
                            lgReg.m_emonFeedId,lgReg.m_scalingFactor,parameter,m_numRegisters - 1 );
 
@@ -309,13 +308,13 @@ LGHeatPump::LGHeatPump( ModbusMaster *master ) :
                }
                else
                {
-                  PW_WARN( "Exceeded max LG registers limit" );
+                  TVMG_WARN( "Exceeded max LG registers limit" );
                }
             }
          }
          else
          {
-            PW_ERROR( "Registers not located in lg.json" );
+            TVMG_ERROR( "Registers not located in lg.json" );
          }
       }
 
@@ -349,7 +348,7 @@ void LGHeatPump::initialise()
          file.close();
 
          m_currentStatus.m_updates = (size - sizeof(emailHeader)) / (PADDED_HTML_LINE_LEN);
-         PW_MSG( "Events in current LG event log %d",m_currentStatus.m_updates );
+         TVMG_MSG( "Events in current LG event log %d",m_currentStatus.m_updates );
       }
    }
 }
@@ -371,7 +370,7 @@ int8_t LGHeatPump::getRegisterIndex( uint32_t parameter )
    std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
-      PW_ERROR( "No register found for %x",parameter );
+      TVMG_ERROR( "No register found for %x",parameter );
    }
    else
    {
@@ -382,7 +381,7 @@ int8_t LGHeatPump::getRegisterIndex( uint32_t parameter )
       }
       else
       {
-         PW_ERROR( "Invalid register index %d for %x",index,parameter );
+         TVMG_ERROR( "Invalid register index %d for %x",index,parameter );
       }
    }
 
@@ -471,7 +470,7 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
 
    if ( !m_modbus )
    {
-      PW_WARN( "No modbus available" );
+      TVMG_WARN( "No modbus available" );
       return false;
    }
 
@@ -494,13 +493,13 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
       case INPUTR: mbusRes = m_modbus->readInputRegisters( m_registers[ start ].m_address,numRegs );
                  typeStr = "inputs";
                  break;
-      default: PW_WARN( "Invalid modbus request type" );
+      default: TVMG_WARN( "Invalid modbus request type" );
                return false;
    }
 
    if ( mbusRes != ModbusMaster::ku8MBSuccess )
    {
-      PW_ERROR( "Failed to get %u %s from %u [error %u]",numRegs,typeStr.c_str(),m_registers[ start ].m_address,numRegs,mbusRes );
+      TVMG_ERROR( "Failed to get %u %s from %u [error %u]",numRegs,typeStr.c_str(),m_registers[ start ].m_address,numRegs,mbusRes );
       return false;
    }
 
@@ -539,7 +538,7 @@ bool  LGHeatPump::getModbusData( ModbusType type,uint8_t start,uint8_t end )
       }
    }
 
-   PW_DEBUG( dbg.c_str() );
+   TVMG_DEBUG( dbg.c_str() );
 
    return true;
 }
@@ -595,7 +594,7 @@ void LGHeatPump::logModbusRegisters()
          }
          else if ( paddingNeeded < 0 )
          {
-            PW_WARN( "Sample length %d exceeds target %d",currentLen,paddedSize );
+            TVMG_WARN( "Sample length %d exceeds target %d",currentLen,paddedSize );
          }
 
          lgSample += '\n';
@@ -610,7 +609,7 @@ void LGHeatPump::logModbusRegisters()
 
 void  LGHeatPump::getLGData()
 {
-   PW_MSG( "GetLGData" );
+   TVMG_MSG( "GetLGData" );
 
    if ( ! m_modbus )
    {
@@ -628,7 +627,7 @@ void  LGHeatPump::getLGData()
       start = 0;
       while ( !modbusFailed && getContiguousRange( COIL, &start, &end ) )
       {
-         PW_DEBUG( "LG Modbus coils from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
+         TVMG_DEBUG( "LG Modbus coils from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
 
          modbusFailed |= !getModbusData( COIL,start,end );
@@ -639,7 +638,7 @@ void  LGHeatPump::getLGData()
       start = 0;
       while ( !modbusFailed && getContiguousRange( DISCRETE, &start, &end ) )
       {
-         PW_DEBUG( "LG Modbus discretes from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
+         TVMG_DEBUG( "LG Modbus discretes from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
 
          modbusFailed |= !getModbusData( DISCRETE,start,end );
@@ -650,7 +649,7 @@ void  LGHeatPump::getLGData()
       start = 0;
       while ( !modbusFailed && getContiguousRange( HOLDING, &start, &end ) )
       {
-         PW_DEBUG( "LG Modbus holding from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
+         TVMG_DEBUG( "LG Modbus holding from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
 
          modbusFailed |= !getModbusData( HOLDING,start,end );
@@ -661,7 +660,7 @@ void  LGHeatPump::getLGData()
       start = 0;
       while ( !modbusFailed && getContiguousRange( INPUTR, &start, &end ) )
       {
-         PW_DEBUG( "LG Modbus inputs from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
+         TVMG_DEBUG( "LG Modbus inputs from %u [%u] to %u [%u]",start,m_registers[ start ].m_address,
                                        end,m_registers[ end ].m_address );
 
          modbusFailed |= !getModbusData( INPUTR,start,end );
@@ -677,7 +676,7 @@ void  LGHeatPump::getLGData()
 
       if ( modbusFailed )
       {
-         PW_ERROR( "LG: Failed to read modbus" );
+         TVMG_ERROR( "LG: Failed to read modbus" );
          m_currentStatus.m_modbusError = true;
          break;
       }
@@ -786,7 +785,7 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
    uint8_t  regIndex = getRegisterIndex( parameter );
    if ( regIndex == -1 )
    {
-      PW_WARN( "LG: parameter not located" );
+      TVMG_WARN( "LG: parameter not located" );
       return false;
    }
 
@@ -826,7 +825,7 @@ bool  LGHeatPump::valueChanged( uint32_t parameter )
 
    if ( hasChanged )
    {
-      PW_MSG( "Parameter changed - 0x%x to %d - %s",parameter,newValue,(lgReg.m_isValid ? "ok" : "nok") );
+      TVMG_MSG( "Parameter changed - 0x%x to %d - %s",parameter,newValue,(lgReg.m_isValid ? "ok" : "nok") );
    }
 
    return hasChanged;
@@ -854,7 +853,7 @@ const uint8_t *LGHeatPump::padHtmlLine( const uint8_t *src )
    // Not enough space ?
    if ( srcLen > PADDED_HTML_LINE_LEN - fixedLen )
    {
-      PW_WARN( "HTML Line too large" );
+      TVMG_WARN( "HTML Line too large" );
       return src;
    }
 
@@ -878,7 +877,7 @@ const uint8_t *LGHeatPump::padHtmlLine( const uint8_t *src )
 
    if ( pos != PADDED_HTML_LINE_LEN )
    {
-      PW_ERROR( "Oops - error in html processing %d",pos );
+      TVMG_ERROR( "Oops - error in html processing %d",pos );
    }
 
    return dest;
@@ -987,7 +986,7 @@ void  LGHeatPump::writeStatusToHtml()
       File file = tvmgFileSys.open( LGSTATUS_LOG_HTML,FILE_APPEND );
       if ( !file )
       {
-         PW_WARN( "Failed to open %s",LGSTATUS_LOG_HTML );
+         TVMG_WARN( "Failed to open %s",LGSTATUS_LOG_HTML );
       }
       else
       {
@@ -1006,11 +1005,11 @@ void  LGHeatPump::writeStatusToHtml()
 
          if ( newSize == startSize )
          {
-            PW_WARN( "Failed to write to %s %d %d",LGSTATUS_LOG_HTML,startSize,newSize );
+            TVMG_WARN( "Failed to write to %s %d %d",LGSTATUS_LOG_HTML,startSize,newSize );
          }
          else
          {
-            PW_DEBUG( "Successfully written to %s",LGSTATUS_LOG_HTML );
+            TVMG_DEBUG( "Successfully written to %s",LGSTATUS_LOG_HTML );
             break;
          }
 
@@ -1063,7 +1062,7 @@ void  LGHeatPump::updateStatus()
 
    if ( !updateState )
    {
-      PW_DEBUG( "no change" );
+      TVMG_DEBUG( "no change" );
       return;
    }
 
@@ -1077,11 +1076,11 @@ void  LGHeatPump::updateStatus()
    {
       if ( m_currentStatus.m_error == ERROR_LG_EVENTS_LIMIT )
       {
-         PW_DEBUG( "Max events written, ignoring" );
+         TVMG_DEBUG( "Max events written, ignoring" );
       }
       else
       {
-         PW_WARN( "LG event log limit reached" );
+         TVMG_WARN( "LG event log limit reached" );
          m_currentStatus.m_error = ERROR_LG_EVENTS_LIMIT;
 
          writeStatusToHtml();
@@ -1089,7 +1088,7 @@ void  LGHeatPump::updateStatus()
    }
    else
    {
-      PW_DEBUG( "get values" );
+      TVMG_DEBUG( "get values" );
       time( &m_currentStatus.m_time );
 
       m_currentStatus.m_isCompressorOn = getRawValue( COMPRESSOR_STATUS );
@@ -1113,14 +1112,14 @@ void  LGHeatPump::updateStatus()
       m_currentStatus.m_isDefrost = getRawValue( DEFROST_STATUS );
 
       m_currentStatus.m_updates++;
-      PW_MSG( "LG events: %u",m_currentStatus.m_updates );
+      TVMG_MSG( "LG events: %u",m_currentStatus.m_updates );
       writeStatusToHtml();
    }
 }
 
 void  LGHeatPump::resetEventLog()
 {
-   PW_MSG( "Reset LG event counter" );
+   TVMG_MSG( "Reset LG event counter" );
    m_currentStatus.m_updates = 0;
    m_currentStatus.m_error = 0;
 }
@@ -1168,7 +1167,7 @@ bool  LGHeatPump::getStatus( uint32_t parameter,bool *state )
    std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
-      PW_ERROR( "No register found for %x",parameter );
+      TVMG_ERROR( "No register found for %x",parameter );
    }
    else
    {
@@ -1177,7 +1176,7 @@ bool  LGHeatPump::getStatus( uint32_t parameter,bool *state )
 
       *state = lgReg.m_rawValue;
       registerOk = true;
-      PW_DEBUG( "HP: %s:%u",getSensorName( HEATPUMP,lgReg.m_id ).c_str(),*state );
+      TVMG_DEBUG( "HP: %s:%u",getSensorName( HEATPUMP,lgReg.m_id ).c_str(),*state );
    }
 
    return registerOk;
@@ -1190,7 +1189,7 @@ bool  LGHeatPump::getValue( uint32_t parameter,float_t *value )
    std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
-      PW_ERROR( "No register found for %x",parameter );
+      TVMG_ERROR( "No register found for %x",parameter );
    }
    else
    {
@@ -1199,7 +1198,7 @@ bool  LGHeatPump::getValue( uint32_t parameter,float_t *value )
 
       *value = lgReg.m_value;
       registerOk = true;
-      PW_DEBUG( "HP: %s:%.1f",getSensorName( HEATPUMP,lgReg.m_id ).c_str(),*value );
+      TVMG_DEBUG( "HP: %s:%.1f",getSensorName( HEATPUMP,lgReg.m_id ).c_str(),*value );
    }
 
    return registerOk;
@@ -1212,7 +1211,7 @@ int16_t  LGHeatPump::getRawValue( uint32_t parameter )
    std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
-      PW_ERROR( "No register found for %x",parameter );
+      TVMG_ERROR( "No register found for %x",parameter );
    }
    else
    {
@@ -1220,7 +1219,7 @@ int16_t  LGHeatPump::getRawValue( uint32_t parameter )
       LGRegister &lgReg = m_registers[ index ];
 
       value = lgReg.m_rawValue;
-      PW_DEBUG( "HP-Raw: 0x%x:%s:%u",parameter,getSensorName( HEATPUMP,lgReg.m_id ).c_str(),(int16_t) value );
+      TVMG_DEBUG( "HP-Raw: 0x%x:%s:%u",parameter,getSensorName( HEATPUMP,lgReg.m_id ).c_str(),(int16_t) value );
    }
 
    return value;
@@ -1233,7 +1232,7 @@ bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
    std::map<uint32_t, uint8_t>::const_iterator it = m_registerMap.find( parameter );
    if ( it == m_registerMap.end() )
    {
-      PW_ERROR( "No register found for %x",parameter );
+      TVMG_ERROR( "No register found for %x",parameter );
    }
    else
    {
@@ -1241,7 +1240,7 @@ bool  LGHeatPump::setValue( uint32_t parameter,float_t value )
       LGRegister &lgReg = m_registers[ index ];
 
       lgReg.m_value = value;
-      PW_DEBUG( "HP: set %s:%.1f",getSensorName( HEATPUMP,lgReg.m_id ).c_str(),value );
+      TVMG_DEBUG( "HP: set %s:%.1f",getSensorName( HEATPUMP,lgReg.m_id ).c_str(),value );
    }
 
    return registerOk;
@@ -1274,7 +1273,7 @@ float_t  LGHeatPump::convertR32PressureToTemp( float_t pressure )
    {
       float_t gradient = (highT - lowT) / (highP - lowP);
       temp = lowT + gradient * (pressure - lowP);
-      PW_DEBUG( "R32 pressure %f : %f [%f ] - %f [%f] = %f",pressure,lowP,lowT,highP,highT,temp );
+      TVMG_DEBUG( "R32 pressure %f : %f [%f ] - %f [%f] = %f",pressure,lowP,lowT,highP,highT,temp );
    }
 
    return temp;
@@ -1293,7 +1292,7 @@ void  scanLGModbus()
 
       if ( s_modbusScanAddr < 65535 && !completed )
       {
-         PW_DEBUG( "scan type %u from %u",s_modbusScanRegisterType,s_modbusScanAddr );
+         TVMG_DEBUG( "scan type %u from %u",s_modbusScanRegisterType,s_modbusScanAddr );
          uint32_t endAddr = s_modbusScanAddr + 8;
          uint32_t addr = s_modbusScanAddr;
          while ( addr < endAddr )
@@ -1330,7 +1329,7 @@ void  scanLGModbus()
                char buff[ 40 ];
                snprintf( buff,sizeof(buff),"%u,%u,%u,%u",s_modbusScanRegisterType,startAddr,data,modbusRes );
 
-               PW_MSG( "LG Modbus: %s",buff );
+               TVMG_MSG( "LG Modbus: %s",buff );
                
                // Only write to flash if littlefs
 #if defined(TVMG_LITTLEFS)
@@ -1348,7 +1347,7 @@ void  scanLGModbus()
          if ( addr == 65536 )
          {
             completed = true;
-            PW_DEBUG( "Completed");
+            TVMG_DEBUG( "Completed");
          }
       }
    }

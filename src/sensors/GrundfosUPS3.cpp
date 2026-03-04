@@ -4,10 +4,8 @@
 
 #include "driver/mcpwm_cap.h"
 
-#include "GrundfosUPS3.h"
-#include "HeatMeter.h"
-
-#include "src/config/Config.h"
+#include "src/sensors/GrundfosUPS3.h"
+#include "src/sensors/HeatMeter.h"
 
 // pin we need to read to get the level, needed by ISR
 
@@ -115,7 +113,7 @@ GrundfosUPS3::GrundfosUPS3( uint8_t pwmGPIO,const char *mode )
    std::map<String,GrundfosUPS3::Mode>::const_iterator it = ups3ModeMap.find( String( mode ) );
    if ( it == ups3ModeMap.end() )
    {
-      PW_ERROR( "Not found %s mode for UPS3",mode );
+      TVMG_ERROR( "Not found %s mode for UPS3",mode );
    }
    else
    {
@@ -123,7 +121,7 @@ GrundfosUPS3::GrundfosUPS3( uint8_t pwmGPIO,const char *mode )
       actualMode = it->first.c_str();
    }
 
-   PW_MSG( "UPS3 - gpio(%u), mode %d (%s)",m_pwmGPIO,m_mode,actualMode );
+   TVMG_MSG( "UPS3 - gpio(%u), mode %d (%s)",m_pwmGPIO,m_mode,actualMode );
 }
 
 GrundfosUPS3::~GrundfosUPS3()
@@ -141,7 +139,7 @@ void  GrundfosUPS3::initialise()
 
    if ( mcpwm_new_capture_timer(&timer_conf, &s_captureTimer) != ESP_OK )
    {
-      PW_ERROR( "Failed to get new capture timer");
+      TVMG_ERROR( "Failed to get new capture timer");
       return;
    }
 
@@ -156,7 +154,7 @@ void  GrundfosUPS3::initialise()
 
    if ( mcpwm_new_capture_channel(s_captureTimer, &channelConfig, &s_captureChannel) != ESP_OK )
    {
-      PW_ERROR( "Failed to get a capture channel" );
+      TVMG_ERROR( "Failed to get a capture channel" );
       return;
    }
 
@@ -165,26 +163,26 @@ void  GrundfosUPS3::initialise()
 
    if ( mcpwm_capture_channel_register_event_callbacks(s_captureChannel, &cbs, NULL) != ESP_OK )
    {
-      PW_ERROR( "Failed to register callback with capture channel" );
+      TVMG_ERROR( "Failed to register callback with capture channel" );
       return;
    }
 
    if ( mcpwm_capture_timer_enable(s_captureTimer) != ESP_OK )
    {
-      PW_ERROR( "Failed to enable the capture timer" );
+      TVMG_ERROR( "Failed to enable the capture timer" );
       return;
    }
 
    if ( mcpwm_capture_timer_start(s_captureTimer) != ESP_OK )
    {
-      PW_ERROR( "Failed to start the capture timer" );
+      TVMG_ERROR( "Failed to start the capture timer" );
       return;
    }
 }
 
 void GrundfosUPS3::sample()
 {
-   PW_DEBUG( "UPS3 Sample (pin %u)",m_pwmGPIO );
+   TVMG_DEBUG( "UPS3 Sample (pin %u)",m_pwmGPIO );
 
    highCount = 0;
    lowCount = 0;
@@ -203,8 +201,8 @@ void GrundfosUPS3::sample()
    mcpwm_capture_channel_disable( s_captureChannel );
    delay( 30 );
 
-   PW_DEBUG( "Counts : high %u, low %u", highCount,lowCount );
-   PW_DEBUG( "Ticks : period %u, high %u", totalPeriodTicks,totalHighTicks );
+   TVMG_DEBUG( "Counts : high %u, low %u", highCount,lowCount );
+   TVMG_DEBUG( "Ticks : period %u, high %u", totalPeriodTicks,totalHighTicks );
 
    // quality is 0 - 100, we expect ~ 50 samples, roughly an equal number
    // of high and low counts.  A quality of < 5 suggests pump is off
@@ -214,14 +212,14 @@ void GrundfosUPS3::sample()
 
    if ( m_quality < 5 )
    {
-      PW_DEBUG( "Pump is not running" );
+      TVMG_DEBUG( "Pump is not running" );
       return;
    }
 
    // We allow some problematic samples, 70% ?
    if ( m_quality < 70 || ! highCount || ! lowCount || !totalPeriodTicks)
    {
-      PW_WARN( "Poor quality from UPS3 - quality %u",m_quality );
+      TVMG_WARN( "Poor quality from UPS3 - quality %u",m_quality );
       m_power = HM_POWER_ERROR;
       return;
    }
@@ -229,7 +227,7 @@ void GrundfosUPS3::sample()
    float freq = 80000000.0 / totalPeriodTicks;
    m_power = (totalHighTicks * 100.0) / totalPeriodTicks;
 
-   PW_MSG( "Frequency %.1f Hz, UPS3 Power %.2f W",freq,m_power );
+   TVMG_MSG( "Frequency %.1f Hz, UPS3 Power %.2f W",freq,m_power );
 }
 
 float_t  GrundfosUPS3::getFlowRate()
@@ -240,11 +238,11 @@ float_t  GrundfosUPS3::getFlowRate()
 
    if ( !UPS3Coeffs.count( m_mode ) )
    {
-      PW_ERROR( "Flow Rate : no coeffs for current mode !" );
+      TVMG_ERROR( "Flow Rate : no coeffs for current mode !" );
    }
    else if ( m_power == HM_POWER_ERROR )
    {
-      PW_WARN( "Failed to read power consumed" );
+      TVMG_WARN( "Failed to read power consumed" );
       flowRate = FLOW_RATE_ERROR;
    }
    else if ( m_power > 1.0f )       // m_power will be zero if the pump is off, that's valid
@@ -253,11 +251,11 @@ float_t  GrundfosUPS3::getFlowRate()
 
       if ( m_power < coeffs.min )
       {
-         PW_WARN( "%.1f W is below UPS3 mode min (%.1f)",m_power,coeffs.min );
+         TVMG_WARN( "%.1f W is below UPS3 mode min (%.1f)",m_power,coeffs.min );
       }
       else if ( m_power > coeffs.max )
       {
-         PW_WARN( "%.1f W is above UPS3 mode max (%.1f) limiting",m_power,coeffs.max );
+         TVMG_WARN( "%.1f W is above UPS3 mode max (%.1f) limiting",m_power,coeffs.max );
          flowRate = FLOW_RATE_ERROR;
       }
       else
@@ -267,7 +265,7 @@ float_t  GrundfosUPS3::getFlowRate()
          flowRate = (coeffs.x0) + (coeffs.x1 * power) + (coeffs.x2 * pow( power,2 ));
          flowRate /= 0.06;
 
-         PW_DEBUG( "%d %.1f W = flowRate %.1f l/min",m_mode,power,flowRate );
+         TVMG_DEBUG( "%d %.1f W = flowRate %.1f l/min",m_mode,power,flowRate );
       }
    }
 

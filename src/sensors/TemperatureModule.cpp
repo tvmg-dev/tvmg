@@ -5,14 +5,13 @@
 #include <HTTPClient.h>
 #include <AsyncUDP.h>
 
-#include "src/core/utils.h"
+#include "src/config/Config.h"
 #include "src/core/Measurement.h"
 
-#include "src/config/Config.h"
 #include "src/config/hwconfig.h"
 #include "src/network/Networking.h"
 
-#include "TemperatureModule.h"
+#include "src/sensors/TemperatureModule.h"
 
 #define TEMPERATURE_PRECISION                11
 #define TEMPERATURE_MIN_SAMPLING_PERIOD_MS   15000
@@ -38,7 +37,7 @@ uint8_t toHex( char a )
    return static_cast<uint8_t>( n - 7 );
 
 error:
-   PW_ERROR( "Invalid char %c",a );
+   TVMG_ERROR( "Invalid char %c",a );
    return 17;
 }
 
@@ -54,8 +53,8 @@ TemperatureModule::TemperatureModule()
            m_indicator( nullptr )
 
 {
-   PW_DEBUG( "TemperatureModule::TemperatureModule()" );
-   PW_MSG( "Temperature Module Startup" );
+   TVMG_DEBUG( "TemperatureModule::TemperatureModule()" );
+   TVMG_MSG( "Temperature Module Startup" );
 
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
@@ -107,8 +106,8 @@ TemperatureModule::TemperatureModule()
                   {
                      strcpy( openSensor->m_url,url.c_str() );
 
-                     PW_DEBUG( "OpenWeather: name %s at %s",name.c_str(),openSensor->m_url );
-                     PW_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
+                     TVMG_DEBUG( "OpenWeather: name %s at %s",name.c_str(),openSensor->m_url );
+                     TVMG_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
 
                      tempSensor->m_isValid = true;
                      tempSensor->m_isDs18b20 = false;
@@ -121,8 +120,8 @@ TemperatureModule::TemperatureModule()
                tempSensor->m_isRemote = true;
                m_haveRemoteSensors = true;
 
-               PW_DEBUG( "Remote Therm: name %s",name.c_str() );
-               PW_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
+               TVMG_DEBUG( "Remote Therm: name %s",name.c_str() );
+               TVMG_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
 
                tempSensor->m_isValid = true;
                tempSensor->m_isDs18b20 = true;
@@ -146,8 +145,8 @@ TemperatureModule::TemperatureModule()
                char addr[ 32 ];
                getAddressString( dsSensor->m_address,addr );
 
-               PW_DEBUG( "Local Therm: name %s address %s",name.c_str(),addr );
-               PW_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId,dsSensor->m_calibrationOffset );
+               TVMG_DEBUG( "Local Therm: name %s address %s",name.c_str(),addr );
+               TVMG_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId,dsSensor->m_calibrationOffset );
 
                tempSensor->m_isValid = true;
                tempSensor->m_isDs18b20 = true;
@@ -158,7 +157,7 @@ TemperatureModule::TemperatureModule()
 
       if ( m_numSensors )
       {
-         PW_MSG( "Registered %d thermometers",m_numSensors );
+         TVMG_MSG( "Registered %d thermometers",m_numSensors );
          m_indicator = Indicator::getIndicator( Indicator::THERM,0 );
       }
    }
@@ -166,7 +165,7 @@ TemperatureModule::TemperatureModule()
 
 TemperatureModule::~TemperatureModule()
 {
-   PW_DEBUG( "TemperatureModule::~TemperatureModule()" );
+   TVMG_DEBUG( "TemperatureModule::~TemperatureModule()" );
 
    delete m_dallasController;
    delete m_oneWireController;
@@ -176,12 +175,12 @@ void  TemperatureModule::initialise()
 {
    if ( hwConfig->OneWireGPIO == -1 )
    {
-      PW_DEBUG( "TemperatureModule::initialise() - fake" );
+      TVMG_DEBUG( "TemperatureModule::initialise() - fake" );
    }
    else
    {
-      PW_DEBUG( "TemperatureModule::initialise()" );
-      PW_MSG( "Initialising temperature sensors" );
+      TVMG_DEBUG( "TemperatureModule::initialise()" );
+      TVMG_MSG( "Initialising temperature sensors" );
 
       m_oneWireController = new OneWire( hwConfig->OneWireGPIO );
       m_dallasController = new DallasTemperature( m_oneWireController );
@@ -207,16 +206,16 @@ void  TemperatureModule::initialise()
 
       if ( devices == numLocalDS1820 )
       {
-         PW_DEBUG( "%u sensors detected on the OneWire bus ",devices );
+         TVMG_DEBUG( "%u sensors detected on the OneWire bus ",devices );
       }
       else
       {
-         PW_ERROR( "Located %u of %u sensors.",devices,numLocalDS1820 );
+         TVMG_ERROR( "Located %u of %u sensors.",devices,numLocalDS1820 );
       }
 
       if ( m_dallasController->isParasitePowerMode() )
       {
-         PW_WARN( "Dallas Controller operating with no power ?" );
+         TVMG_WARN( "Dallas Controller operating with no power ?" );
       }
 
       char addrString[ 1 + sizeof( DeviceAddress ) * 2 ];
@@ -224,7 +223,7 @@ void  TemperatureModule::initialise()
       {
          m_dallasController->getAddress( locatedAddresses[ i ],i );
          getAddressString( locatedAddresses[ i ],addrString );
-         PW_MSG( "DS18B20 : %s",addrString );
+         TVMG_MSG( "DS18B20 : %s",addrString );
       }
 
       // Now check for the sensors being located, this is to find the index
@@ -237,12 +236,12 @@ void  TemperatureModule::initialise()
             const char *name = getSensorName( THERM,m_sensors[ i ].m_data.m_id ).c_str();
             m_sensors[ i ].m_ds18b20.m_busIndex = MAX_TEMP_SENSORS;
 
-            PW_DEBUG( "Locating %s",name );
+            TVMG_DEBUG( "Locating %s",name );
             for ( int j = 0; j < devices; j++ )
             {
                if ( !memcmp( locatedAddresses[ j ],m_sensors[ i ].m_ds18b20.m_address,sizeof( DeviceAddress ) ) )
                {
-                  PW_DEBUG( "...at bus index %u",j );
+                  TVMG_DEBUG( "...at bus index %u",j );
                   m_sensors[ i ].m_ds18b20.m_busIndex = j;
                   break;
                }
@@ -250,7 +249,7 @@ void  TemperatureModule::initialise()
 
             if ( m_sensors[ i ].m_ds18b20.m_busIndex == MAX_TEMP_SENSORS )
             {
-               PW_ERROR( "Failed to locate %s on the bus",name );
+               TVMG_ERROR( "Failed to locate %s on the bus",name );
                m_sensors[ i ].m_isValid = false;
             }
          }
@@ -260,11 +259,11 @@ void  TemperatureModule::initialise()
 
       if ( m_numSensors > 0 )
       {
-         PW_DEBUG( "Setting %u bit precision for sensors",TEMPERATURE_PRECISION );
+         TVMG_DEBUG( "Setting %u bit precision for sensors",TEMPERATURE_PRECISION );
 
          m_dallasController->setResolution( TEMPERATURE_PRECISION );
 
-         PW_MSG( "Dallas setup completed OK" );
+         TVMG_MSG( "Dallas setup completed OK" );
       }
    }
 
@@ -320,17 +319,17 @@ void TemperatureModule::addUDPListener()
    AsyncUDP *udp = Networking::getListenUDP();
    if ( listenPort == -1 || ! udp )
    {
-      PW_ERROR( "Can't listen as no port & UDP device" );
+      TVMG_ERROR( "Can't listen as no port & UDP device" );
       return;
    }
 
    if( !udp->listen( listenPort ) )
    {
-      PW_ERROR( "Failed to setup UDP listener on port %d",listenPort );
+      TVMG_ERROR( "Failed to setup UDP listener on port %d",listenPort );
    }
    else
    {
-      PW_MSG( "Adding UDP listener %d",listenPort );
+      TVMG_MSG( "Adding UDP listener %d",listenPort );
       udp->onPacket([ & ](AsyncUDPPacket packet) {
          if ( packet.length() < sizeof( s_udpPacket ) - 1 )
          {
@@ -357,7 +356,7 @@ void TemperatureModule::addUDPListener()
                      PrivateSensor *tempSensor = &m_sensors[ i ];
                      if ( tempSensor->m_isValid && tempSensor->m_isRemote && tempSensor->m_data.m_id == id )
                      {
-                        PW_DEBUG( "UDP: Assign remote temp ID %d %.1f",id,value );
+                        TVMG_DEBUG( "UDP: Assign remote temp ID %d %.1f",id,value );
                         tempSensor->m_data.m_temp = value;
                         numAssigned++;
                      }
@@ -366,7 +365,7 @@ void TemperatureModule::addUDPListener()
 
                if ( numAssigned )
                {
-                  PW_MSG( "Assigned %d remote temperatures",numAssigned );
+                  TVMG_MSG( "Assigned %d remote temperatures",numAssigned );
                }
 
                cJSON_Delete( root );
@@ -409,7 +408,7 @@ bool TemperatureModule::getTemperatures()
             const char *name = getSensorName( THERM,m_sensors[ i ].m_data.m_id ).c_str();
             m_sensors[ i ].m_data.m_temp = fetchOpenWeather( m_sensors[ i ].m_openWeather.m_url );
 
-            PW_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_data.m_temp );
+            TVMG_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_data.m_temp );
          }
       }
       END_TIMING;
@@ -423,7 +422,7 @@ bool TemperatureModule::getTemperatures()
 
    if ( !m_dallasController )
    {
-      PW_ERROR( "No Dallas controller for local sensors" );
+      TVMG_ERROR( "No Dallas controller for local sensors" );
       return false;
    }
 
@@ -453,13 +452,13 @@ bool TemperatureModule::getTemperatures()
 
          if ( m_sensors[ i ].m_data.m_temp != DEVICE_DISCONNECTED_C )
          {
-            PW_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_data.m_temp );
+            TVMG_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_data.m_temp );
             m_sensors[ i ].m_data.m_temp += m_sensors[ i ].m_ds18b20.m_calibrationOffset;
          }
          else
          {
             m_sensors[ i ].m_data.m_temp = TEMPERATURE_INVALID;
-            PW_WARN( "Failed to obtain temperature for %s",name );
+            TVMG_WARN( "Failed to obtain temperature for %s",name );
          }
       }
    }
@@ -510,19 +509,19 @@ void  TemperatureModule::localBroadcastData()
    }
    else if ( !m_numSensors )
    {
-      PW_WARN( "No local temp sensors to broadcast" );
+      TVMG_WARN( "No local temp sensors to broadcast" );
       return;
    }
    else if ( ! m_udp )
    {
-      PW_WARN( "No UDP broadcast" );
+      TVMG_WARN( "No UDP broadcast" );
       return;
    }
 
    root = cJSON_CreateObject();
    if ( ! root )
    {
-      PW_WARN( "No root cJSON object" );
+      TVMG_WARN( "No root cJSON object" );
       return;
    }
 
@@ -559,7 +558,7 @@ void  TemperatureModule::localBroadcastData()
 
          (void) m_udp->writeTo( (const uint8_t *) str,strlen(str),subNet,m_sendPort );
 
-         PW_DEBUG( "Broadcast: %s",str );
+         TVMG_DEBUG( "Broadcast: %s",str );
 
          free( str );
       }
@@ -647,12 +646,12 @@ float TemperatureModule::fetchOpenWeather( const String &url )
 
    if ( !client )
    {
-      PW_MSG( "New WiFiSecure for OpenWeather" );
+      TVMG_MSG( "New WiFiSecure for OpenWeather" );
       client = new WiFiClientSecure;
 
       if ( GET_REGISTRY_INT( OPENWEATHER_INSECURE ) == 1 )
       {
-         PW_WARN( "Setting OpenWeather WiFi client to insecure mode" );
+         TVMG_WARN( "Setting OpenWeather WiFi client to insecure mode" );
          client->setInsecure();
       }
       else
@@ -709,7 +708,7 @@ float TemperatureModule::fetchOpenWeather( const String &url )
       }
       else
       {
-         PW_ERROR( "Failed HTTP GET %d",httpResponse );
+         TVMG_ERROR( "Failed HTTP GET %d",httpResponse );
       }
 
       END_TIMING;
@@ -722,7 +721,7 @@ float TemperatureModule::fetchOpenWeather( const String &url )
    }
    else
    {
-      PW_WARN( "Failed to obtain OpenWeather data" );
+      TVMG_WARN( "Failed to obtain OpenWeather data" );
    }
 
    return temperature;

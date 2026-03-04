@@ -9,7 +9,6 @@
 #include <SD.h>
 #include <FS.h>
 
-#include "utils.h"
 #include "src/config/Config.h"
 
 #include "src/network/Networking.h"
@@ -80,7 +79,7 @@ void  replaceFile( const String &origFile,const String &newFile )
 {
    if ( !tvmgFileSys )
    {
-      PW_WARN( "No FS, can't replace file" );
+      TVMG_WARN( "No FS, can't replace file" );
       return;
    }
 
@@ -95,12 +94,12 @@ void  replaceFile( const String &origFile,const String &newFile )
       File opFile = tvmgFileSys.open( origFile,"w" );
       if ( opFile )
       {
-         PW_MSG( "Replacing %s with %s",origFile,newFile );
+         TVMG_MSG( "Replacing %s with %s",origFile,newFile );
 
          int count;
          while( ( count = ipFile.read( scratchBuffer,SCRATCH_BUFFER_SIZE ) ) > 0 )
          {
-            PW_DEBUG( "from %s read %d",newFile,count );
+            TVMG_DEBUG( "from %s read %d",newFile,count );
             opFile.write( scratchBuffer,count );
          }
          opFile.close();
@@ -114,14 +113,14 @@ cJSON * readJSONFromFile( const String &fileName )
 {
    if ( !tvmgFileSys )
    {
-      PW_WARN( "No filesystem !" );
+      TVMG_WARN( "No filesystem !" );
       return nullptr;
    }
 
    File file = tvmgFileSys.open( fileName,FILE_READ );
    if ( !file )
    {
-      PW_DEBUG( "readJSON %s not found",fileName.c_str() );
+      TVMG_DEBUG( "readJSON %s not found",fileName.c_str() );
       return nullptr;
    }
 
@@ -130,7 +129,7 @@ cJSON * readJSONFromFile( const String &fileName )
    if ( !buffer )
    {
       file.close();
-      PW_ERROR( "readJSON failed to allocate buffer for %s",fileName.c_str() );
+      TVMG_ERROR( "readJSON failed to allocate buffer for %s",fileName.c_str() );
       return nullptr;
    }
 
@@ -149,7 +148,7 @@ cJSON * readJSONFromFile( const String &fileName )
 
    if ( !root )
    {
-      PW_ERROR( "Failed to parse JSON from %s",fileName.c_str() );
+      TVMG_ERROR( "Failed to parse JSON from %s",fileName.c_str() );
    }
    
    return root;
@@ -166,19 +165,19 @@ cJSON *getAllSensorJSON()
 
    if ( sensorJSON && cJSON_IsArray( sensorJSON ) )
    {
-      PW_MSG( "cJSON array read ok" );
+      TVMG_MSG( "cJSON array read ok" );
    }
    else if ( sensorJSON )
    {
       cJSON_Delete( sensorJSON );
       sensorJSON = nullptr;
 
-      PW_ERROR( "cJSON from %s was not an array",SENSORS_FILENAME );
+      TVMG_ERROR( "cJSON from %s was not an array",SENSORS_FILENAME );
    }
 
    if ( sensorJSON )
    {
-      PW_DEBUG( "JSON at 0x%x",sensorJSON );
+      TVMG_DEBUG( "JSON at 0x%x",sensorJSON );
    }
 
    return sensorJSON;
@@ -188,7 +187,7 @@ void  releaseSensorJSON()
 {
    if ( sensorJSON )
    {
-      PW_MSG( "Releasing JSON" );
+      TVMG_MSG( "Releasing JSON" );
 
       cJSON_Delete( sensorJSON );
       sensorJSON = nullptr;
@@ -216,7 +215,7 @@ bool  isSensorRequired( const char *sensorName )
 
    if ( isReq )
    {
-      PW_DEBUG( "%s required",sensorName );
+      TVMG_DEBUG( "%s required",sensorName );
    }
 
    return isReq;
@@ -319,14 +318,14 @@ static void printMemCapsInfo(uint32_t caps, const char *caps_str)
    multi_heap_info_t info;
    size_t total = heap_caps_get_total_size(caps);
    heap_caps_get_info(&info, caps);
-   PW_MSG("%s Memory Info:", caps_str);
-   PW_MSG("------------------------------------------");
-   PW_MSG("  Total Size        : %8d B (%6.1f KB)", total, b2kb(total));
-   PW_MSG("  Free Bytes        : %8d B (%6.1f KB)", info.total_free_bytes, b2kb(info.total_free_bytes));
-   PW_MSG("  Allocated Bytes   : %8d B (%6.1f KB)", info.total_allocated_bytes, b2kb(info.total_allocated_bytes));
-   PW_MSG("  Minimum Free Bytes: %8d B (%6.1f KB)", info.minimum_free_bytes, b2kb(info.minimum_free_bytes));
-   PW_MSG("  Largest Free Block: %8d B (%6.1f KB)", info.largest_free_block, b2kb(info.largest_free_block));
-   PW_MSG("------------------------------------------");
+   TVMG_MSG("%s Memory Info:", caps_str);
+   TVMG_MSG("------------------------------------------");
+   TVMG_MSG("  Total Size        : %8d B (%6.1f KB)", total, b2kb(total));
+   TVMG_MSG("  Free Bytes        : %8d B (%6.1f KB)", info.total_free_bytes, b2kb(info.total_free_bytes));
+   TVMG_MSG("  Allocated Bytes   : %8d B (%6.1f KB)", info.total_allocated_bytes, b2kb(info.total_allocated_bytes));
+   TVMG_MSG("  Minimum Free Bytes: %8d B (%6.1f KB)", info.minimum_free_bytes, b2kb(info.minimum_free_bytes));
+   TVMG_MSG("  Largest Free Block: %8d B (%6.1f KB)", info.largest_free_block, b2kb(info.largest_free_block));
+   TVMG_MSG("------------------------------------------");
 }
 
 // Debug for finding stack depth, dervied from
@@ -344,17 +343,17 @@ void getRunTimeInfo()
 
    printMemCapsInfo( MALLOC_CAP_INTERNAL,"INTERNAL" );
    printMemCapsInfo( MALLOC_CAP_SPIRAM,"PSRAM" );
-   PW_MSG( "Largest Free %d",largestFreeInternalBlock() );
+   TVMG_MSG( "Largest Free %d",largestFreeInternalBlock() );
 
    // How many current tasks, could change as we execute
 
    numTasks = uxTaskGetNumberOfTasks();
 
-   PW_MSG( "Total tasks %d",numTasks );
+   TVMG_MSG( "Total tasks %d",numTasks );
 
    if ( numTasks > MAX_TASKS )
    {
-      PW_WARN( "Exceeded number of tasks to process" );
+      TVMG_WARN( "Exceeded number of tasks to process" );
       return;
    }
 
@@ -365,7 +364,7 @@ void getRunTimeInfo()
                               &ulTotalRunTime );
    END_TIMING;
 
-   PW_MSG( "runtime %ul %d %d %d",ulTotalRunTime,millis(),configTICK_RATE_HZ,portTICK_PERIOD_MS );
+   TVMG_MSG( "runtime %ul %d %d %d",ulTotalRunTime,millis(),configTICK_RATE_HZ,portTICK_PERIOD_MS );
 
    ulTotalRunTime /= 100UL;
 
@@ -380,7 +379,7 @@ void getRunTimeInfo()
             TaskStatus_t *task = &taskStatusArray[ t ];
 
             ulStatsAsPercentage = task->ulRunTimeCounter / ulTotalRunTime;
-            PW_MSG( "%s tt %d tt %d - stk %d Core %d",
+            TVMG_MSG( "%s tt %d tt %d - stk %d Core %d",
                               task->pcTaskName,
                               task->ulRunTimeCounter,
                               ulStatsAsPercentage,
@@ -403,7 +402,7 @@ static uint32_t generateKey( SensorType type, uint32_t id )
 {
    if ( id > 0xFFFFFF )
    {
-      PW_ERROR( "Invalid id - truncating" );
+      TVMG_ERROR( "Invalid id - truncating" );
       id &= 0xFFFFFF;
    }
 
@@ -437,7 +436,7 @@ void setSensorName( SensorType type, uint32_t id, const String &name )
    auto it = sensorMap.find( key );
    if ( it != sensorMap.end() )
    {
-      PW_ERROR( "sensor map: Id %d already exists for %s",id,sensorTypeName(type) );
+      TVMG_ERROR( "sensor map: Id %d already exists for %s",id,sensorTypeName(type) );
       return;
    }
 
@@ -478,11 +477,11 @@ void debugSensorNameMap()
          {
             if (!typeHeaderPrinted)
             {
-               PW_MSG( "Sensor Type : %s", sensorTypeName( type ) );
+               TVMG_MSG( "Sensor Type : %s", sensorTypeName( type ) );
                typeHeaderPrinted = true;
             }
 
-            PW_MSG( "  Id : %3d - Name : %s",id,pair.second.c_str() );
+            TVMG_MSG( "  Id : %3d - Name : %s",id,pair.second.c_str() );
          }
       }
    }
@@ -751,5 +750,5 @@ Timing::Timing( const String &name )
 Timing::~Timing()
 {
    String timing( millis() - m_startMillis,DEC );
-   PW_TIMING( "%s : %s",m_name.c_str(),timing.c_str() );
+   TVMG_TIMING( "%s : %s",m_name.c_str(),timing.c_str() );
 }

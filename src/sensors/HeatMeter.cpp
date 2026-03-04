@@ -1,9 +1,8 @@
 #include <cJSON.h>
 
 #include "src/config/Config.h"
-#include "src/config/hwconfig.h"
 
-#include "HeatMeter.h"
+#include "src/sensors/HeatMeter.h"
 
 #define HM_MIN_SAMPLING_PERIOD_MS 15000
 
@@ -15,8 +14,8 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
                  m_millisLastAquisition( -HM_MIN_SAMPLING_PERIOD_MS ),
                  m_indicator( nullptr )
 {
-   PW_DEBUG( "HeatMeterModule::HeatMeterModule()" );
-   PW_MSG( "Heat Meter Module Startup" );
+   TVMG_DEBUG( "HeatMeterModule::HeatMeterModule()" );
+   TVMG_MSG( "Heat Meter Module Startup" );
 
    for ( int i = 0; i < MAX_HEAT_METERS; i++ )
    {
@@ -45,7 +44,7 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
 
             float_t shc = getFloatFromcJSON( sensor,"shc",4.2 );
 
-            PW_DEBUG( "Found UPS3 : %s",name.c_str() );
+            TVMG_DEBUG( "Found UPS3 : %s",name.c_str() );
 
             m_sensors[ m_numLocalSensors ] = new HeatMeter( new GrundfosUPS3( gpio,mode.c_str() ),m_tempModule,
                                                       name,id,emonFlowId,emonPowerId,flowTempId,returnTempId,shc );
@@ -58,19 +57,19 @@ HeatMeterModule::HeatMeterModule( TemperatureModule *tempModule )
 
    if ( m_numLocalSensors )
    {
-      PW_MSG( "Registered %d heat meters",m_numLocalSensors );
+      TVMG_MSG( "Registered %d heat meters",m_numLocalSensors );
       m_indicator = Indicator::getIndicator( Indicator::HEATMETER,0 );
    }
 }
 
 HeatMeterModule::~HeatMeterModule()
 {
-   PW_DEBUG( "HeatMeterModule::~HeatMeterModule()" );
+   TVMG_DEBUG( "HeatMeterModule::~HeatMeterModule()" );
 }
 
 void HeatMeterModule::initialise()
 {
-   PW_DEBUG( "HeatMeterModule::initialise()" );
+   TVMG_DEBUG( "HeatMeterModule::initialise()" );
 }
 
 void HeatMeterModule::sample()
@@ -122,7 +121,7 @@ HeatMeter::HeatMeter( GrundfosUPS3 *pump,TemperatureModule *tempModule,const Str
            m_returnTempId( returnTempId ),
            m_shc( shc )
 {
-   PW_DEBUG( "HeatMeter::HeatMeter %d",id );
+   TVMG_DEBUG( "HeatMeter::HeatMeter %d",id );
 
    String sensorName( name );
    sensorName += " : ";
@@ -157,7 +156,7 @@ void  HeatMeter::takeMeasurement()
    if ( m_flowMeter && m_tempModule )
    {
       const char *name = getSensorName( HEATMETER,m_sensor.m_id ).c_str();
-      PW_MSG( "Sampling %s",name );
+      TVMG_MSG( "Sampling %s",name );
 
       m_flowMeter->sample();
       m_sensor.m_flowRate = m_flowMeter->getFlowRate();
@@ -175,7 +174,7 @@ void  HeatMeter::takeMeasurement()
          m_sensor.m_power = m_sensor.m_flowRate * m_shc * (m_sensor.m_flowTemp - m_sensor.m_returnTemp ) / 60.0;
          m_sensor.m_power *= 1000;
 
-         PW_DEBUG( "%s flow %.1f ret %.1f, %.1f l/min",name,m_sensor.m_flowTemp,m_sensor.m_returnTemp,m_sensor.m_flowRate );
+         TVMG_DEBUG( "%s flow %.1f ret %.1f, %.1f l/min",name,m_sensor.m_flowTemp,m_sensor.m_returnTemp,m_sensor.m_flowRate );
 
          if ( m_sensor.m_power < 1 )
          {
@@ -185,7 +184,7 @@ void  HeatMeter::takeMeasurement()
          m_sensor.m_powerConsumed = m_flowMeter->getPowerConsumed();
       }
 
-      PW_DEBUG( "%s %.0f W %.1f l/min (consumed %.1f)",name,m_sensor.m_power,m_sensor.m_flowRate,m_sensor.m_powerConsumed );
+      TVMG_DEBUG( "%s %.0f W %.1f l/min (consumed %.1f)",name,m_sensor.m_power,m_sensor.m_flowRate,m_sensor.m_powerConsumed );
    }
 }
 

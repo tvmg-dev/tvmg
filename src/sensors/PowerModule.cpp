@@ -2,10 +2,7 @@
 
 #include <SD.h>
 
-#include "PowerModule.h"
-
-#include "src/config/hwconfig.h"
-#include "src/config/Config.h"
+#include "src/sensors/PowerModule.h"
 
 #define POWER_MIN_SAMPLING_PERIOD_MS 15000
 
@@ -16,8 +13,8 @@ PowerModule::PowerModule( ModbusMaster *modbus )
              m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS ),
              m_indicator( nullptr )
 {
-   PW_DEBUG( "PowerModule::PowerModule()" );
-   PW_MSG( "Power Module Startup" );
+   TVMG_DEBUG( "PowerModule::PowerModule()" );
+   TVMG_MSG( "Power Module Startup" );
 
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
@@ -51,8 +48,8 @@ PowerModule::PowerModule( ModbusMaster *modbus )
             // Add name to sensor name map
             setSensorName( POWER,pwrSensor->m_data.m_id,name );
 
-            PW_DEBUG( "Power: name %s address %u",name.c_str(),pwrSensor->m_address );
-            PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_data.m_id,pwrSensor->m_data.m_emonFeedId );
+            TVMG_DEBUG( "Power: name %s address %u",name.c_str(),pwrSensor->m_address );
+            TVMG_DEBUG( "Id %u,  feed %u",pwrSensor->m_data.m_id,pwrSensor->m_data.m_emonFeedId );
             m_numLocalSensors++;
          }
       }
@@ -60,14 +57,14 @@ PowerModule::PowerModule( ModbusMaster *modbus )
 
    if ( m_numLocalSensors )
    {
-      PW_MSG( "Registered %d power sensors",m_numLocalSensors );
+      TVMG_MSG( "Registered %d power sensors",m_numLocalSensors );
       m_indicator = Indicator::getIndicator( Indicator::POWER,0 );
    }
 }
 
 PowerModule::~PowerModule()
 {
-   PW_DEBUG( "PowerModule::~PowerModule()" );
+   TVMG_DEBUG( "PowerModule::~PowerModule()" );
 }
 
 ModbusMaster *PowerModule::getModbus()
@@ -79,7 +76,7 @@ void PowerModule::initialise()
 {
    if ( !m_modbus )
    {
-      PW_DEBUG( "PowerModule::initialise() - no modbus" );
+      TVMG_DEBUG( "PowerModule::initialise() - no modbus" );
    }
 }
 
@@ -150,7 +147,7 @@ bool PowerModule::getPower( uint8_t index )
 
       if ( modbusResult != ModbusMaster::ku8MBSuccess )
       {
-         PW_WARN( "Failed to obtain power info for %s",name );
+         TVMG_WARN( "Failed to obtain power info for %s",name );
          m_sensors[ index ].m_data.m_energy = ENERGY_INVALID;
          m_sensors[ index ].m_data.m_power = POWER_INVALID;
       }
@@ -173,12 +170,12 @@ bool PowerModule::getPower( uint8_t index )
          float hz = m_modbus->getResponseBuffer( 7 ) / 10.0;
          float pf = m_modbus->getResponseBuffer( 8 ) / 100.00;
 
-         PW_DEBUG( "%s : %.0f W : %.0f Whr",name,power,energy );
+         TVMG_DEBUG( "%s : %.0f W : %.0f Whr",name,power,energy );
 
          m_sensors[ index ].m_data.m_energy = energy;
          m_sensors[ index ].m_data.m_power = power;
 
-         PW_DEBUG( "I [%.1f] : V [%.1f] : Freq [%.1f] : PowerFactor [%.1f]",current, voltage, hz, pf );
+         TVMG_DEBUG( "I [%.1f] : V [%.1f] : Freq [%.1f] : PowerFactor [%.1f]",current, voltage, hz, pf );
          readOk = true;
       }
       END_TIMING;

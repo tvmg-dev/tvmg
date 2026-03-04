@@ -1,9 +1,9 @@
 #if defined(TVMG_WAVESHARE_LCDB)
 
-#include "LCDIndicator.h"
-#include "src/core/utils.h"
+#include "src/config/Config.h"
 
-#include "LCDDisplay.h"
+#include "src/userio/LCDIndicator.h"
+#include "src/userio/LCDDisplay.h"
 
 static LcdDisplay *s_display = nullptr;
 
@@ -40,12 +40,12 @@ LCDIndicator::LCDIndicator( IndicatorType type, uint32_t id )
          m_led = 0;
          break;
    }
-   PW_MSG( "LCDIndicator constructed type=%d id=%u", type, id );
+   TVMG_MSG( "LCDIndicator constructed type=%d id=%u", type, id );
 }
 
 LCDIndicator::~LCDIndicator()
 {
-   PW_MSG( "LCDIndicator destroyed" );
+   TVMG_MSG( "LCDIndicator destroyed" );
 }
 
 void LCDIndicator::doOn()

@@ -3,7 +3,7 @@
 
 #if defined(TVMG_WAVESHARE_LCDB)
 
-#include "Indicator.h"
+#include "src/userio/Indicator.h"
 
 class LCDIndicator : public Indicator
 {

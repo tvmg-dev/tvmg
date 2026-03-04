@@ -14,18 +14,16 @@
 #include <Update.h>
 #include <time.h>
 
-#include "WebServer.h"
-#include "html/edit_html.h"
-#include "html/manager_html.h"
-#include "html/reboot_html.h"
-#include "html/history_html.h"
-#include "html/common_css.h"
-
 #include "src/config/Config.h"
-#include "src/core/utils.h"
 #include "src/core/Measurement.h"
 
-#include "Networking.h"
+#include "src/network/WebServer.h"
+#include "src/network/html/edit_html.h"
+#include "src/network/html/manager_html.h"
+#include "src/network/html/reboot_html.h"
+#include "src/network/html/history_html.h"
+#include "src/network/html/common_css.h"
+#include "src/network/Networking.h"
 
 const char status_html[] = R"rawliteral(
 <!DOCTYPE html>
@@ -214,7 +212,7 @@ bool  isHiddenExtension( const String &filename )
       add = "visible";
    }
    msg += add;
-   PW_DEBUG( msg.c_str() );
+   TVMG_DEBUG( msg.c_str() );
 
    return isHidden;
 }
@@ -564,13 +562,13 @@ WebServer::WebServer( Networking *networking )
           m_hiddenPage(),
           m_downloadFile()
 {
-   PW_DEBUG( "WebServer()" );
+   TVMG_DEBUG( "WebServer()" );
 
    s_networking = m_networking;
 
    if ( !tvmgFileSys )
    {
-      PW_ERROR( "No filesystem for webserver" );
+      TVMG_ERROR( "No filesystem for webserver" );
    }
    else
    {
@@ -591,13 +589,13 @@ WebServer::WebServer( Networking *networking )
          m_hiddenPage += String( ra,DEC );
       }
 
-      PW_DEBUG( "Debug Page at %s",m_hiddenPage.c_str() );
+      TVMG_DEBUG( "Debug Page at %s",m_hiddenPage.c_str() );
    }
 }
 
 WebServer::~WebServer()
 {
-   PW_DEBUG( "~WebServer()" );
+   TVMG_DEBUG( "~WebServer()" );
 
    delete m_otaEvents;
    delete m_statusEvents;
@@ -659,7 +657,7 @@ void WebServer::generateOptionsSection()
 
 void WebServer::initialise()
 {
-   PW_DEBUG( "WebServer::initialise" );
+   TVMG_DEBUG( "WebServer::initialise" );
 
    generateOptionsSection();
 
@@ -673,7 +671,7 @@ void WebServer::updateClients( const char *data )
 {
    if ( m_statusEvents )
    {
-      PW_MSG( "SSE update to web clients" );
+      TVMG_MSG( "SSE update to web clients" );
       m_statusEvents->send( data,NULL,millis() );
    }
 }
@@ -686,7 +684,7 @@ void WebServer::setupAsyncServer()
 
    if ( !m_webServer )
    {
-      PW_ERROR( ("Failed to create web server") );
+      TVMG_ERROR( ("Failed to create web server") );
    }
    else
    {
@@ -740,7 +738,7 @@ void WebServer::setupOTAHandler()
 
          if (Networking::takeNetworkMutex(10000) == 1)
          {
-            PW_DEBUG( "OTA: Starting update for %s", filename.c_str() );
+            TVMG_DEBUG( "OTA: Starting update for %s", filename.c_str() );
             m_networking->setUpdateProgress(0, filename, false);
 
             // Reset client via SSE
@@ -752,7 +750,7 @@ void WebServer::setupOTAHandler()
 
          if (!startedOk)
          {
-            PW_ERROR( "Failed to start update" );
+            TVMG_ERROR( "Failed to start update" );
             m_networking->setUpdateProgress( -1, filename, false );
             Networking::releaseNetworkMutex();
             // Signal failure to the client immediately
@@ -812,7 +810,7 @@ void WebServer::setupOTAHandler()
                m_otaEvents->send( "100", "ota_progress", millis() );
                m_otaEvents->send( "reboot", "ota_state", millis() );
                m_networking->setUpdateProgress(index + len, filename, true);
-               PW_MSG( "OTA Success. Total written: %d bytes", (buffs * SCRATCH_BUFFER_SIZE) + updatePos );
+               TVMG_MSG( "OTA Success. Total written: %d bytes", (buffs * SCRATCH_BUFFER_SIZE) + updatePos );
             }
             else
             {
@@ -822,7 +820,7 @@ void WebServer::setupOTAHandler()
                m_otaEvents->send( sseFailMsg.c_str(), "ota_state", millis() );
 
                m_networking->setUpdateProgress(-1, filename, true);
-               PW_ERROR( "OTA Failed %s",errorStr.c_str() );
+               TVMG_ERROR( "OTA Failed %s",errorStr.c_str() );
             }
          }
       }
@@ -837,7 +835,7 @@ void WebServer::setupFilesHandlers()
 
       String fileName = "/" + request->getParam(param_edit_path)->value();
 
-      PW_DEBUG( "Editing %s",fileName.c_str() );
+      TVMG_DEBUG( "Editing %s",fileName.c_str() );
       savePath = fileName;
       textareaContent = readFile(tvmgFileSys, fileName.c_str());
       request->send_P(200, "text/html", edit_html, processor);
@@ -852,7 +850,7 @@ void WebServer::setupFilesHandlers()
          const AsyncWebParameter* param = request->getParam( static_cast<size_t> (0) );
          if ( param && ( param->name() == String( param_edit_textarea ) ) )
          {
-            PW_DEBUG( "Saving %d bytes to %s",param->value().length(),savePath.c_str() );
+            TVMG_DEBUG( "Saving %d bytes to %s",param->value().length(),savePath.c_str() );
             writeFile( tvmgFileSys, savePath.c_str(), param->value().c_str() );
          }
       }
@@ -865,11 +863,11 @@ void WebServer::setupFilesHandlers()
       AUTHENTICATE;
 
       String fileName = "/" + request->getParam(param_delete_path)->value();
-      PW_DEBUG( "Deleting %s",fileName.c_str() );
+      TVMG_DEBUG( "Deleting %s",fileName.c_str() );
 
       if ( ! tvmgFileSys.remove(fileName.c_str()) )
       {
-         PW_WARN( "Failed to delete %s",fileName.c_str() );
+         TVMG_WARN( "Failed to delete %s",fileName.c_str() );
       }
 
       request->redirect("/manager");
@@ -880,7 +878,7 @@ void WebServer::setupFilesHandlers()
       AUTHENTICATE;
 
       String fileName = "/" + request->getParam(param_download_path)->value();
-      PW_DEBUG( "Downloading %s",fileName.c_str() );
+      TVMG_DEBUG( "Downloading %s",fileName.c_str() );
 
       m_downloadFile = tvmgFileSys.open( fileName,"r" );
 
@@ -927,7 +925,7 @@ void WebServer::setupControlHandlers()
    {
       AUTHENTICATE;
 
-      PW_WARN( "Resetting..." );
+      TVMG_WARN( "Resetting..." );
 
       // reset files (set to defaults) and set factor reset marker, then reboot
       resetFS();
@@ -1029,7 +1027,7 @@ void WebServer::setupMiscHandlers()
 
    m_webServer->on( LGSTATUS_LOG_HTML,HTTP_GET,[this](AsyncWebServerRequest *request )
    {
-      PW_DEBUG( "Get %s",LGSTATUS_LOG_HTML );
+      TVMG_DEBUG( "Get %s",LGSTATUS_LOG_HTML );
       if ( Networking::takeNetworkMutex(10000) == 1 )
       {
          AsyncFileResponseWithMutex *response = new AsyncFileResponseWithMutex( tvmgFileSys,LGSTATUS_LOG_HTML,"text/html" );
@@ -1040,7 +1038,7 @@ void WebServer::setupMiscHandlers()
             Networking::releaseNetworkMutex();
             request->send( 404 );
 
-            PW_WARN( "GET %s failed, 404",LGSTATUS_LOG_HTML );
+            TVMG_WARN( "GET %s failed, 404",LGSTATUS_LOG_HTML );
         }
         else
         {
@@ -1052,13 +1050,13 @@ void WebServer::setupMiscHandlers()
       {
          request->send(503, "text/plain", "Log File Busy");
 
-         PW_WARN( "Can't acquire nw mutex for %s GET",LGSTATUS_LOG_HTML );
+         TVMG_WARN( "Can't acquire nw mutex for %s GET",LGSTATUS_LOG_HTML );
       }
    });
 
    m_webServer->on( LGSTATUS_YESTERDAY,HTTP_GET,[this](AsyncWebServerRequest *request )
    {
-      PW_DEBUG( "Get %s",LGSTATUS_YESTERDAY );
+      TVMG_DEBUG( "Get %s",LGSTATUS_YESTERDAY );
       if ( Networking::takeNetworkMutex(10000) == 1 )
       {
          AsyncFileResponseWithMutex *response = new AsyncFileResponseWithMutex( tvmgFileSys,LGSTATUS_YESTERDAY,"text/html" );
@@ -1069,7 +1067,7 @@ void WebServer::setupMiscHandlers()
             Networking::releaseNetworkMutex();
             request->send( 404 );
 
-            PW_WARN( "GET %s failed, 404",LGSTATUS_LOG_HTML );
+            TVMG_WARN( "GET %s failed, 404",LGSTATUS_LOG_HTML );
         }
         else
         {
@@ -1080,7 +1078,7 @@ void WebServer::setupMiscHandlers()
       {
          request->send(503, "text/plain", "Rollover Log File Busy");
 
-         PW_WARN( "Can't acquire nw mutex for %s GET",LGSTATUS_LOG_HTML );
+         TVMG_WARN( "Can't acquire nw mutex for %s GET",LGSTATUS_LOG_HTML );
       }
    });
 
@@ -1122,7 +1120,7 @@ void  WebServer::handleCheckbox( const String &item,const String &state )
 {
    bool active = (state == "1" );
 
-   PW_MSG( "Checkbox item %s state (%s)",item.c_str(),state.c_str() );
+   TVMG_MSG( "Checkbox item %s state (%s)",item.c_str(),state.c_str() );
 
    if ( item == "ssaver" )
    {

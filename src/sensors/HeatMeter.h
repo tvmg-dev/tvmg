@@ -1,10 +1,8 @@
 #ifndef HEAT_METER_H
 #define HEAT_METER_H
 
-#include "src/core/utils.h"
-#include "TemperatureModule.h"
-
-#include "GrundfosUPS3.h"
+#include "src/sensors/TemperatureModule.h"
+#include "src/sensors/GrundfosUPS3.h"
 
 #include "src/userio/Indicator.h"
 

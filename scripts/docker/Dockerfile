@@ -2,7 +2,7 @@ FROM debian:bookworm-slim
 
 # 1. System dependencies
 RUN apt-get update && apt-get install -y \
-    curl wget python3 python3-pip python3-serial ca-certificates unzip patch \
+    curl wget python3 python3-pip python3-serial ca-certificates unzip patch sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Filesystem Tools
@@ -17,22 +17,30 @@ RUN wget https://github.com/igrr/mkspiffs/releases/download/0.2.3/mkspiffs-0.2.3
     rm -rf mkspiffs*
 
 # 3. Arduino Setup
+ENV ARDUINO_DIRECTORIES_DATA=/opt/arduino
+ENV ARDUINO_DIRECTORIES_DOWNLOADS=/opt/arduino/staging
+ENV ARDUINO_DIRECTORIES_USER=/opt/arduino/user
+RUN mkdir -p /opt/arduino
+
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh -s 1.1.1
 RUN arduino-cli config init && \
     arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json && \
     arduino-cli core update-index && \
     arduino-cli core install esp32:esp32@3.1.0 && \
-    rm -rf /root/.arduino15/staging/packages && \
-    chmod 711 /root && chmod -R a+rX /root/.arduino15
+    rm -rf /opt/arduino/staging/packages
 
 # 4. Apply Patches
-# Using the framework root path verified in our test
 COPY patches/ /tmp/patches/
-
-RUN cd /root/.arduino15/packages/esp32/hardware/esp32/3.1.0 && \
+RUN cd /opt/arduino/packages/esp32/hardware/esp32/3.1.0 && \
     patch -p0 < /tmp/patches/esp-asyncudp.patch && \
     patch -p0 < /tmp/patches/esp-network.patch && \
     rm -rf /tmp/patches
+
+# 5. Punch Permission Holes
+# This allows non-root users to copy their own boards/partitions into the core
+RUN cd /opt/arduino/packages/esp32/hardware/esp32/3.1.0 && \
+    chmod 777 . && \
+    chmod 777 tools/partitions
 
 RUN mkdir -p /working && chmod 777 /working
 WORKDIR /working

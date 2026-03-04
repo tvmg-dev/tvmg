@@ -7,12 +7,11 @@
 #include <rtc_wdt.h>
 #include <cJSON.h>
 
-#include "Config.h"
+#include "src/config/Config.h"
 
 #include "src/userio/Indicator.h"
-#include "src/core/utils.h"
 
-const char *k_versionStr = "v26.03.01";
+const char *k_versionStr = "v26.03.02a";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";
@@ -204,7 +203,7 @@ void  replaceRegistryValue( uint8_t index,char *value )
 {
    if ( index < Config::numRegistryEntries && strcmp( Config::m_entries[ index ].value,value ) != 0 )
    {
-      PW_MSG( "Replace registry :  %s : overriding %s with %s",Config::m_entries[ index ].key,
+      TVMG_MSG( "Replace registry :  %s : overriding %s with %s",Config::m_entries[ index ].key,
                      Config::m_entries[ index ].value, value );
 
       strcpy( Config::m_entries[ index ].value,value );
@@ -226,7 +225,7 @@ void  setRegistryEntry( char *key,char *value )
 
       stripOutQuotes( Config::m_entries[ Config::numRegistryEntries ].value );
 
-      PW_DEBUG( "Set Registry : %s : %s",key,Config::m_entries[ Config::numRegistryEntries ].value );
+      TVMG_DEBUG( "Set Registry : %s : %s",key,Config::m_entries[ Config::numRegistryEntries ].value );
 
       Config::numRegistryEntries++;
    }
@@ -238,7 +237,7 @@ int32_t getRegistryInt( char *key )
 
    if ( index == -1 )
    {
-//      PW_DEBUG( "Registry: no entry for %s",key );
+//      TVMG_DEBUG( "Registry: no entry for %s",key );
       return -1;
    }
    else
@@ -253,7 +252,7 @@ char *getRegistryString( char *key )
 
    if ( index == -1 )
    {
-//      PW_DEBUG( "Registry: no entry for %s",key );
+//      TVMG_DEBUG( "Registry: no entry for %s",key );
       return defaultConfigString;
    }
    else
@@ -277,15 +276,15 @@ Config::Config()
 
    if ( tvmgFileSys )
    {
-      PW_MSG( "Filesystem is ok" );
+      TVMG_MSG( "Filesystem is ok" );
       // clear any previous boot log so we start fresh each run
       tvmgFileSys.remove( EARLY_BOOT_LOGFILE );
    }
 
-   PW_MSG( "Config():" );
-   PW_MSG( "  FS : used %d of %d",tvmgFileSys.usedBytes(),tvmgFileSys.totalBytes() );
-   PW_MSG( "  Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
-   PW_MSG( "  Firmware %s",k_versionStr );
+   TVMG_MSG( "Config():" );
+   TVMG_MSG( "  FS : used %d of %d",tvmgFileSys.usedBytes(),tvmgFileSys.totalBytes() );
+   TVMG_MSG( "  Chip Model : %s [%d]", ESP.getChipModel(),ESP.getChipRevision() );
+   TVMG_MSG( "  Firmware %s",k_versionStr );
 }
 
 Config::~Config()
@@ -321,14 +320,14 @@ bool Config::migrateFromFlatFile()
 {
    if ( !tvmgFileSys )
    {
-      PW_WARN( "migrateFromFlatFile() : No filesystem !" );
+      TVMG_WARN( "migrateFromFlatFile() : No filesystem !" );
       return false;
    }
 
    File srcFile = tvmgFileSys.open( FLAT_CONFIG_FILENAME, FILE_READ );
    if ( !srcFile )
    {
-      PW_WARN( "migrateFromFlatFile() : Can't open %s",FLAT_CONFIG_FILENAME );
+      TVMG_WARN( "migrateFromFlatFile() : Can't open %s",FLAT_CONFIG_FILENAME );
       return false;
    }
 
@@ -337,7 +336,7 @@ bool Config::migrateFromFlatFile()
    if ( !root )
    {
       srcFile.close();
-      PW_ERROR( "migrateFromFlatFile() : Failed to create root JSON" );
+      TVMG_ERROR( "migrateFromFlatFile() : Failed to create root JSON" );
       return false;
    }
 
@@ -403,11 +402,11 @@ bool Config::migrateFromFlatFile()
                }
 
                numMigrated++;
-               PW_DEBUG( "Migrated: %s → %s.%s", key, mapping->parent1, mapping->parent2 );
+               TVMG_DEBUG( "Migrated: %s → %s.%s", key, mapping->parent1, mapping->parent2 );
             }
             else
             {
-               PW_WARN( "migrateFromFlatFile(): Unknown key: %s", key );
+               TVMG_WARN( "migrateFromFlatFile(): Unknown key: %s", key );
             }
          }
       }
@@ -420,7 +419,7 @@ bool Config::migrateFromFlatFile()
    if ( !jsonString )
    {
       cJSON_Delete( root );
-      PW_ERROR( "migrateFromFlatFile() : Failed to serialize JSON" );
+      TVMG_ERROR( "migrateFromFlatFile() : Failed to serialize JSON" );
       return false;
    }
 
@@ -429,7 +428,7 @@ bool Config::migrateFromFlatFile()
    {
       cJSON_free( jsonString );
       cJSON_Delete( root );
-      PW_ERROR( "migrateFromFlatFile() : Can't create %s",JSON_CONFIG_FILENAME );
+      TVMG_ERROR( "migrateFromFlatFile() : Can't create %s",JSON_CONFIG_FILENAME );
       return false;
    }
 
@@ -441,13 +440,13 @@ bool Config::migrateFromFlatFile()
 
    if ( written > 0 )
    {
-      PW_MSG( "migrateFromFlatFile() : Successfully migrated %d keys to %s", numMigrated,JSON_CONFIG_FILENAME );
+      TVMG_MSG( "migrateFromFlatFile() : Successfully migrated %d keys to %s", numMigrated,JSON_CONFIG_FILENAME );
       tvmgFileSys.remove( FLAT_CONFIG_FILENAME );
       return true;
    }
    else
    {
-      PW_ERROR( "migrateFromFlatFile() : Failed to write JSON file" );
+      TVMG_ERROR( "migrateFromFlatFile() : Failed to write JSON file" );
       return false;
    }
 }
@@ -516,7 +515,7 @@ bool Config::loadFromJSON()
 
    if ( numLoaded > 0 )
    {
-      PW_MSG( "loadFromJSON() : Successfully loaded %d keys from /config.json", numLoaded );
+      TVMG_MSG( "loadFromJSON() : Successfully loaded %d keys from /config.json", numLoaded );
       return true;
    }
 
@@ -527,25 +526,25 @@ bool  Config::readRegistryFromFile( void )
 {
    if ( !tvmgFileSys )
    {
-      PW_WARN( "readFromFile() : No filesystem !" );
+      TVMG_WARN( "readFromFile() : No filesystem !" );
       return false;
    }
 
    // First, try to load from JSON config (preferred format)
    if ( tvmgFileSys.exists( JSON_CONFIG_FILENAME ) )
    {
-      PW_MSG( "readRegistryFromFile() : Found %s, loading from JSON",JSON_CONFIG_FILENAME );
+      TVMG_MSG( "readRegistryFromFile() : Found %s, loading from JSON",JSON_CONFIG_FILENAME );
       if ( loadFromJSON() )
       {
          return true;
       }
-      PW_WARN( "readRegistryFromFile() : JSON load failed, falling back to flat file" );
+      TVMG_WARN( "readRegistryFromFile() : JSON load failed, falling back to flat file" );
    }
 
    // If config.json doesn't exist, check if config.dat exists
    if ( tvmgFileSys.exists( FLAT_CONFIG_FILENAME ) )
    {
-      PW_MSG( "readRegistryFromFile() : Found %s",FLAT_CONFIG_FILENAME );
+      TVMG_MSG( "readRegistryFromFile() : Found %s",FLAT_CONFIG_FILENAME );
 
       // Load from the flat file first
       bool flatFileOk = readRegistryFromFlatFile();
@@ -553,26 +552,26 @@ bool  Config::readRegistryFromFile( void )
       if ( flatFileOk )
       {
          // Try to migrate to JSON for future use
-         PW_MSG( "readRegistryFromFile() : Flat file loaded successfully, migrating to JSON..." );
+         TVMG_MSG( "readRegistryFromFile() : Flat file loaded successfully, migrating to JSON..." );
          if ( migrateFromFlatFile() )
          {
-            PW_MSG( "readRegistryFromFile() : Migration to %s successful",JSON_CONFIG_FILENAME );
+            TVMG_MSG( "readRegistryFromFile() : Migration to %s successful",JSON_CONFIG_FILENAME );
          }
          else
          {
-            PW_WARN( "readRegistryFromFile() : Migration to JSON failed, but flat file is available" );
+            TVMG_WARN( "readRegistryFromFile() : Migration to JSON failed, but flat file is available" );
          }
 
          return true;
       }
       else
       {
-         PW_ERROR( "readRegistryFromFile() : Failed to load from flat file" );
+         TVMG_ERROR( "readRegistryFromFile() : Failed to load from flat file" );
          return false;
       }
    }
 
-   PW_ERROR( "readRegistryFromFile() : Neither %s nor %s found",JSON_CONFIG_FILENAME,FLAT_CONFIG_FILENAME );
+   TVMG_ERROR( "readRegistryFromFile() : Neither %s nor %s found",JSON_CONFIG_FILENAME,FLAT_CONFIG_FILENAME );
    return false;
 }
 
@@ -582,7 +581,7 @@ bool  Config::readRegistryFromFlatFile( void )
 
    if ( !tvmgFileSys )
    {
-      PW_WARN( "readRegistryFromFlatFile() : No filesystem !" );
+      TVMG_WARN( "readRegistryFromFlatFile() : No filesystem !" );
       return false;
    }
 
@@ -590,7 +589,7 @@ bool  Config::readRegistryFromFlatFile( void )
 
    if ( !file )
    {
-      PW_WARN( "%s can't open", FLAT_CONFIG_FILENAME );
+      TVMG_WARN( "%s can't open", FLAT_CONFIG_FILENAME );
       return false;
    }
 
@@ -631,7 +630,7 @@ bool  Config::readRegistryFromFlatFile( void )
 
    if ( numLines == MAX_REGISTRY_ENTRIES )
    {
-      PW_WARN( "Read maximum %d entries from %s", numLines, FLAT_CONFIG_FILENAME );
+      TVMG_WARN( "Read maximum %d entries from %s", numLines, FLAT_CONFIG_FILENAME );
    }
 
    return( numLines > 0 );
@@ -663,7 +662,7 @@ void  Config::setFactoryReset()
    Preferences pref;
    if ( !pref.begin( k_nvsNamespace ) )
    {
-      PW_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+      TVMG_ERROR( "Failed to start nvs %s",k_nvsNamespace );
    }
    else
    {
@@ -691,7 +690,7 @@ bool  Config::getPersistentInt( const String &key,int32_t *value,int32_t defValu
 
    if ( !pref.begin( k_nvsNamespace ) )
    {
-      PW_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+      TVMG_ERROR( "Failed to start nvs %s",k_nvsNamespace );
    }
    else
    {
@@ -711,7 +710,7 @@ void  Config::setPersistentInt( const String &key,int32_t value )
 
    if ( !pref.begin( k_nvsNamespace ) )
    {
-      PW_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+      TVMG_ERROR( "Failed to start nvs %s",k_nvsNamespace );
    }
    else
    {
@@ -720,7 +719,7 @@ void  Config::setPersistentInt( const String &key,int32_t value )
 
       if ( ret != 4 )
       {
-         PW_ERROR( "Failed to write %d to %s",value,key.c_str() );
+         TVMG_ERROR( "Failed to write %d to %s",value,key.c_str() );
       }
 
       pref.end();
@@ -785,15 +784,15 @@ String  Config::getRebootReason( RebootType *type )
 
    appReason = getAppRebootReason( reboot );
 
-   PW_MSG( "\n---------INITIAL------------" );
-   PW_MSG( "ESP32 Reset    : %s",getESPRebootReason( espReason ).c_str() );
-   PW_MSG( "ESP32 Code     : %d",espReason );
-   PW_MSG( "Current Time   : %u",secs );
-   PW_MSG( "Last Duration  : %d\n",lastCycleSecs );
-   PW_MSG( "App Reset      : %s",appReason.c_str() );
-   PW_MSG( "Soft Resets    : %u",s_softResets );
-   PW_MSG( "Last Reset @   : %u",s_lastResetSeconds );
-   PW_MSG( "-----------------------------\n" );
+   TVMG_MSG( "\n---------INITIAL------------" );
+   TVMG_MSG( "ESP32 Reset    : %s",getESPRebootReason( espReason ).c_str() );
+   TVMG_MSG( "ESP32 Code     : %d",espReason );
+   TVMG_MSG( "Current Time   : %u",secs );
+   TVMG_MSG( "Last Duration  : %d\n",lastCycleSecs );
+   TVMG_MSG( "App Reset      : %s",appReason.c_str() );
+   TVMG_MSG( "Soft Resets    : %u",s_softResets );
+   TVMG_MSG( "Last Reset @   : %u",s_lastResetSeconds );
+   TVMG_MSG( "-----------------------------\n" );
 
    // now set adjust our reboot marker for this cycle based on ESP code
 
@@ -830,7 +829,7 @@ String  Config::getRebootReason( RebootType *type )
 
    if ( reboot == POWER_CYCLE || reboot == SERVER_OTA_UPDATE || reboot == SERVER_REBOOT  || reboot == SERVER_RESET )
    {
-      PW_DEBUG( "Resetting soft reboot data" );
+      TVMG_DEBUG( "Resetting soft reboot data" );
       s_softResets = 0;
       s_earlyResets = 0;
       lastCycleSecs = 0;
@@ -845,7 +844,7 @@ String  Config::getRebootReason( RebootType *type )
 
    if ( lastCycleSecs > MINIMUM_RUNTIME_SECS )
    {
-      PW_DEBUG( "Long last cycle, resetting data" );
+      TVMG_DEBUG( "Long last cycle, resetting data" );
       s_softResets = 0;
       s_earlyResets = 0;
    }
@@ -854,20 +853,20 @@ String  Config::getRebootReason( RebootType *type )
 
    s_softResets++;
 
-   PW_MSG( "\n-----------NEW---------------" );
-   PW_MSG( "ESP32 Reset    : %s",getESPRebootReason( espReason ).c_str() );
-   PW_MSG( "ESP32 Code     : %d",espReason );
-   PW_MSG( "Current Time   : %u",secs );
-   PW_MSG( "Last Duration  : %d\n",lastCycleSecs );
-   PW_MSG( "App Reset      : %s",appReason.c_str() );
-   PW_MSG( "Soft Resets    : %u",s_softResets );
-   PW_MSG( "Last Reset @   : %u",s_lastResetSeconds );
-   PW_MSG( "Early Resets   : %u",s_earlyResets );
-   PW_MSG( "-----------------------------\n" );
+   TVMG_MSG( "\n-----------NEW---------------" );
+   TVMG_MSG( "ESP32 Reset    : %s",getESPRebootReason( espReason ).c_str() );
+   TVMG_MSG( "ESP32 Code     : %d",espReason );
+   TVMG_MSG( "Current Time   : %u",secs );
+   TVMG_MSG( "Last Duration  : %d\n",lastCycleSecs );
+   TVMG_MSG( "App Reset      : %s",appReason.c_str() );
+   TVMG_MSG( "Soft Resets    : %u",s_softResets );
+   TVMG_MSG( "Last Reset @   : %u",s_lastResetSeconds );
+   TVMG_MSG( "Early Resets   : %u",s_earlyResets );
+   TVMG_MSG( "-----------------------------\n" );
 
    if ( s_softResets >= ALLOWED_FAST_RESETS )
    {
-      PW_ERROR( "Too many fast resets" );
+      TVMG_ERROR( "Too many fast resets" );
       m_wasFastReboot = true;
    }
 
@@ -887,7 +886,7 @@ bool Config::wasFastReboot()
 
 void hwReset()
 {
-   PW_MSG( "HW Reset" );
+   TVMG_MSG( "HW Reset" );
 
    // Code essentially from https://github.com/espressif/arduino-esp32/issues/10795
    // we trigger a RTC watchdog in 250 ms
@@ -906,7 +905,7 @@ void hwReset()
 
    delay( 500 );
 
-   PW_DEBUG( "out hwReset" );
+   TVMG_DEBUG( "out hwReset" );
 }
 
 void reboot()

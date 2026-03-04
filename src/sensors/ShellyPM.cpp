@@ -2,11 +2,9 @@
 #include <HTTPClient.h>
 #include <cJSON.h>
 
-#include "ShellyPM.h"
-#include "PowerModule.h"
+#include "src/sensors/PowerModule.h"
 
-#include "src/config/hwconfig.h"
-#include "src/config/Config.h"
+#include "src/sensors/ShellyPM.h"
 
 #define POWER_MIN_SAMPLING_PERIOD_MS 15000
 
@@ -20,8 +18,8 @@ ShellyPowerModule::ShellyPowerModule()
              m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS ),
              m_indicator( nullptr )
 {
-   PW_DEBUG( "ShellyPowerModule::ShellyPowerModule()" );
-   PW_MSG( "Shelly Power Module Startup" );
+   TVMG_DEBUG( "ShellyPowerModule::ShellyPowerModule()" );
+   TVMG_MSG( "Shelly Power Module Startup" );
 
    for ( int i = 0; i < MAX_POWER_SENSORS; i++ )
    {
@@ -58,7 +56,7 @@ ShellyPowerModule::ShellyPowerModule()
             }
             else
             {
-               PW_ERROR( "Unknown Shelly model" );
+               TVMG_ERROR( "Unknown Shelly model" );
             }
 
             if ( pwrSensor->m_model != UNKNOWN )
@@ -71,11 +69,11 @@ ShellyPowerModule::ShellyPowerModule()
 
                if ( ! pwrSensor->m_ipAddress.fromString( getStringFromcJSON( sensor,"ipAddress" ) ) )
                {
-                  PW_ERROR( "Failed to get Shelly IP address" );
+                  TVMG_ERROR( "Failed to get Shelly IP address" );
                }
                else if ( pwrSensor->m_model == EM && pwrSensor->m_meter == INVALID_EM_METER )
                {
-                  PW_ERROR( "Shelly EM meter invalid" );
+                  TVMG_ERROR( "Shelly EM meter invalid" );
                }
                else
                {
@@ -87,8 +85,8 @@ ShellyPowerModule::ShellyPowerModule()
                   // Add name to sensor name map
                   setSensorName( SHELLYPM,pwrSensor->m_data.m_id,name );
 
-                  PW_DEBUG( "Power: name %s model %u at %s",name.c_str(),pwrSensor->m_model,pwrSensor->m_ipAddress.toString().c_str() );
-                  PW_DEBUG( "Id %u,  feed %u",pwrSensor->m_data.m_id,pwrSensor->m_data.m_emonFeedId );
+                  TVMG_DEBUG( "Power: name %s model %u at %s",name.c_str(),pwrSensor->m_model,pwrSensor->m_ipAddress.toString().c_str() );
+                  TVMG_DEBUG( "Id %u,  feed %u",pwrSensor->m_data.m_id,pwrSensor->m_data.m_emonFeedId );
                   m_numSensors++;
                }
             }
@@ -98,14 +96,14 @@ ShellyPowerModule::ShellyPowerModule()
 
    if ( m_numSensors )
    {
-      PW_MSG( "Registered %d Shelly power sensors",m_numSensors );
+      TVMG_MSG( "Registered %d Shelly power sensors",m_numSensors );
       m_indicator = Indicator::getIndicator( Indicator::POWER,1 );
    }
 }
 
 ShellyPowerModule::~ShellyPowerModule()
 {
-   PW_DEBUG( "ShellyPowerModule::~ShellyPowerModule()" );
+   TVMG_DEBUG( "ShellyPowerModule::~ShellyPowerModule()" );
 }
 
 void ShellyPowerModule::initialise()
@@ -235,12 +233,12 @@ bool ShellyPowerModule::getEM( PrivateSensor *sensor )
       cJSON_Delete( json );
    }
 
-   PW_DEBUG( "EM: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
+   TVMG_DEBUG( "EM: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
                                      sensor->m_data.m_power,sensor->m_data.m_energy );
 
    if ( !retVal )
    {
-      PW_ERROR( "Failed to get shelly %s",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str() );
+      TVMG_ERROR( "Failed to get shelly %s",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str() );
    }
 
    return retVal;
@@ -289,12 +287,12 @@ bool ShellyPowerModule::getEMG3( PrivateSensor *sensor )
       retVal = true;
    }
 
-   PW_DEBUG( "EMG3: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
+   TVMG_DEBUG( "EMG3: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
                                      sensor->m_data.m_power,sensor->m_data.m_energy );
 
    if ( !retVal )
    {
-      PW_ERROR( "Failed to get shelly %s",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str() );
+      TVMG_ERROR( "Failed to get shelly %s",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str() );
    }
 
    return retVal;
@@ -332,12 +330,12 @@ bool ShellyPowerModule::getPMG3( PrivateSensor *sensor )
       cJSON_Delete( json );
    }
 
-   PW_DEBUG( "PMG3: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
+   TVMG_DEBUG( "PMG3: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
                                      sensor->m_data.m_power,sensor->m_data.m_energy );
 
    if ( !retVal )
    {
-      PW_ERROR( "Failed to get shelly %s",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str() );
+      TVMG_ERROR( "Failed to get shelly %s",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str() );
    }
 
    return retVal;

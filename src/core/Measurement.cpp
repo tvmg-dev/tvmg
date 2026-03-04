@@ -4,8 +4,8 @@
 
 #include "src/config/Config.h"
 
-#include "Measurement.h"
-#include "Storage.h"
+#include "src/core/Measurement.h"
+#include "src/core/Storage.h"
 #include "src/network/Networking.h"
 #include "src/network/WebServer.h"
 
@@ -71,14 +71,14 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
              m_dailyEmonSent( 0 ),
              m_dailyEmonFailed( 0 )
 {
-   PW_DEBUG( "Measurement::Measurement()" );
-   PW_MSG( "Measurement Module Startup" );
+   TVMG_DEBUG( "Measurement::Measurement()" );
+   TVMG_MSG( "Measurement Module Startup" );
 
    int updateHour = GET_REGISTRY_INT( DAILY_EMAIL_HOUR );
    if ( updateHour >=0 && updateHour <= 23 )
    {
       m_dailyUpdateHour = updateHour;
-      PW_DEBUG( "Setting update hour to %u",m_dailyUpdateHour );
+      TVMG_DEBUG( "Setting update hour to %u",m_dailyUpdateHour );
    }
 
    s_instance = this;
@@ -86,7 +86,7 @@ Measurement::Measurement( TemperatureModule *tempModule, PowerModule *powerModul
 
 Measurement::~Measurement()
 {
-   PW_DEBUG( "Measurement::~Measurement()" );
+   TVMG_DEBUG( "Measurement::~Measurement()" );
 }
 
 Measurement   *Measurement::instance()
@@ -96,12 +96,12 @@ Measurement   *Measurement::instance()
 
 void  Measurement::initialise( void )
 {
-   PW_DEBUG( "Measurement::initialise" );
+   TVMG_DEBUG( "Measurement::initialise" );
 }
 
 void  Measurement::takeSample( void )
 {
-   PW_DEBUG( "Measurement::takeSample" );
+   TVMG_DEBUG( "Measurement::takeSample" );
    static uint sensorIndex = 0;
 
    uint32_t currentMS = millis();
@@ -123,7 +123,7 @@ void  Measurement::takeSample( void )
    // performing max processing in one call
    if ( sensorIndex == 0 )
    {
-      PW_MSG( "Sample : temperatures" );
+      TVMG_MSG( "Sample : temperatures" );
 
       i = 0;
       TempSensor *tempSensor;
@@ -135,12 +135,12 @@ void  Measurement::takeSample( void )
 
          m_newSample.m_tempSensors.push_back( *tempSensor );
 
-         PW_MSG( "%s [%u] feed %u temp %.2f",name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
+         TVMG_MSG( "%s [%u] feed %u temp %.2f",name,tempSensor->m_id,tempSensor->m_emonFeedId,tempSensor->m_temp );
       }
    }
    else if ( sensorIndex == 1 )
    {
-      PW_MSG( "Sample : power" );
+      TVMG_MSG( "Sample : power" );
 
       i = 0;
       PowerSensor *powerSensor;
@@ -157,7 +157,7 @@ void  Measurement::takeSample( void )
             m_heatPump->setCurrentKW( powerSensor->m_power );
          }
 
-         PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
+         TVMG_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,powerSensor->m_id,powerSensor->m_emonFeedId,powerSensor->m_power,powerSensor->m_energy );
       }
 
       i = 0;
@@ -175,13 +175,13 @@ void  Measurement::takeSample( void )
             m_heatPump->setCurrentKW( shellySensor->m_power );
          }
 
-         PW_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,shellySensor->m_id,shellySensor->m_emonFeedId,shellySensor->m_power,shellySensor->m_energy );
+         TVMG_MSG( "%s [%u] feed %u power %.0f energy %.0f",name,shellySensor->m_id,shellySensor->m_emonFeedId,shellySensor->m_power,shellySensor->m_energy );
       }
 
    }
    else if ( sensorIndex == 2 && m_heatPump )
    {
-      PW_MSG( "Sample : heat pump" );
+      TVMG_MSG( "Sample : heat pump" );
 
       i = 0;
       int regsOk = 0;
@@ -196,20 +196,20 @@ void  Measurement::takeSample( void )
 
          if ( lgRegister->m_isValid )
          {
-            PW_DEBUG( "LG: %s %.1f",name,lgRegister->m_value );
+            TVMG_DEBUG( "LG: %s %.1f",name,lgRegister->m_value );
             regsOk++;
          }
          else
          {
-            PW_DEBUG( "LG: %s invalid",name );
+            TVMG_DEBUG( "LG: %s invalid",name );
          }
       }
 
-      PW_MSG( "%d of %d LG registers ok",regsOk,i - 1 );
+      TVMG_MSG( "%d of %d LG registers ok",regsOk,i - 1 );
    }
    else if ( sensorIndex == 3 && m_heatMeterModule )
    {
-      PW_MSG( "Sample : heat meter" );
+      TVMG_MSG( "Sample : heat meter" );
 
       i = 0;
       HeatMeterSensor *heatMeterSensor;
@@ -221,7 +221,7 @@ void  Measurement::takeSample( void )
 
          m_newSample.m_heatMeterSensors.push_back( *heatMeterSensor );
 
-         PW_MSG( "%s %.1f W %.1f l/min",name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
+         TVMG_MSG( "%s %.1f W %.1f l/min",name,heatMeterSensor->m_power,heatMeterSensor->m_flowRate );
       }
    }
 
@@ -270,7 +270,7 @@ void  Measurement::takeSample( void )
    }
    else
    {
-      PW_DEBUG( "Measured, but not saved" );
+      TVMG_DEBUG( "Measured, but not saved" );
    }
 
    sensorIndex = (sensorIndex + 1) % 4;
@@ -488,12 +488,12 @@ char * Measurement::getSampleJSON()
 
    jsonString = cJSON_PrintUnformatted(root);
 
-   PW_DEBUG( "JSON: %s",jsonString );
+   TVMG_DEBUG( "JSON: %s",jsonString );
 
 exit:
    if ( failed )
    {
-      PW_ERROR( "Failed to generate sample json" );
+      TVMG_ERROR( "Failed to generate sample json" );
    }
 
    cJSON_Delete(root);
@@ -513,7 +513,7 @@ bool Measurement::shouldSendDailyUpdate()
 
       if ( m_dailyUpdated && timeInfo.tm_hour != m_dailyUpdateHour )
       {
-         PW_DEBUG( "Resetting daily update flag" );
+         TVMG_DEBUG( "Resetting daily update flag" );
          m_dailyUpdated = false;
       }
       else if ( timeInfo.tm_hour == m_dailyUpdateHour && !m_dailyUpdated && m_networking )
@@ -530,14 +530,14 @@ void  Measurement::sendDailyUpdate()
    char     line[ 128 ];
    String   thermometerStr,powerStr,lgStr,commsStr;
 
-   PW_MSG( "Sending daily update" );
+   TVMG_MSG( "Sending daily update" );
 
    for ( int i = 0; i < m_lastSample.m_tempSensors.size();i++ )
    {
       const TempSensor &sensor = m_lastSample.m_tempSensors[ i ];
       const char *name = getSensorName( THERM,sensor.m_id ).c_str();
 
-      PW_DEBUG( "TS %s %f %d",name,sensor.m_temp,sensor.m_emonFeedId );
+      TVMG_DEBUG( "TS %s %f %d",name,sensor.m_temp,sensor.m_emonFeedId );
       if ( sensor.m_temp > TEMPERATURE_INVALID && sensor.m_emonFeedId != 0 )
       {
          snprintf( line,sizeof(line),"%-30s : %4.1f\n",name,sensor.m_temp );
@@ -550,7 +550,7 @@ void  Measurement::sendDailyUpdate()
       const PowerSensor &sensor = m_lastSample.m_powerSensors[ i ];
       const char *name = getSensorName( POWER,sensor.m_id ).c_str();
 
-      PW_DEBUG( "PWR %s %f %d",name,sensor.m_power,sensor.m_emonFeedId );
+      TVMG_DEBUG( "PWR %s %f %d",name,sensor.m_power,sensor.m_emonFeedId );
       if ( sensor.m_power > POWER_INVALID && sensor.m_emonFeedId != 0 )
       {
          snprintf( line,sizeof(line),"%-30s : Power [%5.1f W] Energy [%5.1f kWhr]\n",name,sensor.m_power, sensor.m_energy / 1000.0 );
@@ -629,7 +629,7 @@ void  Measurement::sendDailyUpdate()
 
    if ( !tvmgFileSys )
    {
-      PW_WARN( "No FS" );
+      TVMG_WARN( "No FS" );
       return;
    }
 
@@ -642,12 +642,12 @@ void  Measurement::sendDailyUpdate()
    // remove yesterday's and we rename current status to yesterday's.
    if ( !tvmgFileSys.remove( LGSTATUS_YESTERDAY ) )
    {
-      PW_WARN( "Failed to remove %s",LGSTATUS_YESTERDAY );
+      TVMG_WARN( "Failed to remove %s",LGSTATUS_YESTERDAY );
    }
 
    if ( !tvmgFileSys.rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY ) )
    {
-      PW_WARN( "Failed to rename %s to %s",LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
+      TVMG_WARN( "Failed to rename %s to %s",LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
    }
 
    // Send the register log if it exists

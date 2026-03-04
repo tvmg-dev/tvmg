@@ -3,7 +3,7 @@
 
 #ifdef TVMG_OLED
 
-#include "Indicator.h"
+#include "src/userio/Indicator.h"
 
 class OledIndicator : public Indicator
 {

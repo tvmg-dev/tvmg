@@ -75,10 +75,9 @@
 #include <esp_lcd_panel_ops.h>  // Panel operations
 #include <esp_lcd_panel_rgb.h>  // RGB panel driver
 
-#include "LCDDisplay.h"
-
 #include "src/config/Config.h"
-#include "src/core/utils.h"
+
+#include "src/userio/LCDDisplay.h"
 
 // ---------------------------------------------------------------------------
 // LED status bar layout configuration
@@ -357,7 +356,7 @@ void setupWS()
    String initStr("Initializing LCD.  Free Heap : ");
    initStr += String(ESP.getFreeHeap());
 
-   PW_MSG(initStr.c_str());
+   TVMG_MSG(initStr.c_str());
 
    // Init I2C
 
@@ -425,7 +424,7 @@ void setupWS()
 
    if (esp_lcd_new_rgb_panel(&panel_config, &panel_handle) != ESP_OK)
    {
-      PW_ERROR("Failed to create new LCD panel");
+      TVMG_ERROR("Failed to create new LCD panel");
       goto exit;
    }
 
@@ -433,13 +432,13 @@ void setupWS()
 
    if (esp_lcd_panel_reset(panel_handle) != ESP_OK)
    {
-      PW_ERROR("Failed to reset LCD");
+      TVMG_ERROR("Failed to reset LCD");
       goto exit;
    }
 
    if (esp_lcd_panel_init(panel_handle) != ESP_OK)
    {
-      PW_ERROR("Failed to initialise LCD");
+      TVMG_ERROR("Failed to initialise LCD");
       goto exit;
    }
 
@@ -452,7 +451,7 @@ void setupWS()
 
       if (esp_lcd_rgb_panel_register_event_callbacks(panel_handle, &callbacks, NULL) != ESP_OK)
       {
-         PW_ERROR("Failed to register LCD callbacks");
+         TVMG_ERROR("Failed to register LCD callbacks");
          goto exit;
       }
    }
@@ -461,12 +460,12 @@ void setupWS()
 
    if (esp_lcd_panel_disp_on_off(panel_handle, true) != ESP_OK)
    {
-      PW_ERROR("Failed to turn LCD on");
+      TVMG_ERROR("Failed to turn LCD on");
       goto exit;
    }
 
    initStr = "LCD initialized. Free heap: " + String(ESP.getFreeHeap());
-   PW_MSG(initStr.c_str());
+   TVMG_MSG(initStr.c_str());
 exit:
 }
 
@@ -641,7 +640,7 @@ LcdDisplay* LcdDisplay::getInstance()
 
 void LcdDisplay::initialise()
 {
-   PW_MSG("initialise LCD display");
+   TVMG_MSG("initialise LCD display");
    setupWS();
    startHeatbeatTimer();
 }
@@ -652,7 +651,7 @@ void  LcdDisplay::updateLine( uint8_t lineNum,const char *line,bool isForLog )
 
    if ( isForLog )
    {
-      PW_DEBUG( line );
+      TVMG_DEBUG( line );
    }
 }
 

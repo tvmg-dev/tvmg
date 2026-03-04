@@ -3,7 +3,7 @@
 
 #include <ModbusMaster.h>
 
-#include "src/core/utils.h"
+#include "src/config/Config.h"
 
 #include "src/userio/Indicator.h"
 

@@ -6,12 +6,9 @@
 
 #include <U8g2lib.h>
 
-#include "OledDisplay.h"
+#include "src/userio/OledDisplay.h"
 
 #include "src/config/Config.h"
-#include "src/config/hwconfig.h"
-
-#include "src/core/utils.h"
 #include "src/core/Storage.h"
 
 #include "src/core/Measurement.h"
@@ -89,13 +86,13 @@ OledDisplay::OledDisplay() : Display(),
         m_startTime(0),
         m_mutex(nullptr)
 {
-   PW_MSG( "OLED Display Startup" );
+   TVMG_MSG( "OLED Display Startup" );
 
    // create a recursive mutex for protecting i2c access to the OLED board
    m_mutex = xSemaphoreCreateRecursiveMutex();
    if ( m_mutex == nullptr )
    {
-      PW_ERROR( "Failed to create OLED mutex" );
+      TVMG_ERROR( "Failed to create OLED mutex" );
    }
 
    m_oled = new OLED_BOARD( U8G2_R0,U8X8_PIN_NONE,hwConfig->OLEDClkGPIO,hwConfig->OLEDDataGPIO );
@@ -144,7 +141,7 @@ void OledDisplay::unlockDisplay()
 
 void OledDisplay::initialise()
 {
-   PW_DEBUG( "OledDisplay::initialise" );
+   TVMG_DEBUG( "OledDisplay::initialise" );
 
    // Start the display panel, set font etc.
    if ( m_oled )
@@ -166,7 +163,7 @@ void OledDisplay::initialise()
 
    if ( esp_timer_create(&args, &userioTimer) != ESP_OK )
    {
-      PW_ERROR( "Failed to start OLED callback timer" );
+      TVMG_ERROR( "Failed to start OLED callback timer" );
    }
    else
    {
@@ -220,7 +217,7 @@ void  OledDisplay::updateLine( uint8_t lineNum,const char *line,bool isForLog )
       strncpy( m_currentLines[ lineNum ],line,MAX_DISPLAY_COLUMNS );
       if ( isForLog )
       {
-         PW_MSG( line );
+         TVMG_MSG( line );
       }
    }
 
@@ -261,7 +258,7 @@ void OledDisplay::show( DisplayLine lines[] )
 
 void  OledDisplay::showNetwork()
 {
-   PW_MSG( "Show : Network" );
+   TVMG_MSG( "Show : Network" );
 
    char        line[ MAX_DISPLAY_COLUMNS ];
    struct tm   timeInfo;
@@ -287,7 +284,7 @@ void  OledDisplay::showNetwork()
       int   rsi = WiFi.RSSI();
       snprintf( line,MAX_DISPLAY_COLUMNS,"RSSI : %d dBm",rsi );
       storeLine( 2,line );
-      PW_MSG( "RSSI : %d dBm",rsi );
+      TVMG_MSG( "RSSI : %d dBm",rsi );
 
       if ( !m_networking->didAcquireNTP() )
       {
@@ -311,7 +308,7 @@ void  OledDisplay::showNetwork()
 
 void  OledDisplay::showCommsStatus()
 {
-   PW_MSG( "Show : Comms Status" );
+   TVMG_MSG( "Show : Comms Status" );
 
    char  line[ MAX_DISPLAY_COLUMNS ];
 
@@ -338,7 +335,7 @@ void  OledDisplay::showCommsStatus()
       snprintf( line,MAX_DISPLAY_COLUMNS," Err: %u",fails );
       storeLine( 4,line );
 
-      PW_DEBUG( "modbus stats %u %u",sends,fails );
+      TVMG_DEBUG( "modbus stats %u %u",sends,fails );
    }
 
    show( m_currentLines );
@@ -346,7 +343,7 @@ void  OledDisplay::showCommsStatus()
 
 void  OledDisplay::showStorage()
 {
-   PW_MSG( "Show : Storage" );
+   TVMG_MSG( "Show : Storage" );
 
    char  line[ MAX_DISPLAY_COLUMNS ];
 
@@ -375,7 +372,7 @@ void  OledDisplay::showStorage()
 
 void  OledDisplay::showEnergy()
 {
-   PW_MSG( "Show : Energy" );
+   TVMG_MSG( "Show : Energy" );
 
    char  line[ MAX_DISPLAY_COLUMNS ];
 
@@ -428,7 +425,7 @@ bool OledDisplay::getTemperature( uint8_t id,float *temp )
 
 void  OledDisplay::showTemps()
 {
-   PW_MSG( "Show : Temperature" );
+   TVMG_MSG( "Show : Temperature" );
 
    char  line[ MAX_DISPLAY_COLUMNS ];
    int   lineNum = 0; 
@@ -489,7 +486,7 @@ void  OledDisplay::showTemps()
 
 void  OledDisplay::showHeatMeter()
 {
-   PW_MSG( "Show : HeatMeter" );
+   TVMG_MSG( "Show : HeatMeter" );
 
    if ( m_heatMeter && m_sample.m_heatMeterSensors.size() == 1 )
    {
@@ -536,7 +533,7 @@ void OledDisplay::getLGValue( uint32_t parameter,float_t *value )
          const char *name = getSensorName( HEATPUMP,m_sample.m_lgRegisters[ index ].m_id ).c_str();
          *value = m_sample.m_lgRegisters[ index ].m_value;
 #ifdef LG_VALUE_DEBUG
-         PW_DEBUG( "lgvalue %s [%x] %.1f",name,parameter,*value );
+         TVMG_DEBUG( "lgvalue %s [%x] %.1f",name,parameter,*value );
 #endif
       }
       else
@@ -548,7 +545,7 @@ void OledDisplay::getLGValue( uint32_t parameter,float_t *value )
 
 void  OledDisplay::showLGStatus()
 {
-   PW_MSG( "Show : LGStatus" );
+   TVMG_MSG( "Show : LGStatus" );
 
    if ( !m_heatPump || m_sample.m_lgRegisters.size() == 0 )
    {
@@ -621,7 +618,7 @@ void  OledDisplay::showLGStatus()
          copRatio = 1;
       }
 
-      PW_DEBUG( "HP COP %.1f %.1f %.0f%",cop,carnotCOP,copRatio );
+      TVMG_DEBUG( "HP COP %.1f %.1f %.0f%",cop,carnotCOP,copRatio );
 
       snprintf( line,MAX_DISPLAY_COLUMNS,"%.1f %.1f %.0f",cop,carnotCOP,copRatio );
       storeLine( 3,line );
@@ -694,7 +691,7 @@ void  OledDisplay::show( ScreenType type )
          resetDisplay();
          break;
       default :
-         PW_WARN( "Unknown display type" );
+         TVMG_WARN( "Unknown display type" );
    }
 }
 
@@ -800,7 +797,7 @@ void  OledDisplay::showNext()
 
    while ( ! setNextScreen() )
    {
-      PW_DEBUG( "Try screen %d",m_currentScreen );
+      TVMG_DEBUG( "Try screen %d",m_currentScreen );
    }
 
    show( m_currentScreen );

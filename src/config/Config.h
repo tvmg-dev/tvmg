@@ -1,9 +1,17 @@
 #ifndef __CONFIG_H
 #define __CONFIG_H
 
+// The separating-header files are empty but are needed because the compiler
+// when generating dependencies may place 2 short header paths on 1 line in the
+// '.d' deps file which arduino-cli processing then fails to parse correctly
+// (reporting as can't find <file1> <file2>)
+
+#include "src/config/hwconfig.h"
+#include "src/core/separating-header1.h"
 #include "src/core/utils.h"
+#include "src/core/separating-header2.h"
 #include "src/core/TVMGFS.h"
-#include "hwconfig.h"
+#include "src/core/separating-header3.h"
 
 extern const char *k_versionStr;
 

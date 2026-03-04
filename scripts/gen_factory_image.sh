@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Define absolute tool paths within the Docker container
-readonly ESPTOOL_BIN="/root/.arduino15/packages/esp32/tools/esptool_py/4.9.dev3/esptool"
-readonly GEN_PART_PY="/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/gen_esp32part.py"
-readonly OTADATA_BIN="/root/.arduino15/packages/esp32/hardware/esp32/3.1.0/tools/partitions/boot_app0.bin"
+readonly ESPTOOL_BIN="/opt/arduino/packages/esp32/tools/esptool_py/4.9.dev3/esptool"
+readonly GEN_PART_PY="/opt/arduino/packages/esp32/hardware/esp32/3.1.0/tools/gen_esp32part.py"
+readonly OTADATA_BIN="/opt/arduino/packages/esp32/hardware/esp32/3.1.0/tools/partitions/boot_app0.bin"
 
 function generate_factory_image() {
     local board_name=$1
-    local out_dir="build/output/${board_name}"
+    local out_dir="build/${board_name}/output"
     local fs_src_root="filesystems/${board_name}"
 
     # Identify sketch from current working directory

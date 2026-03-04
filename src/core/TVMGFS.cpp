@@ -1,5 +1,4 @@
-#include "TVMGFS.h"
-#include "src/core/utils.h"
+
 
 #if defined(TVMG_LITTLEFS)
    #include <LittleFS.h>
@@ -16,13 +15,14 @@
    #error "Must define either TVMG_LITTLEFS or TVMG_SPIFFS"
 #endif
 
+#include "src/config/Config.h"
 
 TVMGFileSystem tvmgFileSys;
 
 TVMGFileSystem::TVMGFileSystem()
    : m_isMounted( false )
 {
-   PW_MSG( "TVMGFileSystem for %s",typeName() );
+   TVMG_MSG( "TVMGFileSystem for %s",typeName() );
 }
 
 File TVMGFileSystem::open( const String& path,const char* mode )
@@ -57,7 +57,7 @@ bool TVMGFileSystem::rmdir( const String& path )
 
 bool TVMGFileSystem::begin( bool formatOnFail )
 {
-   PW_MSG( "Mounting %s%s", TVMG_PARTITION_NAME,(formatOnFail ? ",format on fail" : "" ) );
+   TVMG_MSG( "Mounting %s%s", TVMG_PARTITION_NAME,(formatOnFail ? ",format on fail" : "" ) );
 
    // We call begin() on the system singleton (TVMG_FS_INSTANCE)
    // This avoids the Guru Meditation crash caused by duplicate instances
@@ -69,7 +69,7 @@ bool TVMGFileSystem::begin( bool formatOnFail )
 
    m_isMounted = TVMG_FS_INSTANCE.begin( formatOnFail,mountPath,10,TVMG_PARTITION_NAME );
 
-   PW_MSG( "%s %s", typeName(), (m_isMounted ? "mounted" : "failed" ) );
+   TVMG_MSG( "%s %s", typeName(), (m_isMounted ? "mounted" : "failed" ) );
 
    return m_isMounted;
 }
@@ -111,7 +111,7 @@ TVMGFileSystem::operator bool()
 
    if ( !isOk )
    {
-      PW_WARN( "%s not OK", typeName() );
+      TVMG_WARN( "%s not OK", typeName() );
    }
 
    return isOk;

@@ -1,9 +1,9 @@
 #ifdef TVMG_OLED
 
-#include "OledIndicator.h"
-#include "src/core/utils.h"
+#include "src/config/Config.h"
 
-#include "OledDisplay.h"
+#include "src/userio/OledIndicator.h"
+#include "src/userio/OledDisplay.h"
 
 static OledDisplay *s_display = nullptr;
 
@@ -34,12 +34,12 @@ OledIndicator::OledIndicator( IndicatorType type, uint32_t id )
          m_led = 0;
          break;
    }
-   PW_MSG( "OledIndicator constructed type=%d id=%u", type, id );
+   TVMG_MSG( "OledIndicator constructed type=%d id=%u", type, id );
 }
 
 OledIndicator::~OledIndicator()
 {
-   PW_MSG( "OledIndicator destroyed" );
+   TVMG_MSG( "OledIndicator destroyed" );
 }
 
 void OledIndicator::setIndicator( bool on )

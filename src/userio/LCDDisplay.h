@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-#include "Display.h"
+#include "src/userio/Display.h"
 
 class LcdDisplay : public Display
 {

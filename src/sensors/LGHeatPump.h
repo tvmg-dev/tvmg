@@ -4,8 +4,6 @@
 #include <map>
 #include <time.h>
 
-#include "src/core/utils.h"
-
 #include "src/userio/Indicator.h"
 
 #define  MAX_HP_REGISTERS      50

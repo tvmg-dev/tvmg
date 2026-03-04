@@ -14,13 +14,11 @@
 #define READYMAIL_TIME_SOURCE time(nullptr)
 #include <ReadyMail.h>
 
-#include "src/core/utils.h"
+#include "src/config/Config.h"
 #include "src/core/Measurement.h"
 
-#include "src/config/Config.h"
-
-#include "Networking.h"
-#include "WebServer.h"
+#include "src/network/Networking.h"
+#include "src/network/WebServer.h"
 
 // ISRG Root X1 cert used by emoncms
 
@@ -109,7 +107,7 @@ void  backgroundThread( void *params )
             snprintf( threadBuff,sizeof(threadBuff),"EMONCMS: Processed Q for [%u], %.2f",data->emonFeedId,data->value );
             START_TIMING( threadBuff );
 
-            PW_DEBUG( "EMONCMS: Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
+            TVMG_DEBUG( "EMONCMS: Received from Q (cpu%u) - [%u], %.2f",xPortGetCoreID(),data->emonFeedId,data->value );
 
             if ( sendData )
             {
@@ -125,7 +123,7 @@ void  backgroundThread( void *params )
             }
             else
             {
-               PW_MSG( "EMONCMS: Would send to emon [%u], %.2f",data->emonFeedId,data->value );
+               TVMG_MSG( "EMONCMS: Would send to emon [%u], %.2f",data->emonFeedId,data->value );
                delay( random( 100,250 ) );
             }
 
@@ -134,12 +132,12 @@ void  backgroundThread( void *params )
          }
          else
          {
-            PW_DEBUG( "EMONCMS: Nothing received from Q (cpu%u)",xPortGetCoreID() );
+            TVMG_DEBUG( "EMONCMS: Nothing received from Q (cpu%u)",xPortGetCoreID() );
          }
       }
       else
       {
-         PW_WARN( "EMONCMS: Waiting for Q creation" );
+         TVMG_WARN( "EMONCMS: Waiting for Q creation" );
          delay( 2000 );
       }
    }
@@ -158,11 +156,11 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
    if ( millis() - lastSentMillis > KEEP_ALIVE_MS && s_webClient )
    {
-      PW_DEBUG( "EMONCMS: Closing connection (%u ms elapsed)",millis() - lastSentMillis );
+      TVMG_DEBUG( "EMONCMS: Closing connection (%u ms elapsed)",millis() - lastSentMillis );
       Networking::releaseWebClient();
 
       // take this opportunity to show some stats
-      PW_MSG( "EMONCMS: Sent %u, failed [Q,E] [%u,%u]",emonSendRequests,emonQFailures,emonSendFailures );
+      TVMG_MSG( "EMONCMS: Sent %u, failed [Q,E] [%u,%u]",emonSendRequests,emonQFailures,emonSendFailures );
    }
 
    // Create a new HTTPClient if we need to, and we try to connect to the
@@ -170,14 +168,14 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
    if ( !s_webClient )
    {
-      PW_MSG( "EMONCMS: Create new HTTPClient" );
+      TVMG_MSG( "EMONCMS: Create new HTTPClient" );
       s_webClient = new HTTPClient();
       s_webClient->setReuse( true );
-      PW_DEBUG( "EMONCMS: begin HTTPClient" );
+      TVMG_DEBUG( "EMONCMS: begin HTTPClient" );
 
       if ( ! s_webClient->begin( *s_emoncmsClient,"https://emoncms.org" ) )
       {
-         PW_ERROR( "EMONCMS: Can't start HTTPClient" );
+         TVMG_ERROR( "EMONCMS: Can't start HTTPClient" );
          Networking::releaseWebClient();
          emonSendFailures++;
          return;
@@ -189,14 +187,14 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
 
    snprintf( threadBuff,sizeof(threadBuff),"/feed/insert.json?id=%u&time=%d&value=%.2f&apikey=%s",emonFeedId,utc,value,s_emoncmsApiKey.c_str() );
 
-   PW_MSG( "EMONCMS: Will %s",threadBuff );
+   TVMG_MSG( "EMONCMS: Will %s",threadBuff );
 
    // Send the GET request - which will force a connect if necessary
 
    s_webClient->setURL( threadBuff );
    int httpCode = s_webClient->GET();
 
-   PW_DEBUG( "EMONCMS: GET response %d",httpCode );
+   TVMG_DEBUG( "EMONCMS: GET response %d",httpCode );
 
    // Check success from HTTP perspective, then check success from emon REST perspective
 
@@ -205,14 +203,14 @@ void  sendToEmonCMS( uint32_t emonFeedId,float_t value )
       String payload = s_webClient->getString();
       if ( strstr( payload.c_str(),"false" ) )
       {
-         PW_ERROR( "EMONCMS: emon failure [%s]",payload.c_str() );
+         TVMG_ERROR( "EMONCMS: emon failure [%s]",payload.c_str() );
          emonSendFailures++;
       }
    }
    else
    {
       emonSendFailures++;
-      PW_ERROR( "EMONCMS: GET failed [%s]",s_webClient->errorToString(httpCode).c_str() );
+      TVMG_ERROR( "EMONCMS: GET failed [%s]",s_webClient->errorToString(httpCode).c_str() );
    }
 
    lastSentMillis = millis();
@@ -289,17 +287,17 @@ Emailer::Emailer()
          m_sender(),
          m_port( 465 )
 {
-   PW_DEBUG( "Emailer::Emailer()" );
+   TVMG_DEBUG( "Emailer::Emailer()" );
 }
 
 Emailer::~Emailer()
 {
-   PW_DEBUG( "Emailer::~Emailer()" );
+   TVMG_DEBUG( "Emailer::~Emailer()" );
 }
 
 void  Emailer::initialise( const String &mdnsName )
 {
-   PW_MSG( "Emailer initialise" );
+   TVMG_MSG( "Emailer initialise" );
 
    m_host = String( GET_REGISTRY_STRING( SMTP_HOST ) );
    m_port = GET_REGISTRY_INT( SMTP_PORT );
@@ -307,14 +305,14 @@ void  Emailer::initialise( const String &mdnsName )
    m_password = String( GET_REGISTRY_STRING( ACCOUNT_PASSWORD ) );
    m_sender = mdnsName;
 
-   PW_DEBUG( "Email : Host %s [%d] - %s %s",m_host,m_port,m_account.c_str(),m_password.c_str() );
+   TVMG_DEBUG( "Email : Host %s [%d] - %s %s",m_host,m_port,m_account.c_str(),m_password.c_str() );
 }
 
 void Emailer::fileCallbackForFS(File &file, const char *path, readymail_file_operating_mode mode)
 {
    bool isValid = false;
 
-   PW_DEBUG( "FS File callback %s %d",path,mode );
+   TVMG_DEBUG( "FS File callback %s %d",path,mode );
 
    switch (mode)
    {
@@ -335,15 +333,15 @@ void Emailer::fileCallbackForFS(File &file, const char *path, readymail_file_ope
 
          if ( !isValid )
          {
-            PW_ERROR( "FS File callback failed %s %d",path,mode );
+            TVMG_ERROR( "FS File callback failed %s %d",path,mode );
          }
          else
          {
-            PW_DEBUG( "FS File callback ok %s %d",path,mode );
+            TVMG_DEBUG( "FS File callback ok %s %d",path,mode );
          }
          break;
       default:
-         PW_WARN( "Igoring non-read calls from ReadyMail on %s",path );
+         TVMG_WARN( "Igoring non-read calls from ReadyMail on %s",path );
          break;
    }
 }
@@ -352,7 +350,7 @@ void Emailer::fileCallbackForSD(File &file, const char *path, readymail_file_ope
 {
    bool isValid = false;
 
-   PW_DEBUG( "SD File callback %s %d",path,mode );
+   TVMG_DEBUG( "SD File callback %s %d",path,mode );
 
    switch (mode)
    {
@@ -373,15 +371,15 @@ void Emailer::fileCallbackForSD(File &file, const char *path, readymail_file_ope
 
          if ( !isValid )
          {
-            PW_ERROR( "SD File callback failed %s %d",path,mode );
+            TVMG_ERROR( "SD File callback failed %s %d",path,mode );
          }
          else
          {
-            PW_DEBUG( "SD File callback ok %s %d",path,mode );
+            TVMG_DEBUG( "SD File callback ok %s %d",path,mode );
          }
          break;
       default:
-         PW_WARN( "Igoring non-read calls from ReadyMail on %s",path );
+         TVMG_WARN( "Igoring non-read calls from ReadyMail on %s",path );
          break;
    }
 }
@@ -400,10 +398,10 @@ String   Emailer::getNameFromEMailAddress( const String &recipient )
 void smtpCb(SMTPStatus status)
 {
     if (status.progress.available)
-        PW_DEBUG("ReadyMail[smtp][%d] Uploading file %s, %d %% completed\n", status.state,
+        TVMG_DEBUG("ReadyMail[smtp][%d] Uploading file %s, %d %% completed\n", status.state,
                          status.progress.filename.c_str(), status.progress.value);
     else
-        PW_DEBUG("ReadyMail[smtp][%d]%s\n", status.state, status.text.c_str());
+        TVMG_DEBUG("ReadyMail[smtp][%d]%s\n", status.state, status.text.c_str());
 }
 
 String   Emailer::setupConnection( const NetworkMutexGuard &guard,const char *recipient,const char *subject,SMTPMessage *smtpMsg )
@@ -416,7 +414,7 @@ String   Emailer::setupConnection( const NetworkMutexGuard &guard,const char *re
       sslClient = new WiFiClientSecure;
       if ( !sslClient )
       {
-         PW_ERROR( "Failed to create WiFiClientSecure" );
+         TVMG_ERROR( "Failed to create WiFiClientSecure" );
       }
       else
       {
@@ -425,17 +423,17 @@ String   Emailer::setupConnection( const NetworkMutexGuard &guard,const char *re
 
          if ( !smtp )
          {
-            PW_ERROR( "Failed to create SMTPClient" );
+            TVMG_ERROR( "Failed to create SMTPClient" );
             delete sslClient;
             sslClient = nullptr;
          }
          else if ( !smtp->connect( m_host,m_port,smtpCb ) )
          {
-            PW_ERROR( "Failed to connect to %s (port %d)",m_host.c_str(),m_port );
+            TVMG_ERROR( "Failed to connect to %s (port %d)",m_host.c_str(),m_port );
          }
          else if ( !smtp->authenticate( m_account,m_password, readymail_auth_password) )
          {
-            PW_ERROR( "Failed to authenticate with %s (password 5s)",m_account.c_str(),m_password.c_str() );
+            TVMG_ERROR( "Failed to authenticate with %s (password 5s)",m_account.c_str(),m_password.c_str() );
          }
          else
          {
@@ -448,7 +446,7 @@ String   Emailer::setupConnection( const NetworkMutexGuard &guard,const char *re
             sendString.replace( "SUBJECT",subject );
             sendString.replace( "RECIPIENT",getNameFromEMailAddress( recipient ) );
 
-            PW_DEBUG( sendString.c_str() );
+            TVMG_DEBUG( sendString.c_str() );
 
          }
       }
@@ -491,12 +489,12 @@ bool Emailer::sendEmail( const char *recipient,const char *subject,const String 
       smtpMsg.text.body( msg );
       if ( smtp->send( smtpMsg ) )
       {
-         PW_MSG( "%s - success",logMsg.c_str() );
+         TVMG_MSG( "%s - success",logMsg.c_str() );
          sentOk = true;
       }
       else
       {
-         PW_ERROR("%s - failed",logMsg.c_str() );
+         TVMG_ERROR("%s - failed",logMsg.c_str() );
       }
 
       END_TIMING;
@@ -516,7 +514,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
 
    if ( !(fromSD ? SD.exists( fileName ) : tvmgFileSys.exists( fileName )) )
    {
-      PW_WARN( "%s doesn't exist",fileName );
+      TVMG_WARN( "%s doesn't exist",fileName );
       return false;
    }
 
@@ -552,12 +550,12 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
 
       if ( smtp->send( smtpMsg ) )
       {
-         PW_MSG( "%s - success",logMsg.c_str() );
+         TVMG_MSG( "%s - success",logMsg.c_str() );
          sentOk = true;
       }
       else
       {
-         PW_ERROR("%s - failed",logMsg.c_str() );
+         TVMG_ERROR("%s - failed",logMsg.c_str() );
       }
 
       END_TIMING;
@@ -577,7 +575,7 @@ bool Emailer::sendEmailWithFileAsBody( const char *recipient,const char *subject
 
    if ( !(fromSD ? SD.exists( fileName ) : tvmgFileSys.exists( fileName )) )
    {
-      PW_WARN( "%s doesn't exist",fileName );
+      TVMG_WARN( "%s doesn't exist",fileName );
       return false;
    }
 
@@ -602,12 +600,12 @@ bool Emailer::sendEmailWithFileAsBody( const char *recipient,const char *subject
 
       if ( smtp->send( smtpMsg ) )
       {
-         PW_MSG( "%s - success",logMsg.c_str() );
+         TVMG_MSG( "%s - success",logMsg.c_str() );
          sentOk = true;
       }
       else
       {
-         PW_ERROR("%s - failed",logMsg.c_str() );
+         TVMG_ERROR("%s - failed",logMsg.c_str() );
       }
 
       END_TIMING;
@@ -635,12 +633,12 @@ Networking::Networking( NetworkingInfoCallback infoCallback )
             m_hasUpdated( false ),
             m_infoCallback( infoCallback )
 {
-   PW_DEBUG( "Networking::Networking()" );
-   PW_MSG( "Networking Startup" );
+   TVMG_DEBUG( "Networking::Networking()" );
+   TVMG_MSG( "Networking Startup" );
 
    if ( !m_infoCallback )
    {
-      PW_ERROR( "No info callback set" );
+      TVMG_ERROR( "No info callback set" );
       delay( 1000 );
       abort();
    }
@@ -679,7 +677,7 @@ Networking::Networking( NetworkingInfoCallback infoCallback )
 
 Networking::~Networking()
 {
-   PW_DEBUG( "Networking::~Networking()" );
+   TVMG_DEBUG( "Networking::~Networking()" );
 
    delete s_emoncmsClient;
    delete m_webServer;
@@ -702,9 +700,9 @@ bool Networking::startAccessPoint()
    m_status.SSID = SSID;
    m_status.ipAddr = WiFi.softAPIP().toString();
 
-   PW_DEBUG( "AP:" );
-   PW_DEBUG( "  SSID : %s",m_status.SSID.c_str() );
-   PW_DEBUG( "  IP   : %s",m_status.ipAddr.c_str() );
+   TVMG_DEBUG( "AP:" );
+   TVMG_DEBUG( "  SSID : %s",m_status.SSID.c_str() );
+   TVMG_DEBUG( "  IP   : %s",m_status.ipAddr.c_str() );
 
    // Start the configuration/download server
 
@@ -727,13 +725,13 @@ bool Networking::startMDNS()
 
    if ( ! MDNS.begin( m_status.mdnsName.c_str() ) )
    {
-      PW_WARN( "Failed to setup MDNS responder" );
+      TVMG_WARN( "Failed to setup MDNS responder" );
       mdnsOk = false;
    }
    else
    {
       m_status.mdnsName += String( ".local" );
-      PW_MSG( "MDNS :  at %s/manager",m_status.mdnsName.c_str() );
+      TVMG_MSG( "MDNS :  at %s/manager",m_status.mdnsName.c_str() );
 
       MDNS.addService( "http","tcp",80 );
    }
@@ -743,7 +741,7 @@ bool Networking::startMDNS()
 
 void Networking::initialise()
 {
-   PW_DEBUG( "Networking::initialise" );
+   TVMG_DEBUG( "Networking::initialise" );
 
    WiFi.mode( WIFI_STA );
 
@@ -771,10 +769,10 @@ void Networking::initialise()
    snprintf( line,sizeof(line),"%02x%02x",mac[ 4 ],mac[ 5 ] );
    hostName += line;
 
-   PW_MSG( "Set hostname %s",hostName.c_str() );
+   TVMG_MSG( "Set hostname %s",hostName.c_str() );
    if ( !WiFi.hostname( hostName ) )
    {
-      PW_ERROR( "Failed to set hostname" );
+      TVMG_ERROR( "Failed to set hostname" );
    }
 
    m_infoCallback( STARTING_STA, String( "Starting STA " ) + String( GET_REGISTRY_STRING( WIFI_SSID ) ) );
@@ -787,7 +785,7 @@ void Networking::initialise()
 
    if ( WiFi.status() != WL_CONNECTED )
    {
-      PW_WARN( "Network not connected" );
+      TVMG_WARN( "Network not connected" );
       m_status.state = DISCONNECTED;
       m_infoCallback( m_status.state,"Failed to connect to WiFi" );
       return;
@@ -798,9 +796,9 @@ void Networking::initialise()
    m_status.ipAddr = WiFi.localIP().toString();
    m_status.SSID = String( GET_REGISTRY_STRING( WIFI_SSID ) );
 
-   PW_MSG( "Connected to %s",m_status.SSID.c_str() );
-   PW_DEBUG( "  IP : %s",m_status.ipAddr.c_str() );
-   PW_DEBUG( "  Autoreconnect : %u", WiFi.getAutoReconnect() );
+   TVMG_MSG( "Connected to %s",m_status.SSID.c_str() );
+   TVMG_DEBUG( "  IP : %s",m_status.ipAddr.c_str() );
+   TVMG_DEBUG( "  Autoreconnect : %u", WiFi.getAutoReconnect() );
 
    m_status.state = CONNECTED_STA;
    m_infoCallback( m_status.state,m_status.SSID + " : connected" );
@@ -817,7 +815,7 @@ void Networking::initialise()
    s_emoncmsClient = new WiFiClientSecure;
    if ( GET_REGISTRY_INT( EMON_INSECURE ) == 1 )
    {
-      PW_WARN( "Setting WiFi client to insecure mode" );
+      TVMG_WARN( "Setting WiFi client to insecure mode" );
       s_emoncmsClient->setInsecure();
    }
    else
@@ -845,7 +843,7 @@ void Networking::initialise()
    dataQueue = xQueueCreate( 50,sizeof( struct EmonData *) );
    if ( ! dataQueue )
    {
-      PW_ERROR( "Failed to create XQueue" );
+      TVMG_ERROR( "Failed to create XQueue" );
    }
    else
    {
@@ -865,7 +863,7 @@ bool  Networking::acquireNTP()
    struct tm   timeInfo;
    uint32_t    start;
 
-   PW_DEBUG( "Acquiring NTP..." );
+   TVMG_DEBUG( "Acquiring NTP..." );
 
    m_infoCallback( ACQUIRING_NTP,"Acquiring NTP" );
 
@@ -885,7 +883,7 @@ bool  Networking::acquireNTP()
 
    if ( !getLocalTime( &timeInfo ) )
    {
-      PW_WARN( "NTP not available" );
+      TVMG_WARN( "NTP not available" );
       m_status.timeToAcquireNTP = -1;
    }
    else
@@ -972,7 +970,7 @@ bool Networking::sendEmail( const char *recipient,const char *subject,const Stri
 {
    if ( !m_willSendEmails )
    {
-      PW_DEBUG( "Not sending email %s",subject );
+      TVMG_DEBUG( "Not sending email %s",subject );
       return true;
    }
 
@@ -987,7 +985,7 @@ bool Networking::sendEmailWithAttachment( const char *recipient,const char *subj
 {
    if ( !m_willSendEmails )
    {
-      PW_DEBUG( "Not sending email %s",subject );
+      TVMG_DEBUG( "Not sending email %s",subject );
       return true;
    }
 
@@ -1002,7 +1000,7 @@ bool Networking::sendEmailWithFileAsBody( const char *recipient,const char *subj
 {
    if ( !m_willSendEmails )
    {
-      PW_DEBUG( "Not sending email %s",subject );
+      TVMG_DEBUG( "Not sending email %s",subject );
       return true;
    }
 
@@ -1025,7 +1023,7 @@ void Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
       EmonData *data = static_cast<EmonData *>( malloc( sizeof( EmonData ) ) );
       if ( !data )
       {
-         PW_ERROR( "Failed to allocate EmonData" );
+         TVMG_ERROR( "Failed to allocate EmonData" );
          emonQFailures++;
          return;
       }
@@ -1033,11 +1031,11 @@ void Networking::sendToEmonCMS( uint32_t emonFeedId,float_t value )
       data->emonFeedId = emonFeedId;
       data->value = value;
 
-      PW_DEBUG( "EMONCMS:Sending to Q (cpu%u) - %u %.1f %d",xPortGetCoreID(),data->emonFeedId,data->value,ESP.getFreeHeap() / 1024 );
+      TVMG_DEBUG( "EMONCMS:Sending to Q (cpu%u) - %u %.1f %d",xPortGetCoreID(),data->emonFeedId,data->value,ESP.getFreeHeap() / 1024 );
 
       if ( xQueueSend( dataQueue,(void *) &data,0 ) != pdTRUE )
       {
-         PW_WARN( "EMONCMS:Q full - failed to send" );
+         TVMG_WARN( "EMONCMS:Q full - failed to send" );
          emonQFailures++;
          delete data;
       }
@@ -1063,7 +1061,7 @@ void  Networking::releaseWebClient()
 {
    if ( s_webClient )
    {
-      PW_DEBUG( "Release WebClient" );
+      TVMG_DEBUG( "Release WebClient" );
       s_webClient->end();
       delete s_webClient;
       s_webClient = nullptr;
@@ -1092,7 +1090,7 @@ void  Networking::setUpdateProgress( int percentComplete,const String &filename,
    }
    else if ( !percentComplete )
    {
-      PW_MSG( "OTA update with %s",filename.c_str() );
+      TVMG_MSG( "OTA update with %s",filename.c_str() );
 
       if ( !notifyUpdate )
       {
@@ -1103,7 +1101,7 @@ void  Networking::setUpdateProgress( int percentComplete,const String &filename,
    }
    else
    {
-      PW_DEBUG( "OTA %d complete",percentComplete );
+      TVMG_DEBUG( "OTA %d complete",percentComplete );
       m_infoCallback( OTA_PROGRESS, String( percentComplete ) );
    }
 }
@@ -1117,25 +1115,25 @@ int Networking::takeNetworkMutex( int ms )
 {
    if ( ! s_networkMutex )
    {
-      PW_WARN( "No nw mutex" );
+      TVMG_WARN( "No nw mutex" );
       return -1;
    }
 
    uint32_t startMillis;
 
-   PW_DEBUG( "Take n/w mutex" );
+   TVMG_DEBUG( "Take n/w mutex" );
 
    startMillis = millis();
    int ok = xSemaphoreTakeRecursive( s_networkMutex,ms * portTICK_PERIOD_MS);
 
    if ( ok != pdTRUE )
    {
-      PW_WARN( "Failed to take nw mutex" );
+      TVMG_WARN( "Failed to take nw mutex" );
    }
    else
    {
       s_mutexAcquiredMillis = millis();
-      PW_DEBUG( "n/w mutex took %d ms",s_mutexAcquiredMillis - startMillis );
+      TVMG_DEBUG( "n/w mutex took %d ms",s_mutexAcquiredMillis - startMillis );
       if ( s_indicator )
       {
          s_indicator->on();
@@ -1149,7 +1147,7 @@ void  Networking::releaseNetworkMutex()
 {
    if ( s_networkMutex )
    {
-      PW_DEBUG( "n/w mutex held for %d",millis() - s_mutexAcquiredMillis );
+      TVMG_DEBUG( "n/w mutex held for %d",millis() - s_mutexAcquiredMillis );
       xSemaphoreGiveRecursive( s_networkMutex );
 
       if ( s_indicator )

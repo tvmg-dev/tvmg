@@ -1,7 +1,7 @@
 #ifndef SHELLY_POWER_MODULE_H
 #define SHELLY_POWER_MODULE_H
 
-#include "src/core/utils.h"
+#include "src/config/Config.h"
 
 #include "src/userio/Indicator.h"
 

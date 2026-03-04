@@ -4,7 +4,6 @@
 #include <time.h>
 #include <vector>
 
-#include "utils.h"
 #include "src/sensors/TemperatureModule.h"
 #include "src/sensors/PowerModule.h"
 #include "src/sensors/ShellyPM.h"

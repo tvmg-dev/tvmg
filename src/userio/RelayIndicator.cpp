@@ -32,12 +32,12 @@ RelayIndicator::RelayIndicator( IndicatorType type, uint32_t id )
          break;
    }
 
-   PW_MSG( "RelayIndicator constructed type=%d id=%u", type, id );
+   TVMG_MSG( "RelayIndicator constructed type=%d id=%u", type, id );
 }
 
 RelayIndicator::~RelayIndicator()
 {
-   PW_MSG( "RelayIndicator destroyed" );
+   TVMG_MSG( "RelayIndicator destroyed" );
    doOff();
 }
 
@@ -45,7 +45,7 @@ void RelayIndicator::doOn()
 {
    if ( m_gpio !=-1 )
    {
-      PW_DEBUG( "Relay board GPIO %d on",m_gpio );
+      TVMG_DEBUG( "Relay board GPIO %d on",m_gpio );
       pinMode( m_gpio,OUTPUT );
       digitalWrite( m_gpio,HIGH );
       delay( 10 );
@@ -56,7 +56,7 @@ void RelayIndicator::doOff()
 {
    if ( m_gpio !=-1 )
    {
-      PW_DEBUG( "Relay board GPIO %d off",m_gpio );
+      TVMG_DEBUG( "Relay board GPIO %d off",m_gpio );
       pinMode( m_gpio,OUTPUT );
       digitalWrite( m_gpio,LOW );
       delay( 10 );

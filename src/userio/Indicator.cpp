@@ -1,17 +1,18 @@
-#include "Indicator.h"
+#include "src/config/Config.h"
+
+#include "src/userio/Indicator.h"
 
 #if defined(TVMG_OLED)
-   #include "OledIndicator.h"
+   #include "src/userio/OledIndicator.h"
    #define IndicatorClass   OledIndicator
 #elif defined(TVMG_WAVESHARE_LCDB)   
-   #include "LCDIndicator.h"
+   #include "src/userio/LCDIndicator.h"
    #define IndicatorClass   LCDIndicator
 #elif defined(TVMG_WAVESHARE_RELAY)
    #define IndicatorClass   RelayIndicator
-   #include "RelayIndicator.h"
+   #include "src/userio/RelayIndicator.h"
 #endif
 
-#include "src/core/utils.h"
 
 // map of keys to Indicator pointers
 std::map<uint32_t, std::unique_ptr<Indicator>> Indicator::s_map;
@@ -39,14 +40,14 @@ Indicator* Indicator::getIndicator(IndicatorType type, uint32_t id)
 
    if (it == s_map.end())
    {
-      PW_DEBUG( "Creating indicator with id %u",id );
+      TVMG_DEBUG( "Creating indicator with id %u",id );
       // try_emplace is more efficient than s_map[key]
       // because it doesn't require the value type to be default-constructible
       auto [new_it, success] = s_map.try_emplace(key, std::make_unique<IndicatorClass>(type, id));
 
       if (!success)
       {
-         PW_ERROR( "Failed to create indicator with id %u",id );
+         TVMG_ERROR( "Failed to create indicator with id %u",id );
          return nullptr;
       }
       it = new_it;
@@ -83,7 +84,7 @@ uint32_t Indicator::generateKey(IndicatorType type, uint32_t id)
 {
    if (id > 0xFFFFFF)
    {
-      PW_ERROR("Invalid Indicator id - truncating");
+      TVMG_ERROR("Invalid Indicator id - truncating");
       id &= 0xFFFFFF;
    }
 

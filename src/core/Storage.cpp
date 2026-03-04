@@ -1,9 +1,10 @@
 #include <SD.h>
 #include <FS.h>
 
-#include "Storage.h"
-#include "src/network/Networking.h"
 #include "src/config/Config.h"
+
+#include "src/core/Storage.h"
+#include "src/network/Networking.h"
 
 #include "src/sensors/TemperatureModule.h"
 #include "src/sensors/PowerModule.h"
@@ -20,24 +21,24 @@ Storage::Storage()
          m_networking( nullptr ),
          m_storageOk( false )
 {
-   PW_DEBUG( "Storage::Storage()" );
-   PW_MSG( "Storage Module Startup" );
+   TVMG_DEBUG( "Storage::Storage()" );
+   TVMG_MSG( "Storage Module Startup" );
 
    m_currentFileName[ 0 ] = 0;
 }
 
 Storage::~Storage()
 {
-   PW_DEBUG( "Storage::~Storage()" );
+   TVMG_DEBUG( "Storage::~Storage()" );
 }
 
 void Storage::initialise( void )
 {
-   PW_DEBUG( "Storage::initialise" );
+   TVMG_DEBUG( "Storage::initialise" );
 
    if ( ! boardHasSDCard() )
    {
-      PW_MSG( "Not detecting SD card" );
+      TVMG_MSG( "Not detecting SD card" );
       m_storageOk = true;
       return;
    }
@@ -45,7 +46,7 @@ void Storage::initialise( void )
    SD.begin();
    if( SD.cardType() == CARD_NONE )
    {
-      PW_WARN( "Failed to initialise storage" );
+      TVMG_WARN( "Failed to initialise storage" );
    }
    else
    {
@@ -54,7 +55,7 @@ void Storage::initialise( void )
       usedMiB = SD.usedBytes() / (1024 * 1024);
       freeMiB = totalMiB - usedMiB;
 
-      PW_MSG( "%u MiB available, %u MiB used", freeMiB,usedMiB );
+      TVMG_MSG( "%u MiB available, %u MiB used", freeMiB,usedMiB );
 
       // Now perform a quick write test to see if ok, only if we can
       // write to a file and delete it do we consider SD card ok
@@ -62,10 +63,10 @@ void Storage::initialise( void )
       File file = SD.open( WRITE_TEST_FILE,FILE_WRITE );
       if ( file )
       {
-         PW_DEBUG( "Opened %s ok",WRITE_TEST_FILE );
+         TVMG_DEBUG( "Opened %s ok",WRITE_TEST_FILE );
          if( !file.print( "test" ) )
          {
-            PW_DEBUG( "Failed to write to %s",WRITE_TEST_FILE );
+            TVMG_DEBUG( "Failed to write to %s",WRITE_TEST_FILE );
          }
          else
          {
@@ -73,14 +74,14 @@ void Storage::initialise( void )
             if ( SD.remove( WRITE_TEST_FILE ) )
             {
                m_storageOk = true;
-               PW_MSG( "SD Card ok" );
+               TVMG_MSG( "SD Card ok" );
             }
          }
       }
 
       if ( ! m_storageOk )
       {
-         PW_WARN( "SD card has failed !" );
+         TVMG_WARN( "SD card has failed !" );
       }
       else
       {
@@ -116,7 +117,7 @@ void Storage::removeOldSamples()
 
          if ( fileName.length() > 12 )
          {
-            PW_DEBUG( "Excessive filename length : %d",fileName.length() );
+            TVMG_DEBUG( "Excessive filename length : %d",fileName.length() );
             SD.remove( fileName );
             continue;
          }
@@ -145,7 +146,7 @@ void Storage::removeOldSamples()
          // Basic sanity test
          if ( iyear < 2023 || iday > 31 || imonth > 12 )
          {
-            PW_DEBUG( "Ignoring %s",fileName );
+            TVMG_DEBUG( "Ignoring %s",fileName );
             continue;
          }
 
@@ -159,12 +160,12 @@ void Storage::removeOldSamples()
          if ( timeDiff < 0 || timeDiff > DELETE_OLDER_THAN_SECONDS )
          {
             String fullPath = "/" + fileName;
-            PW_MSG( "Deleting %s",fullPath.c_str() );
+            TVMG_MSG( "Deleting %s",fullPath.c_str() );
             SD.remove( fullPath.c_str() );
          }
          else
          {
-            PW_DEBUG( "SD : %s",fileName.c_str() );
+            TVMG_DEBUG( "SD : %s",fileName.c_str() );
          }
       }
    }
@@ -176,7 +177,7 @@ void  Storage::setNetworking( Networking *network )
 {
    m_networking = network;
 
-   PW_DEBUG( "Storage::setNetworking" );
+   TVMG_DEBUG( "Storage::setNetworking" );
 
    // Send an email if SD card is not OK
 
@@ -207,7 +208,7 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
 
    if ( isNewFile )
    {
-      PW_MSG( "Will be creating %s",fileName );
+      TVMG_MSG( "Will be creating %s",fileName );
 
       // As this is a new file, let's send previous file onwards
 
@@ -237,7 +238,7 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
 
    if( !file )
    {
-      PW_WARN( "Failed to open %s",m_currentFileName );
+      TVMG_WARN( "Failed to open %s",m_currentFileName );
       m_storageOk = false;
    }
    else
@@ -307,7 +308,7 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
 
       if ( isNewFile )
       {
-         PW_DEBUG( hdrString.c_str() );
+         TVMG_DEBUG( hdrString.c_str() );
          m_storageOk = file.println( hdrString.c_str() );
       }
 
@@ -317,11 +318,11 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
       if ( !haveSkippedFirstSample )
       {
          haveSkippedFirstSample = true;
-         PW_MSG( "skip first sample" );
+         TVMG_MSG( "skip first sample" );
       }
       else
       {
-         PW_MSG( "store %s",dataString.c_str() );
+         TVMG_MSG( "store %s",dataString.c_str() );
          m_storageOk = file.println( dataString.c_str() );
       }
       file.close();
@@ -331,7 +332,7 @@ void  Storage::storeSample( const Measurement::Sample &sample,bool isNewFile )
    {
       m_networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Monitoring Storage Failure","Preventing further writes" );
 
-      PW_ERROR( "Storage failure" );
+      TVMG_ERROR( "Storage failure" );
    }
 }
 

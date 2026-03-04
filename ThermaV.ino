@@ -4,12 +4,11 @@
 
 #include <time.h>
 
-#include "src/core/utils.h"
+#include "src/config/Config.h"
+
 #include "src/core/Measurement.h"
 #include "src/core/Storage.h"
-
-#include "src/config/Config.h"
-#include "src/config/hwconfig.h"
+#include "src/core/TVMGFS.h"
 
 #include "src/sensors/TemperatureModule.h"
 #include "src/sensors/PowerModule.h"
@@ -86,7 +85,7 @@ void  getModbusStats( uint32_t *requests,uint32_t *fails )
 {
    char line[ MAX_DISPLAY_COLUMNS + 1 ];
 
-   PW_DEBUG( "NWC: %d : %s", info,str.c_str() );
+   TVMG_DEBUG( "NWC: %d : %s", info,str.c_str() );
 
    if ( !display )
    {
@@ -146,9 +145,9 @@ void newConfiguration( void )
    networking = new Networking( networkingInfoCallback );
    networking->startAccessPoint();
 
-   PW_WARN( "Need to configure via SSID : %s",networking->getSSID().c_str() );
-   PW_WARN( "Use %s/manager",networking->getMDNSName().c_str() );
-   PW_WARN( "Or %s/manager",networking->getIPAddress().c_str() );
+   TVMG_WARN( "Need to configure via SSID : %s",networking->getSSID().c_str() );
+   TVMG_WARN( "Use %s/manager",networking->getMDNSName().c_str() );
+   TVMG_WARN( "Or %s/manager",networking->getIPAddress().c_str() );
 
    if ( display )
    {
@@ -192,7 +191,7 @@ void newConfiguration( void )
    while( 1 )
    {
       delay( 60 * 1000 );
-      PW_DEBUG( "Waiting for configuration..." );
+      TVMG_DEBUG( "Waiting for configuration..." );
    }
 }
 
@@ -211,7 +210,7 @@ void modbusPostTransmission()
 
 void  configureModBus()
 {
-   PW_DEBUG( "Checking for MODBUSTCP" );
+   TVMG_DEBUG( "Checking for MODBUSTCP" );
 
    // modbus has a few types here - and the selected type depends on the following
    // order preference (determined by configured sensors
@@ -227,7 +226,7 @@ void  configureModBus()
 
       if ( !modbusTCP->isOk() )
       {
-         PW_WARN( "ModbusTCP is NOK !" );
+         TVMG_WARN( "ModbusTCP is NOK !" );
          modbusTCP = nullptr;
       }
 
@@ -254,15 +253,15 @@ void  configureModBus()
 
       if ( !isModBusAvailable )
       {
-         PW_DEBUG( "No modbus available" );
+         TVMG_DEBUG( "No modbus available" );
       }
       else
       {
-         PW_MSG( "Creating new modbus with h/w serial" );
+         TVMG_MSG( "Creating new modbus with h/w serial" );
          hwSerial = new HardwareSerial( hwConfig->ModBusSerial );
 
-         PW_MSG( "Starting serial port %u",hwConfig->ModBusSerial );
-         PW_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
+         TVMG_MSG( "Starting serial port %u",hwConfig->ModBusSerial );
+         TVMG_DEBUG( "   Baudrate %u, Rx pin [%u], Tx pin [%u]",hwConfig->ModBusBaudRate,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
 
          hwSerial->begin( hwConfig->ModBusBaudRate,hwConfig->ModBusSerialFormat,hwConfig->ModBusRxGPIO,hwConfig->ModBusTxGPIO );
 
@@ -271,11 +270,11 @@ void  configureModBus()
 
          if ( isSensorRequired( LGHEATPUMPSIM_SENSOR_NAME ) )
          {
-            PW_MSG( "LG Sim required, so modbus master not allowed" );
+            TVMG_MSG( "LG Sim required, so modbus master not allowed" );
          }
          else
          {
-            PW_MSG( "Creating modbus Master" );
+            TVMG_MSG( "Creating modbus Master" );
             modbusMaster = new ModbusMaster;
             // If enabled setup the MAX3485 device, need to set the device enable high for transmit to slaves
             // and low for receive.  The ModbusMaster has callbacks to facilitate that.
@@ -326,7 +325,7 @@ void setupSerial()
 
    delay( 500 );
 
-   PW_DEBUG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
+   TVMG_DEBUG( "pins Ok %d serial enable %d",setPinsOk,isBootSerialEnabled );
 
 #else    // ESP32S3's
 #if defined(TVMG_WAVESHARE_LCDB) || defined(TVMG_WAVESHARE_RELAY)
@@ -585,7 +584,7 @@ void  initialiseMeasurement()
 
    // Can now initialise the measurement module
 
-   PW_MSG( "Initialising measurement prior to loop" );
+   TVMG_MSG( "Initialising measurement prior to loop" );
 
    measurement->initialise();
 
@@ -601,7 +600,7 @@ void handleBootEmail( const String &rebootStr )
 {
    if ( GET_REGISTRY_INT( SEND_EMAILS ) != 1 )
    {
-      PW_MSG( "Not sending boot email" );
+      TVMG_MSG( "Not sending boot email" );
       return;
    }
 
@@ -623,7 +622,7 @@ void handleBootEmail( const String &rebootStr )
 
    emailMsg += rebootStr;
 
-   PW_MSG( "%s",emailMsg.c_str() );
+   TVMG_MSG( "%s",emailMsg.c_str() );
 
    networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Startup",emailMsg );
 }
@@ -649,7 +648,7 @@ void handleDataLogs()
          if ( lgThermaV && lgThermaV->isLogging() )
          {
             tvmgFileSys.remove( LGREGISTERS_LOG );
-            PW_DEBUG( "Removed %s as logging LG",LGREGISTERS_LOG );
+            TVMG_DEBUG( "Removed %s as logging LG",LGREGISTERS_LOG );
          }
       }
    }
@@ -678,12 +677,12 @@ void  handleDebugTests()
       int size = GET_REGISTRY_INT( HEAP_TEST_SIZE );
       if ( size != -1 )
       {
-         PW_MSG( "Test alloc %d KiB",size );
+         TVMG_MSG( "Test alloc %d KiB",size );
          size *= 1024;
          testMallocBuffer = static_cast<char *>(malloc( size ));
          if ( !testMallocBuffer )
          {
-            PW_DEBUG( "failed to malloc" );
+            TVMG_DEBUG( "failed to malloc" );
          }
       }
    }
@@ -693,7 +692,7 @@ void  handleDebugTests()
       int shouldAssert = GET_REGISTRY_INT( ASSERT_FOR_FAST_BOOT );
       if ( shouldAssert > 0 )
       {
-         PW_MSG( "Testing fast boot" );
+         TVMG_MSG( "Testing fast boot" );
          testFastReboot = true;
       }
    }
@@ -802,10 +801,10 @@ void setup( void )
 
    config->setPersistentInt( k_rebootType,BOOT_IN_SETUP );
 
-   PW_MSG( "Version: %s",k_versionStr );
-   PW_MSG( "Arduino Board: %s", ARDUINO_BOARD );
-   PW_MSG( "Arduino Variant: %s", ARDUINO_VARIANT );
-   PW_MSG( "Arduino Version: %s", ESP_ARDUINO_VERSION_STR);
+   TVMG_MSG( "Version: %s",k_versionStr );
+   TVMG_MSG( "Arduino Board: %s", ARDUINO_BOARD );
+   TVMG_MSG( "Arduino Variant: %s", ARDUINO_VARIANT );
+   TVMG_MSG( "Arduino Version: %s", ESP_ARDUINO_VERSION_STR);
 
    // Instantiate the storage module, and initialise it.  If the SD card
    // is not operational the storage module will not save data but at least
@@ -849,7 +848,7 @@ void handleAnyOTAUpdate()
       hwReset();
 
       delay( 5000 );
-      PW_ERROR( "HW Reset Failed" );
+      TVMG_ERROR( "HW Reset Failed" );
    }
 }
 
@@ -871,19 +870,19 @@ bool isNetworkOk()
    {
       if ( networking->isConnected() )
       {
-         PW_MSG( "Regained network" );
+         TVMG_MSG( "Regained network" );
          networkLost = 0;
       }
       else if ( millis() - networkLost > NETWORK_ALLOWED_DISCONNECTED_MS )
       {
-         PW_ERROR( "Lost network, need to reboot" );
+         TVMG_ERROR( "Lost network, need to reboot" );
          config->setPersistentInt( k_rebootType,LOST_WIFI );
          networkOk = false;
       }
    }
    else if ( networking && !networking->isConnected() )
    {
-      PW_WARN( "Lost network" );
+      TVMG_WARN( "Lost network" );
       networkLost = millis();
    }
 
@@ -937,7 +936,7 @@ void loop(void)
 
    if ( Networking::takeNetworkMutex( NETWORK_ALLOWED_BUSY_MS ) != 1 )
    {
-      PW_ERROR( "Timeout on network mutex, rebooting..." );
+      TVMG_ERROR( "Timeout on network mutex, rebooting..." );
       config->setPersistentInt( k_rebootType,LOOP_MUTEX );
       restartRequired = true;
    }
@@ -960,14 +959,14 @@ void loop(void)
 
    if ( currentMillis > ( 24 * 24 * 3600 * 1000) )
    {
-      PW_MSG( "24 day reboot %d",currentMillis );
+      TVMG_MSG( "24 day reboot %d",currentMillis );
       config->setPersistentInt( k_rebootType,APP_24D_RESET );
       restartRequired = true;
    }
 
    if ( restartRequired )
    {
-      PW_MSG( "Rebooting..." );
+      TVMG_MSG( "Rebooting..." );
 
       ESP.restart();
       while( 1 )
@@ -985,7 +984,7 @@ void loop(void)
    measurement->takeSample();
    if ( !didDailyUpdate && measurement->didDailyUpdate() )
    {
-      PW_DEBUG( "DailyUpdate : true" );
+      TVMG_DEBUG( "DailyUpdate : true" );
       didDailyUpdate = true;
       if ( lgThermaV )
       {
@@ -994,7 +993,7 @@ void loop(void)
    }
    else if ( didDailyUpdate && !measurement->didDailyUpdate() )
    {
-      PW_DEBUG( "DailyUpdate : false" );
+      TVMG_DEBUG( "DailyUpdate : false" );
       didDailyUpdate = false;
    }
    END_TIMING;
@@ -1027,11 +1026,11 @@ void loop(void)
          if ( networking && networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                                                       "Boot Log","Boot log attached", EARLY_BOOT_LOGFILE ) )
          {
-            PW_MSG( "Boot log emailed" );
+            TVMG_MSG( "Boot log emailed" );
          }
          else
          {
-            PW_WARN( "Failed to email boot log" );
+            TVMG_WARN( "Failed to email boot log" );
          }
       }
       bootLogEmailSent = true;
@@ -1058,7 +1057,7 @@ void loop(void)
 
    Networking::releaseNetworkMutex();
 
-   PW_DEBUG( "Loop Delay %u",deltaMillis );
+   TVMG_DEBUG( "Loop Delay %u",deltaMillis );
 
    delay( deltaMillis );
 
