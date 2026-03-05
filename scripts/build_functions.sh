@@ -45,7 +45,12 @@ function espbuild()
 
   printf "\n\n${localOutputPath}\n\n"
 
-  local dockerRoot="/working/${sketchDirectory}"
+  # When arduino-cli is generating dependencies then the MMD compiler option may place 2 short
+  # header paths on 1 line in the '.d' deps file which arduino-cli then fails to parse correctly.
+  # We work around this problem by mounting our working directory beneath a long path, so
+  # absolute pathnames prevent the 2 include paths per deps entry.
+
+  local dockerRoot="/working/alongdirectorname/${sketchDirectory}"
   local dockerBuildCache="${dockerRoot}/${buildCache}"
   local dockerOutputPath="${dockerRoot}/${buildOutput}"
   local dockerLibraries="${dockerRoot}/libraries"
