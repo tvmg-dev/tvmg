@@ -2,28 +2,43 @@ function espbuild()
 {
   # 1. Parameter Handling
   local boardName=""
-  local factoryMode=true
+  local factoryMode=false   # Changed default to false
+  local buildMain=true      # Added to toggle main image compilation
+  local cleanRequested=false # Track if -c or -a was used
   local verbosity="--verbose"
   local dockerUser=""
   local numJobs=4
 
-  local win_docs_raw=$(powershell.exe -Command "[Environment]::GetFolderPath('MyDocuments')" 2>/dev/null | tr -d '\r')
-  local win_docs=$(wslpath "$win_docs_raw")
-
-  local localLibraryPath="${win_docs}/Arduino/libraries"
-
-  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-      echo "Linux environment"
-      localLibraryPath="$(pwd)/libraries"
-      dockerUser="-u $(id -u):$(id -g)"
-  fi
-
   for arg in "$@"; do
-    if [[ "$arg" == "-factory" ]]; then
-      factoryMode=true
-    else
-      boardName="$arg"
-    fi
+    case $arg in
+      -h)
+        printf "Usage: espbuild [options] [boardName]\n"
+        printf " -h : display help\n"
+        printf " -c : clean (remove specific board cache and output folders)\n"
+        printf " -f : build factory image only\n"
+        printf " -a : clean, main image and factory image (all)\n"
+        return 0
+        ;;
+      -c)
+        cleanRequested=true
+        buildMain=false
+        ;;
+      -f)
+        factoryMode=true
+        buildMain=false
+        ;;
+      -a)
+        cleanRequested=true
+        factoryMode=true
+        buildMain=true
+        ;;
+      -factory)
+        factoryMode=true
+        ;;
+      *)
+        boardName="$arg"
+        ;;
+    esac
   done
 
   # Default board if none provided
@@ -38,8 +53,24 @@ function espbuild()
   local localCachePath="$(pwd)/${buildCache}"
   local localOutputPath="$(pwd)/${buildOutput}"
   
-  rm -rf "${localOutputPath}"
-  mkdir -p "$localOutputPath"
+  # Handle cleaning for the specific board only
+  if [ "$cleanRequested" = true ]; then
+    printf "Cleaning build folders for: ${boardName}...\n"
+    rm -rf "build/${boardName}"
+    # If only cleaning was requested (not -a), exit after clean
+    if [ "$buildMain" = false ] && [ "$factoryMode" = false ]; then return 0; fi
+  fi
+
+  local win_docs_raw=$(powershell.exe -Command "[Environment]::GetFolderPath('MyDocuments')" 2>/dev/null | tr -d '\r')
+  local win_docs=$(wslpath "$win_docs_raw")
+
+  local localLibraryPath="${win_docs}/Arduino/libraries"
+
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+      echo "Linux environment"
+      localLibraryPath="$(pwd)/libraries"
+      dockerUser="-u $(id -u):$(id -g)"
+  fi
 
   if [ ! -d "$localCachePath" ]; then printf "Make cache directory: $localCachePath\n"; mkdir -p "$localCachePath"; fi
 
@@ -59,46 +90,54 @@ function espbuild()
 
   local DOCKER_BASE="MSYS_NO_PATHCONV=1 docker run ${dockerUser} --rm \
     -e HOME=/root \
-    -v \"/$(pwd):${dockerRoot}\" \
+    -v \"$(pwd):${dockerRoot}\" \
     -v \"${localLibraryPath}:${dockerLibraries}\" \
     -w \"${dockerRoot}\" \
     tvmg-builder"
 
+  local status=0
+
+  # Only build main image if not in factory-only mode
+  if [ "$buildMain" = true ]; then
+    rm -rf "${localOutputPath}"
+    mkdir -p "$localOutputPath"
+
     # build the application image
-  printf "=======================================================\n"
-  printf "Sketch: $sketchDirectory | BOARD: $boardName\n"
-  printf "=======================================================\n\n"
+    printf "=======================================================\n"
+    printf "Sketch: $sketchDirectory | BOARD: $boardName\n"
+    printf "=======================================================\n\n"
 
-# boards.local.txt has to have timestamps preserved, but not the partitions but we will
-# preserve them anyway.  The docker container has the associatred parent directories
-# set with 777 permissions to allow non-root user to modify.
+    # boards.local.txt has to have timestamps preserved, but not the partitions but we will
+    # preserve them anyway.  The docker container has the associatred parent directories
+    # set with 777 permissions to allow non-root user to modify.
 
-# for tracing the build add : --log-level trace --log --no-color \
+    # for tracing the build add : --log-level trace --log --no-color \
 
-  local cmd="\
+    local cmd="\
             cp -p ./arduino/boards.local.txt ${arduinoESP32Root} && \
             cp -p ./arduino/*.csv ${arduinoESP32Root}/tools/partitions && \
             arduino-cli compile --jobs $numJobs $verbosity \
             --build-path ${dockerBuildCache} \
             --libraries ${dockerLibraries} \
             --fqbn $fqbn \
-            --output-dir ${dockerOutputPath} ."
+            --output-dir ${dockerOutputPath} ${dockerRoot}"
 
-  { time eval "$DOCKER_BASE /bin/bash -c '$cmd'"; } 2>&1 | tee "${buildOutput}/build.log"
-  local status=${PIPESTATUS[0]}
+    { time eval "$DOCKER_BASE /bin/bash -c '$cmd'"; } 2>&1 | tee "${buildOutput}/build.log"
+    status=${PIPESTATUS[0]}
 
-  # Post-Build: Rename the application binary given the board name
-  if [ $status -eq 0 ]; then
-    local source_bin="${localOutputPath}/${sketchDirectory}.ino.bin"
-    local target_bin="${localOutputPath}/${boardName}.bin"
+    # Post-Build: Rename the application binary given the board name
+    if [ $status -eq 0 ]; then
+      local source_bin="${localOutputPath}/${sketchDirectory}.ino.bin"
+      local target_bin="${localOutputPath}/${boardName}.bin"
 
-    if [ -f "$source_bin" ]; then
-      mv "$source_bin" "$target_bin"
-      printf " Success, generated: $target_bin\n\n"
-      status=0
+      if [ -f "$source_bin" ]; then
+        mv "$source_bin" "$target_bin"
+        printf "\n\nSuccess, generated: $target_bin\n\n"
+        status=0
+      fi
+    else
+      printf "\n\nBuild failed with exit code $status\n\n"
     fi
-  else
-    printf "\n\n Build failed with exit code $status\n\n"
   fi
 
   # Generate full flash image if ok
@@ -126,4 +165,3 @@ alias espbuild-32='espbuild tvmg_esp32'
 alias espbuild-s3='espbuild tvmg_esp32s3'
 alias espbuild-ws='espbuild tvmg_wsharelcd'
 alias espbuild-wr='espbuild tvmg_wsrelay'
-
