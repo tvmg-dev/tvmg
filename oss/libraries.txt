@@ -1,3 +1,6 @@
+arduino-cli  Version: 1.1.1 Commit: fa6eafcb Date: 2024-11-22T09:31:40Z
+
+
 Using library SD at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SD
 Using library FS at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\FS
 Using library SPI at version 3.1.0 in folder: C:\Users\trial\AppData\Local\Arduino15\packages\esp32\hardware\esp32\3.1.0\libraries\SPI
@@ -36,5 +39,56 @@ ESP32_Display_Panel - git [v1.0.3]
 ESP32_IO_Expander - git [v1.0.1]
 esp-lib-utils - git [v0.1.2]
 lvgl - git [v8.4.0]
+
+SD                  3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/SD
+FS                  3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/FS
+SPI                 3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/SPI
+ESP32 Async UDP     3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/AsyncUDP
+WiFi                3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/WiFi
+Networking          3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/Network
+Preferences         3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/Preferences
+SPIFFS              3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/SPIFFS
+ESPmDNS             3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/ESPmDNS
+NetworkClientSecure 3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/NetworkClientSecure
+HTTPClient          3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/HTTPClient
+Update              3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/Update
+Wire                3.1.0   /opt/arduino/packages/esp32/hardware/esp32/3.1.0/libraries/Wire
+
+ModbusMaster        2.0.1   /working/alongdirectorname/tvmg/libraries/ModbusMaster
+OneWire             2.3.8   /working/alongdirectorname/tvmg/libraries/OneWire
+DallasTemperature   3.9.0   /working/alongdirectorname/tvmg/libraries/DallasTemperature
+ESP Async WebServer 3.4.5   /working/alongdirectorname/tvmg/libraries/ESPAsyncWebServer
+Async TCP           3.3.1   /working/alongdirectorname/tvmg/libraries/AsyncTCP
+ReadyMail           0.3.6   /working/alongdirectorname/tvmg/libraries/ReadyMail
+modbus-esp8266      4.1.0   /working/alongdirectorname/tvmg/libraries/modbus-esp8266
+U8g2                2.35.30 /working/alongdirectorname/tvmg/libraries/U8g2
+
+SD - from https://docs.arduino.cc/libraries/sd/ states GPL3.0 but not Apache 2.0 in sources
+FS - LGPL2.1 & Apache 2.0 in source
+SPI - LGPL2.1 in source
+ESP32 Async UDP - no license in source or https://github.com/me-no-dev/ESPAsyncUDP
+WiFi - LGPL2.1 & Apache 2.0 in source
+Networking - LGPL2.1 & Apache 2.0 in source
+Preferences - Apache 2.0 in source
+LittleFS - Apache 2.0 in source
+SPIFFS - Apache 2.0 in source
+ESPmDNS - MIT in source
+NetworkClientSecure - LGPL2.1 and Apache 2.0 in source
+HTTPClient - LGPL2.1 in source
+Update - Apache 2.0 in source
+Wire - LGPL2.1 in source
+
+ModbusMaster - Apache 2.0 & GPL3.0 (GPL3.0 for word.h seems to be a mistake)
+OneWire - MIT style
+DallasTemperature - LGPL2.1 in source
+ESP Async WebServer - LGPL3.0
+Async TCP - LGPL3.0
+ReadyMail - MIT
+modbus-esp8266 - BSD New license
+U8g2 - BSD New license +
+
+Arduino LGPL2.1
+
+
 
 
