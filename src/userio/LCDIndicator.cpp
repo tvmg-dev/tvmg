@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2026,  Peter Walton
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * This source code is licensed under the BSD-3-Clause License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 #if defined(TVMG_WAVESHARE_LCDB)
 
 #include "src/config/Config.h"

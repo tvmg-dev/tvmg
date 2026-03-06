@@ -1,3 +1,11 @@
+/*
+ * Copyright (c) 2026,  Peter Walton
+ * SPDX-License-Identifier: BSD-3-Clause
+ *
+ * This source code is licensed under the BSD-3-Clause License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 //
 // Initially from https://www.hackster.io/myhomethings/esp32-web-updater-and-spiffs-file-manager-cf8dc5
 // 20th Dec. 2023
