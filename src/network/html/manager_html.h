@@ -69,7 +69,7 @@ const char manager_html[] = R"rawliteral(
 
  <body>
   <div class="container">
-   <h2>ThermaV Monitor</h2>
+   <h2>ThermaV Monitoring Gadget</h2>
 
    <fieldset>
     <legend>Gadget Status</legend>

@@ -63,10 +63,12 @@ ReadyMail           0.3.6   /working/alongdirectorname/tvmg/libraries/ReadyMail
 modbus-esp8266      4.1.0   /working/alongdirectorname/tvmg/libraries/modbus-esp8266
 U8g2                2.35.30 /working/alongdirectorname/tvmg/libraries/U8g2
 
-SD - from https://docs.arduino.cc/libraries/sd/ states GPL3.0 but not Apache 2.0 in sources
+ESP32 Async UDP - no license in source or https://github.com/me-no-dev/ESPAsyncUDP
+
+
+
 FS - LGPL2.1 & Apache 2.0 in source
 SPI - LGPL2.1 in source
-ESP32 Async UDP - no license in source or https://github.com/me-no-dev/ESPAsyncUDP
 WiFi - LGPL2.1 & Apache 2.0 in source
 Networking - LGPL2.1 & Apache 2.0 in source
 Preferences - Apache 2.0 in source
