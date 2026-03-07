@@ -1,3 +1,4 @@
+v26.03.03 - OSS preparation - md files created, device serves info page.
 v26.03.02 - Build improvements.
             Debug macros renamed.
 v26.03.01 - Use MCPWM capture block for PWM.
