@@ -1065,19 +1065,11 @@ void  WebServer::handleCheckbox( const String &item,const String &state )
 
    if ( item == "ssaver" )
    {
-      if ( active )
-      {
-         SET_REGISTRY( USERIO_SCREENSAVER,1 );
-      }
-      else
-      {
-         SET_REGISTRY( USERIO_SCREENSAVER,0 );
-      }
+      SET_REGISTRY_INT_VOLATILE( USERIO_SCREENSAVER,active );
    }
    else if ( item == "udpdebug" )
    {
       setUdpDebugState( (active ? DEBUG_ON : DEBUG_OFF ) );
-
    }
 
    generateOptionsSection();

@@ -68,7 +68,7 @@ extern cJSON * getAllSensorJSON();
 extern void    releaseSensorJSON();
 
 extern bool    isSensorRequired( const char *sensorName );
-extern bool    getBoolFromcJSON( cJSON *node,const char *key, bool defaultValue );
+extern bool    getBoolFromcJSON( cJSON *node,const char *key, bool defaultValue = false );
 extern int     getIntFromcJSON( cJSON *node,const char *key, int defaultValue = -1 );
 extern float   getFloatFromcJSON( cJSON *node,const char *key, float defaultValue = 0 );
 extern String  getStringFromcJSON( cJSON *node,const char *key, const String &defaultValue = "" );

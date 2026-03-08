@@ -9,6 +9,7 @@
 
 #include <HTTPClient.h>
 #include <cJSON.h>
+#include <cstring>
 
 #include "src/sensors/PowerModule.h"
 
@@ -17,8 +18,11 @@
 #define POWER_MIN_SAMPLING_PERIOD_MS 15000
 
 #define SHELLY_MINI_PMG3   "MiniPMG3"
+#define SHELLY_PM1G3       "PM1G3"
 #define SHELLY_EM          "EM"
 #define SHELLY_EMG3        "EMG3"
+
+static ShellyPowerModule *s_shellyInstance = nullptr;
 
 ShellyPowerModule::ShellyPowerModule()
            : m_sensors(),
@@ -54,13 +58,17 @@ ShellyPowerModule::ShellyPowerModule()
             {
                pwrSensor->m_model = EM;
             }
+            else if ( model == SHELLY_EMG3 )
+            {
+               pwrSensor->m_model = EMG3;
+            }
             else if ( model == SHELLY_MINI_PMG3 )
             {
                pwrSensor->m_model = PMG3;
             }
-            else if ( model == SHELLY_EMG3 )
+            else if ( model == SHELLY_PM1G3)
             {
-               pwrSensor->m_model = EMG3;
+               pwrSensor->m_model = PM1G3;
             }
             else
             {
@@ -106,6 +114,7 @@ ShellyPowerModule::ShellyPowerModule()
    {
       TVMG_MSG( "Registered %d Shelly power sensors",m_numSensors );
       m_indicator = Indicator::getIndicator( Indicator::POWER,1 );
+      s_shellyInstance = this;
    }
 }
 
@@ -135,6 +144,25 @@ void ShellyPowerModule::sample()
    }
 }
 
+bool ShellyPowerModule::isValidSensor( uint8_t id )
+{
+   bool isOk = false;
+
+   if ( s_shellyInstance )
+   {
+      for ( int i = 0; i < s_shellyInstance->m_numSensors; i++ )
+      {
+         if ( s_shellyInstance->m_sensors[ i ].m_data.m_id == id )
+         {
+            isOk = true;
+            break;
+         }
+      }
+   }
+
+   return isOk;
+}
+
 ShellyPowerSensor  *ShellyPowerModule::readNextSensor( uint8_t index )
 {
    if ( index < m_numSensors )
@@ -162,21 +190,33 @@ bool ShellyPowerModule::getPower( uint8_t index )
    sensor->m_data.m_power = POWER_INVALID;
    sensor->m_data.m_energy = ENERGY_INVALID;
 
+   // regardless of model, clear any previous temperature readings so that
+   // consumers don't see stale data when this is not a PM1G3 device
+   sensor->m_temps.clear();
+
    delay( 100 );
    Indicator::Scoped guard( m_indicator );
 
-   if ( sensor->m_model == PMG3 )
+   switch( sensor->m_model )
    {
-      return getPMG3( sensor );
+      case PMG3:
+         return getPMG3( sensor );
+         break;
+      case PM1G3:
+         return getPM1G3( sensor );
+         break;
+      case EM:
+         return getEM( sensor );
+         break;
+      case EMG3:
+         return getEMG3( sensor );
+         break;
+      default:
+         TVMG_ERROR( "Unknown Shelly type" );
+         break;
    }
-   else if ( sensor->m_model == EM )
-   {
-      return getEM( sensor );
-   }
-   else
-   {
-      return getEMG3( sensor );
-   }
+
+   return false;
 }
 
 cJSON *ShellyPowerModule::getData( const String &query )
@@ -349,3 +389,95 @@ bool ShellyPowerModule::getPMG3( PrivateSensor *sensor )
    return retVal;
 }
 
+bool ShellyPowerModule::getPM1G3( PrivateSensor *sensor )
+{
+   bool retVal = false;
+   String restQuery = "http://host/rpc/Shelly.GetStatus";
+
+   restQuery.replace( "host",sensor->m_ipAddress.toString() );
+
+   cJSON *json = getData( restQuery );
+   if ( json )
+   {
+      cJSON *switchNode = cJSON_GetObjectItem( json,"switch:0" );
+      if ( switchNode )
+      {
+         float power = getFloatFromcJSON( switchNode,"apower",POWER_INVALID );
+
+         // put a 3W lower limit in place, seen -ve values returned
+         if ( power > -100 && power < 3 )
+         {
+            power = 0;
+         }
+         sensor->m_data.m_power = power;
+
+         cJSON *aenergy = cJSON_GetObjectItem( switchNode,"aenergy" );
+         if ( aenergy )
+         {
+            sensor->m_data.m_energy = getFloatFromcJSON( aenergy,"total",ENERGY_INVALID );
+         }
+
+         if ( sensor->m_data.m_power != POWER_INVALID && sensor->m_data.m_energy != ENERGY_INVALID )
+         {
+            retVal = true;
+         }
+      }
+
+      /* parse any temperature:N blocks at the top level */
+      for ( cJSON *child = json->child; child; child = child->next )
+      {
+         if ( child->string && strncmp( child->string,"temperature:",12 ) == 0 )
+         {
+            cJSON *idNode = cJSON_GetObjectItem( child,"id" );
+            cJSON *tempNode = cJSON_GetObjectItem( child,"tC" );
+            if ( idNode && tempNode && (idNode->type == cJSON_Number) && (tempNode->type == cJSON_Number) )
+            {
+               ShellyPowerModule::ShellyTemp temp;
+               temp.m_tempId = (uint8_t)idNode->valueint;
+               temp.m_value = (float)tempNode->valuedouble;
+               sensor->m_temps.push_back( temp );
+
+               TVMG_DEBUG( "located temp id %d, value %.1f", temp.m_tempId,temp.m_value );
+            }
+         }
+      }
+
+      cJSON_Delete( json );
+   }
+
+   TVMG_DEBUG( "PM1G3: %s - %.1f %.0f",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str(),
+                                     sensor->m_data.m_power,sensor->m_data.m_energy );
+
+   if ( !retVal )
+   {
+      TVMG_ERROR( "Failed to get shelly %s",getSensorName( SHELLYPM,sensor->m_data.m_id ).c_str() );
+   }
+
+   return retVal;
+}
+
+bool ShellyPowerModule::getTemperature( uint8_t shellyId,uint8_t tempId,float *val )
+{
+   if ( !s_shellyInstance )
+   {
+      return false;
+   }
+
+   for ( int i = 0; i < s_shellyInstance->m_numSensors; i++ )
+   {
+      if ( s_shellyInstance->m_sensors[ i ].m_data.m_id == shellyId )
+      {
+         const PrivateSensor &sensor = s_shellyInstance->m_sensors[ i ];
+         for ( const auto& tempEntry : sensor.m_temps ) 
+         {
+            if ( tempEntry.m_tempId == tempId ) 
+            {
+               *val = tempEntry.m_value;
+               return true;
+            }
+         }
+      }
+   }
+
+   return false;
+}

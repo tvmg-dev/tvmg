@@ -10,6 +10,7 @@
 #define TEMPERATURE_MODULE_H
 
 #include <Arduino.h>
+#include <cJSON.h>
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -61,6 +62,7 @@ public:
    float_t     getTemperature( uint8_t tempId );
 
 private:
+   enum TempSensorType { DS18B20,REMOTE,OPENWEATHERAPI,SHELLYADDON };
 
    typedef struct {
       DeviceAddress  m_address;                       // 64 bit address, array of 8 uint8_t
@@ -72,17 +74,26 @@ private:
    typedef struct {
       char  *m_url;
    } OpenWeatherSensor;
+   typedef struct {
+      int m_shellyParentId;     // Our ID of the shelly host (PM,EM)
+      int m_shellyId;           // ID configured for device in Shelly add-on
+   } ShellyAddOnSensor;
 
    typedef struct {
       TempSensor        m_data;        // sensor essentials
       bool              m_isValid;     // true if registered ok
-      bool              m_isDs18b20;   // true if local/remote DS18B20
-      bool              m_isRemote;    // true if remote
+      TempSensorType    m_type;        // type of sensor
       union {
          DS1820BSensor     m_ds18b20;     // for local/remote ds18b20
          OpenWeatherSensor m_openWeather; // for open weather API
+         ShellyAddOnSensor m_shelly;      // for Shelly add-on
       };
    } PrivateSensor;
+
+   bool addOpenWeather( cJSON *sensor );
+   bool addRemote( cJSON *sensor );
+   bool addShellyAddOn( cJSON *sensor );
+   bool addLocal( cJSON *sensor );
 
    bool  getTemperatures();
    void  getAddressString( DeviceAddress addr,char *addrString );

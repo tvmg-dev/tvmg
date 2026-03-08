@@ -21,9 +21,11 @@ extern const char *k_versionStr;
 #define MAX_KEY_LENGTH       32
 #define MAX_VALUE_LENGTH     48
 
-extern void    setRegistryEntry( char *key,char *value );
+extern void    setRegistryEntry( char *key,char *value, bool shouldPersist = false );
+extern void    setRegistryInt( char *key,int32_t value, bool shouldPersist = false );
 extern int32_t getRegistryInt( char *key );
 extern char    *getRegistryString( char *key );
+
 extern void    hwReset();
 extern void    reboot();
 extern void    setRebootRequired();
@@ -39,7 +41,14 @@ inline constexpr  char k_noNetworkCounter[] = "noNetwork";
 
 #define CONFIG_DEF_TO_STR( x ) #x
 
-#define SET_REGISTRY( x,y )      setRegistryEntry( CONFIG_DEF_TO_STR( x ),CONFIG_DEF_TO_STR( y ) )
+/* registry macros: The non-volatile versions update the config.json file */
+
+#define SET_REGISTRY_INT_VOLATILE(x,y) setRegistryInt(CONFIG_DEF_TO_STR(x), y, false)
+#define SET_REGISTRY_INT(x,y)          setRegistryInt(CONFIG_DEF_TO_STR(x), y, true)
+
+#define SET_REGISTRY_VOLATILE(x,y)     setRegistryEntry(CONFIG_DEF_TO_STR(x), y, false)
+#define SET_REGISTRY(x,y)              setRegistryEntry(CONFIG_DEF_TO_STR(x), y, true)
+
 #define GET_REGISTRY_INT( x )    getRegistryInt( CONFIG_DEF_TO_STR( x ) )
 #define GET_REGISTRY_STRING( x ) getRegistryString( CONFIG_DEF_TO_STR( x ) )
 

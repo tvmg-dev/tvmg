@@ -6,7 +6,6 @@
  * See the LICENSE file in the project root for full license text.
  */
 
-#include <cJSON.h>
 #include <mutex>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -20,6 +19,7 @@
 #include "src/network/Networking.h"
 
 #include "src/sensors/TemperatureModule.h"
+#include "src/sensors/ShellyPM.h"
 
 #define TEMPERATURE_PRECISION                11
 #define TEMPERATURE_MIN_SAMPLING_PERIOD_MS   15000
@@ -67,7 +67,7 @@ TemperatureModule::TemperatureModule()
    for ( int i = 0; i < MAX_TEMP_SENSORS; i++ )
    {
       m_sensors[ i ].m_isValid = false;
-      m_sensors[ i ].m_isRemote = false;
+      m_sensors[ i ].m_type = DS18B20;
       m_sensors[ i ].m_data.m_id = 255;
       m_sensors[ i ].m_data.m_emonFeedId = 0;
       m_sensors[ i ].m_data.m_temp = TEMPERATURE_INVALID;
@@ -91,75 +91,23 @@ TemperatureModule::TemperatureModule()
             tempSensor->m_data.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
 
             // Add the name to the sensor name map
+
+            TVMG_DEBUG( "Attempting to add %s",name.c_str() );
             setSensorName( THERM,tempSensor->m_data.m_id,name );
 
-            // now we depend on type, openweather, remote or local DS18B20's
-            if ( cJSON_GetObjectItem( sensor,"openweather" ) )
+            // Now add the sensor depending on type
+            bool added = addOpenWeather( sensor );
+            if ( !added )
             {
-               OpenWeatherSensor *openSensor = &m_sensors[ m_numSensors ].m_openWeather;
-
-               String lattitude = getStringFromcJSON( sensor,"lat" );
-               String longitude = getStringFromcJSON( sensor,"lon" );
-               String appid = getStringFromcJSON( sensor,"appid" );
-
-               if ( lattitude.length() && longitude.length() && appid.length() )
-               {
-                  String url = "https://api.openweathermap.org/data/2.5/weather?lat=LAT&lon=LONG&appid=APPID";
-                  url.replace( "LAT",lattitude );
-                  url.replace( "LONG",longitude );
-                  url.replace( "APPID",appid );
-
-                  openSensor->m_url = static_cast<char *> (malloc( url.length() + 1 ));
-                  if ( openSensor->m_url )
-                  {
-                     strcpy( openSensor->m_url,url.c_str() );
-
-                     TVMG_DEBUG( "OpenWeather: name %s at %s",name.c_str(),openSensor->m_url );
-                     TVMG_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
-
-                     tempSensor->m_isValid = true;
-                     tempSensor->m_isDs18b20 = false;
-                     m_numSensors++;
-                  }
-               }
+               added = addRemote( sensor );
             }
-            else if ( cJSON_GetObjectItem( sensor,"remote" ) )
+
+            if ( !added )
             {
-               tempSensor->m_isRemote = true;
-               m_haveRemoteSensors = true;
-
-               TVMG_DEBUG( "Remote Therm: name %s",name.c_str() );
-               TVMG_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
-
-               tempSensor->m_isValid = true;
-               tempSensor->m_isDs18b20 = true;
-               m_numSensors++;
+               added = addShellyAddOn( sensor );
             }
-            else
-            {
-               DS1820BSensor *dsSensor = &m_sensors[ m_numSensors ].m_ds18b20;
 
-               strncpy( dsSensor->m_addressStr,getStringFromcJSON( sensor,"address" ).c_str(),sizeof( dsSensor->m_addressStr ) - 1 );
-               dsSensor->m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
-
-               for ( int i = 0; i < 8; i++ )
-               {
-                  uint8_t  byte;
-                  byte = toHex( dsSensor->m_addressStr[ i * 2 ] );
-                  byte <<= 4;
-                  byte |= toHex( dsSensor->m_addressStr[ (i * 2) + 1 ] );
-                  dsSensor->m_address[ i ] = byte;
-               }
-               char addr[ 32 ];
-               getAddressString( dsSensor->m_address,addr );
-
-               TVMG_DEBUG( "Local Therm: name %s address %s",name.c_str(),addr );
-               TVMG_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId,dsSensor->m_calibrationOffset );
-
-               tempSensor->m_isValid = true;
-               tempSensor->m_isDs18b20 = true;
-               m_numSensors++;
-            }
+            addLocal( sensor );
          }
       }
 
@@ -179,16 +127,173 @@ TemperatureModule::~TemperatureModule()
    delete m_oneWireController;
 }
 
+bool TemperatureModule::addOpenWeather( cJSON *sensor )
+{
+   bool added = false;
+
+   if ( getBoolFromcJSON( sensor,"openweather",false ) )
+   {
+      PrivateSensor *tempSensor = &m_sensors[ m_numSensors ];
+      OpenWeatherSensor *openSensor = &m_sensors[ m_numSensors ].m_openWeather;
+
+      String name = getSensorName( THERM,tempSensor->m_data.m_id );
+
+      String lattitude = getStringFromcJSON( sensor,"lat" );
+      String longitude = getStringFromcJSON( sensor,"lon" );
+      String appid = getStringFromcJSON( sensor,"appid" );
+
+      if ( lattitude.length() && longitude.length() && appid.length() )
+      {
+         String url = "https://api.openweathermap.org/data/2.5/weather?lat=LAT&lon=LONG&appid=APPID";
+         url.replace( "LAT",lattitude );
+         url.replace( "LONG",longitude );
+         url.replace( "APPID",appid );
+
+         openSensor->m_url = static_cast<char *> (malloc( url.length() + 1 ));
+         if ( openSensor->m_url )
+         {
+            strcpy( openSensor->m_url,url.c_str() );
+
+            TVMG_DEBUG( "OpenWeather: name %s at %s",name.c_str(),openSensor->m_url );
+            TVMG_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
+
+            tempSensor->m_isValid = true;
+            tempSensor->m_type = OPENWEATHERAPI;
+            m_numSensors++;
+
+            added = true;
+         }
+      }
+   }
+
+   return added;
+}
+
+bool TemperatureModule::addRemote( cJSON *sensor )
+{
+   bool added = false;
+
+   if ( getBoolFromcJSON( sensor,"remote",false ) )
+   {
+      PrivateSensor *tempSensor = &m_sensors[ m_numSensors ];
+
+      String name = getSensorName( THERM,tempSensor->m_data.m_id );
+
+      m_haveRemoteSensors = true;
+
+      TVMG_DEBUG( "Remote Therm: name %s",name.c_str() );
+      TVMG_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
+
+      tempSensor->m_isValid = true;
+      tempSensor->m_type = REMOTE;
+      m_numSensors++;
+
+      added = true;
+   }
+
+   return added;
+}
+
+bool TemperatureModule::addShellyAddOn( cJSON *sensor )
+{
+   bool added = false;
+
+   if ( getBoolFromcJSON( sensor,"shellyAddOn",false ) )
+   {
+      PrivateSensor *tempSensor = &m_sensors[ m_numSensors ];
+      ShellyAddOnSensor *shellySensor = &m_sensors[ m_numSensors ].m_shelly;
+
+      String name = getSensorName( THERM,tempSensor->m_data.m_id );
+
+      shellySensor->m_shellyParentId = getIntFromcJSON( sensor,"shellyParentId");
+      shellySensor->m_shellyId = getIntFromcJSON( sensor,"shellyId");
+
+      if ( shellySensor->m_shellyId != -1 && shellySensor->m_shellyParentId != -1 )
+      {
+         if ( !ShellyPowerModule::isValidSensor( shellySensor->m_shellyParentId ) )
+         {
+            TVMG_WARN( "No valid ShellyPM with id %d",shellySensor->m_shellyParentId );
+         }
+         else
+         {
+            tempSensor->m_isValid = true;
+            tempSensor->m_type = SHELLYADDON;
+
+            TVMG_DEBUG( "Shelly Therm: name %s",name.c_str() );
+            TVMG_DEBUG( "Id %u, feed %u",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId );
+            TVMG_DEBUG( "Shelly parent id %d, device id %d",shellySensor->m_shellyParentId,shellySensor->m_shellyId );
+
+            m_numSensors++;
+            added = true;
+         }
+      }
+   }
+
+   return added;
+}
+
+bool TemperatureModule::addLocal( cJSON *sensor )
+{
+   bool added = false;
+
+   PrivateSensor *tempSensor = &m_sensors[ m_numSensors ];
+   DS1820BSensor *dsSensor = &m_sensors[ m_numSensors ].m_ds18b20;
+
+   String name = getSensorName( THERM,tempSensor->m_data.m_id );
+
+   String addrString = getStringFromcJSON( sensor,"address" );
+   if ( addrString.length() == 16 )
+   {
+      strncpy( dsSensor->m_addressStr,addrString.c_str(),sizeof( dsSensor->m_addressStr ) - 1 );
+      dsSensor->m_calibrationOffset = getFloatFromcJSON( sensor,"calibration",0 );
+
+      TVMG_DEBUG( "address string %s",addrString.c_str() );
+      for ( int i = 0; i < 8; i++ )
+      {
+         uint8_t  byte;
+         byte = toHex( dsSensor->m_addressStr[ i * 2 ] );
+         byte <<= 4;
+         byte |= toHex( dsSensor->m_addressStr[ (i * 2) + 1 ] );
+         dsSensor->m_address[ i ] = byte;
+      }
+      char addr[ 32 ];
+      getAddressString( dsSensor->m_address,addr );
+
+      TVMG_DEBUG( "Local Therm: name %s address %s",name.c_str(),addr );
+      TVMG_DEBUG( "Id %u, feed %u, cal %.2f ",tempSensor->m_data.m_id,tempSensor->m_data.m_emonFeedId,dsSensor->m_calibrationOffset );
+
+      tempSensor->m_isValid = true;
+      tempSensor->m_type = DS18B20;
+      m_numSensors++;
+
+      added = true;
+   }
+
+   return added;
+}
+
 void  TemperatureModule::initialise()
 {
+   bool haveLocalSensors = false;
+
+   for ( int i = 0; i < m_numSensors; i++ )
+   {
+      if ( m_sensors[ i ].m_type == DS18B20 )
+      {
+         haveLocalSensors = true;
+         break;
+      }
+   }
+
+   TVMG_DEBUG( "TemperatureModule::initialise()" );
+
    if ( hwConfig->OneWireGPIO == -1 )
    {
-      TVMG_DEBUG( "TemperatureModule::initialise() - fake" );
+      TVMG_DEBUG( "TemperatureModule::initialise() - No 1-Wire GPIO" );
    }
-   else
+   else if ( haveLocalSensors )
    {
-      TVMG_DEBUG( "TemperatureModule::initialise()" );
-      TVMG_MSG( "Initialising temperature sensors" );
+      TVMG_MSG( "Initialising Local DS18B20 sensors" );
 
       m_oneWireController = new OneWire( hwConfig->OneWireGPIO );
       m_dallasController = new DallasTemperature( m_oneWireController );
@@ -206,7 +311,7 @@ void  TemperatureModule::initialise()
       int numLocalDS1820 = 0;
       for ( int i = 0; i < m_numSensors; i++ )
       {
-         if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_isDs18b20 && !m_sensors[ i ].m_isRemote )
+         if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_type == DS18B20 )
          {
             numLocalDS1820++;
          }
@@ -239,7 +344,7 @@ void  TemperatureModule::initialise()
 
       for ( int i = 0; i < m_numSensors; i++ )
       {
-         if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_isDs18b20 && ! m_sensors[ i ].m_isRemote )
+         if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_type == DS18B20 )
          {
             const char *name = getSensorName( THERM,m_sensors[ i ].m_data.m_id ).c_str();
             m_sensors[ i ].m_ds18b20.m_busIndex = MAX_TEMP_SENSORS;
@@ -293,7 +398,7 @@ TempSensor *TemperatureModule::readNextSensor( uint8_t index )
 {
    if ( index < m_numSensors )
    {
-      if ( !&m_sensors[ index ].m_isRemote )
+      if ( m_sensors[ index ].m_type != REMOTE )
       {
          return( &m_sensors[ index ].m_data );
       }
@@ -362,7 +467,7 @@ void TemperatureModule::addUDPListener()
                   for ( int i = 0; i < m_numSensors; i++ )
                   {
                      PrivateSensor *tempSensor = &m_sensors[ i ];
-                     if ( tempSensor->m_isValid && tempSensor->m_isRemote && tempSensor->m_data.m_id == id )
+                     if ( tempSensor->m_isValid && tempSensor->m_type == REMOTE && tempSensor->m_data.m_id == id )
                      {
                         TVMG_DEBUG( "UDP: Assign remote temp ID %d %.1f",id,value );
                         tempSensor->m_data.m_temp = value;
@@ -388,18 +493,25 @@ bool TemperatureModule::getTemperatures()
    // Let's see what we have
    bool haveLocalSensors = false;
    bool haveOWSensors = false;
+   bool haveShellySensors = false;
 
    for ( int i = 0; i < m_numSensors; i++ )
    {
       PrivateSensor *sensor = &m_sensors[ i ];
 
-      if ( sensor->m_isDs18b20 && !sensor->m_isRemote )
+      switch( sensor->m_type )
       {
-         haveLocalSensors = true;
-      }
-      else if ( !sensor->m_isDs18b20 )
-      {
-         haveOWSensors = true;
+         case DS18B20:
+            haveLocalSensors = true;
+            break;
+         case OPENWEATHERAPI:
+            haveOWSensors = true;
+            break;
+         case SHELLYADDON:
+            haveShellySensors = true;
+            break;
+         default:
+            break;
       }
    }
 
@@ -411,7 +523,7 @@ bool TemperatureModule::getTemperatures()
 
       for ( int i = 0; i < m_numSensors; i++ )
       {
-         if ( !m_sensors[ i ].m_isDs18b20 )
+         if ( m_sensors[ i ].m_type == OPENWEATHERAPI )
          {
             const char *name = getSensorName( THERM,m_sensors[ i ].m_data.m_id ).c_str();
             m_sensors[ i ].m_data.m_temp = fetchOpenWeather( m_sensors[ i ].m_openWeather.m_url );
@@ -422,6 +534,33 @@ bool TemperatureModule::getTemperatures()
       END_TIMING;
       delay( 100 );
    }
+
+   if ( haveShellySensors )
+   {
+      START_TIMING( "Shelly Add-On Temps" );
+
+      Indicator::Scoped guard( m_indicator );
+
+      for ( int i = 0; i < m_numSensors; i++ )
+      {
+         if ( m_sensors[ i ].m_type == SHELLYADDON )
+         {
+            const char *name = getSensorName( THERM,m_sensors[ i ].m_data.m_id ).c_str();
+            ShellyAddOnSensor shellySensor = m_sensors[ i ].m_shelly;
+
+            float temp = TEMPERATURE_INVALID;
+            if ( ShellyPowerModule::getTemperature( shellySensor.m_shellyParentId, 
+                                                      shellySensor.m_shellyId,&temp ) )
+            {
+               m_sensors[ i ].m_data.m_temp = temp;
+               TVMG_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_data.m_temp );
+            }
+         }
+      }
+      END_TIMING;
+      delay( 100 );
+   }
+
 
    if ( !haveLocalSensors )
    {
@@ -443,7 +582,7 @@ bool TemperatureModule::getTemperatures()
    bool dallasAcquired = false;
    for ( int i = 0; i < m_numSensors; i++ )
    {
-      if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_isDs18b20 && ! m_sensors[ i ].m_isRemote )
+      if ( m_sensors[ i ].m_isValid && m_sensors[ i ].m_type == DS18B20 )
       {
          // Request temperatures of all devices on the bus just once.  This may block so is not
          // an ideal way to obtain temperatures...
@@ -542,7 +681,7 @@ void  TemperatureModule::localBroadcastData()
       for ( int i = 0; i < m_numSensors; i++ )
       {
          PrivateSensor *tempSensor = &m_sensors[ i ];
-         if ( tempSensor->m_isValid && tempSensor->m_isDs18b20 && ! tempSensor->m_isRemote )
+         if ( tempSensor->m_isValid && tempSensor->m_type == DS18B20 )
          {
             cJSON *sensor = cJSON_CreateObject();
             if ( sensor )
@@ -617,31 +756,6 @@ idWkvklsQLI+qGu41SWyxP7x09fn1txDAXYw+zuLXfdKiXyaNb78yvBXAfCNP6CH
 MntHWpdLgtJmwsQt6j8k9Kf5qLnjatkYYaA7jBU=
 -----END CERTIFICATE----- )rawliteral";
 
-
-// A debug class to access the connect() method of HTTPClient
-
-class PeteHTTP : public HTTPClient
-{
-public:
-   PeteHTTP();
-   ~PeteHTTP();
-   bool connect();
-};
-
-PeteHTTP::PeteHTTP()
-        : HTTPClient()
-{
-}
-
-PeteHTTP::~PeteHTTP()
-{
-}
-
-bool PeteHTTP::connect()
-{
-   return HTTPClient::connect();
-}
-
 // Some long duration requests to get weather data from openweather HTTP API
 // so added timeouts to see if that helps - more testing required
 
@@ -679,19 +793,12 @@ float TemperatureModule::fetchOpenWeather( const String &url )
 
       // Create a new client
 
-      PeteHTTP http;
+      HTTPClient http;
       http.begin( *client,url );
 
       http.setConnectTimeout( timeoutMS );  // for the connection
       http.setTimeout( timeoutMS );         // for the HTTP response
       http.setReuse( true );
-
-#if 0
-      START_TIMING( "OW Connecting" );
-      bool connected = http.connect();
-
-      END_TIMING;
-#endif
 
       START_TIMING( "OW GET" );
 

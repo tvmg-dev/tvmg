@@ -19,7 +19,7 @@
 
 #include "src/userio/Indicator.h"
 
-const char *k_versionStr = "v26.03.03";
+const char *k_versionStr = "v26.03.04-dev1";
 
 static Config   *s_instance = nullptr;
 static char  defaultConfigString[] = "unknown";
@@ -218,7 +218,99 @@ void  replaceRegistryValue( uint8_t index,char *value )
    }
 }
 
-void  setRegistryEntry( char *key,char *value )
+// Persist current in‑memory registry state to JSON file.  Returns true on
+// success, false otherwise; callers will typically log failure but otherwise
+// ignore it.  The implementation mirrors loadFromJSON() but in reverse.
+
+static bool writeRegistryToJSON()
+{
+   if ( !tvmgFileSys )
+   {
+      TVMG_WARN( "writeRegistryToJSON() : No filesystem !" );
+      return false;
+   }
+
+   cJSON *root = cJSON_CreateObject();
+   if ( !root )
+   {
+      TVMG_ERROR( "writeRegistryToJSON() : Failed to create root JSON" );
+      return false;
+   }
+
+   for ( int i = 0; k_keyMappings[ i ].flatKey != nullptr; i++ )
+   {
+      const KeyPathMapping *mapping = &k_keyMappings[ i ];
+      int idx = findKey( (char *)mapping->flatKey );
+      if ( idx < 0 )
+         continue;   // entry not present
+      TVMG_DEBUG( "this far %s",mapping->flatKey );
+
+      // ensure parent objects exist
+      cJSON *parent1 = cJSON_GetObjectItem( root, mapping->parent1 );
+      if ( !parent1 )
+      {
+         parent1 = cJSON_CreateObject();
+         cJSON_AddItemToObject( root, mapping->parent1, parent1 );
+      }
+
+      cJSON *parent2 = cJSON_GetObjectItem( parent1, mapping->parent2 );
+      if ( !parent2 )
+      {
+         parent2 = cJSON_CreateObject();
+         cJSON_AddItemToObject( parent1, mapping->parent2, parent2 );
+      }
+
+      const char *val = Config::m_entries[ idx ].value;
+
+      if ( !strcmp( mapping->type, "int" ) )
+      {
+         cJSON_AddNumberToObject( parent2, mapping->jsonKey, atoi(val) );
+      }
+      else if ( !strcmp( mapping->type, "bool" ) )
+      {
+         int boolVal = atoi(val);
+         cJSON_AddBoolToObject( parent2, mapping->jsonKey, boolVal != 0 );
+      }
+      else
+      {
+         cJSON_AddStringToObject( parent2, mapping->jsonKey, val );
+      }
+   }
+
+   char *jsonString = cJSON_PrintUnformatted( root );
+   if ( !jsonString )
+   {
+      cJSON_Delete( root );
+      TVMG_ERROR( "writeRegistryToJSON() : Failed to serialize JSON" );
+      return false;
+   }
+
+   File dstFile = tvmgFileSys.open( JSON_CONFIG_FILENAME, FILE_WRITE );
+   if ( !dstFile )
+   {
+      cJSON_free( jsonString );
+      cJSON_Delete( root );
+      TVMG_ERROR( "writeRegistryToJSON() : Can't open %s for writing", JSON_CONFIG_FILENAME );
+      return false;
+   }
+
+   size_t written = dstFile.print( jsonString );
+   dstFile.close();
+
+   cJSON_free( jsonString );
+   cJSON_Delete( root );
+
+   if ( written == 0 )
+   {
+      TVMG_ERROR( "writeRegistryToJSON() : zero bytes written" );
+      return false;
+   }
+
+   TVMG_MSG( "writeRegistryToJSON() : wrote %u bytes", (unsigned)written );
+   return true;
+}
+
+void  setRegistryEntry( char *key,char *value, bool shouldPersist )
 {
    int index = findKey( key );
 
@@ -237,6 +329,19 @@ void  setRegistryEntry( char *key,char *value )
 
       Config::numRegistryEntries++;
    }
+
+   if ( shouldPersist )
+   {
+      // ignore return value; failure is logged inside
+      writeRegistryToJSON();
+   }
+}
+
+void  setRegistryInt( char *key,int32_t value, bool shouldPersist )
+{
+   char valueStr[ 12 ];
+   itoa( value,valueStr,10 );
+   setRegistryEntry( key,valueStr,shouldPersist );
 }
 
 int32_t getRegistryInt( char *key )

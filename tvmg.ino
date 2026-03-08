@@ -518,11 +518,6 @@ void startNetworking()
 
 void  initialiseMeasurement()
 {
-   // Instantiate the temperature collecting module
-
-   tempModule = new TemperatureModule;
-   tempModule->initialise();
-
    // get modbus if available
 
    configureModBus();
@@ -537,6 +532,11 @@ void  initialiseMeasurement()
 
    shellyPowerModule = new ShellyPowerModule();
    shellyPowerModule->initialise();
+
+   // Instantiate the temperature collecting module
+
+   tempModule = new TemperatureModule;
+   tempModule->initialise();
 
    // Instantiate the heat pump collecting module if active and we have
    // a valid modbus only if we're not acting as an LG simulator

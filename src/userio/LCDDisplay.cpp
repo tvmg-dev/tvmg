@@ -567,7 +567,7 @@ static void heatbeatTimerCallback(void* arg)
    }
    if ( screenSaver == -1 && now >= SCREENSAVER_MS )
    {
-      SET_REGISTRY( USERIO_SCREENSAVER,1 );
+      SET_REGISTRY_INT_VOLATILE( USERIO_SCREENSAVER,1 );
       controlBacklight( false );
       screenSaverActive = true;
       return;

@@ -507,16 +507,20 @@ bool  isDebugEnabled()
 
 void setUdpDebugState( DebugState state )
 {
-   std::lock_guard<std::mutex> lock(loggingMutex);
+   {
+      std::lock_guard<std::mutex> lock(loggingMutex);
 
-   if ( state == DEBUG_ON )
-   {
-      logToUDP = isTrue;
+      if ( state == DEBUG_ON )
+      {
+         logToUDP = isTrue;
+      }
+      else
+      {
+         logToUDP = isFalse;
+      }
    }
-   else
-   {
-      logToUDP = isFalse;
-   }
+
+   SET_REGISTRY_INT( UDP_LOGGING_ENABLE,(logToUDP == isTrue ? true : false) );
 }
 
 DebugState getUdpDebugState()

@@ -64,7 +64,7 @@ void  updateCallback( void *params )
 
    if ( screenSaver == -1 && currentMillis >= SCREENSAVER_MS )
    {
-      SET_REGISTRY( USERIO_SCREENSAVER,1 );
+      SET_REGISTRY_INT_VOLATILE( USERIO_SCREENSAVER,1 );
       display->updateScreensaver();
       return;
    }
