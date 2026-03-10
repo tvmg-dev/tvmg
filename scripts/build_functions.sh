@@ -62,7 +62,7 @@ function espbuild()
   fi
 
   local win_docs_raw=$(powershell.exe -Command "[Environment]::GetFolderPath('MyDocuments')" 2>/dev/null | tr -d '\r')
-  local win_docs=$(wslpath "$win_docs_raw")
+  local win_docs=$(wslpath "$win_docs_raw" 2>/dev/null)
 
   local localLibraryPath="${win_docs}/Arduino/libraries"
 
@@ -84,14 +84,13 @@ function espbuild()
   local dockerRoot="/working/alongdirectorname/${sketchDirectory}"
   local dockerBuildCache="${dockerRoot}/${buildCache}"
   local dockerOutputPath="${dockerRoot}/${buildOutput}"
-  local dockerLibraries="${dockerRoot}/libraries"
+  local dockerLibraries="/opt/arduino/libraries"
   
   local arduinoESP32Root="/opt/arduino/packages/esp32/hardware/esp32/3.1.0"
 
   local DOCKER_BASE="MSYS_NO_PATHCONV=1 docker run ${dockerUser} --rm \
     -e HOME=/root \
     -v \"$(pwd):${dockerRoot}\" \
-    -v \"${localLibraryPath}:${dockerLibraries}\" \
     -w \"${dockerRoot}\" \
     tvmg-builder"
 

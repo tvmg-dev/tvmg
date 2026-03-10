@@ -17,9 +17,10 @@ RUN wget https://github.com/igrr/mkspiffs/releases/download/0.2.3/mkspiffs-0.2.3
     rm -rf mkspiffs*
 
 # 3. Arduino Setup
-ENV ARDUINO_DIRECTORIES_DATA=/opt/arduino
-ENV ARDUINO_DIRECTORIES_DOWNLOADS=/opt/arduino/staging
-ENV ARDUINO_DIRECTORIES_USER=/opt/arduino/user
+ENV ARDUINO_DIRECTORIES_DATA=/opt/arduino \
+	ARDUINO_DIRECTORIES_DOWNLOADS=/opt/arduino/staging \
+	ARDUINO_DIRECTORIES_USER=/opt/arduino/user
+
 RUN mkdir -p /opt/arduino
 
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh -s 1.1.1
@@ -31,10 +32,13 @@ RUN arduino-cli config init && \
 
 # 4. Apply Patches
 COPY patches/ /tmp/patches/
+
 RUN cd /opt/arduino/packages/esp32/hardware/esp32/3.1.0 && \
-    patch -p0 < /tmp/patches/esp-asyncudp.patch && \
-    patch -p0 < /tmp/patches/esp-network.patch && \
-    rm -rf /tmp/patches
+    patch -p0 < /tmp/patches/arduino-esp32/esp-asyncudp.patch && \
+    patch -p0 < /tmp/patches/arduino-esp32/esp-network.patch
+
+COPY get_libraries.sh /root/
+RUN /root/get_libraries.sh && rm -rf /tmp/patches && rm /root/get_libraries.sh
 
 # 5. Punch Permission Holes
 # This allows non-root users to copy their own boards/partitions into the core
