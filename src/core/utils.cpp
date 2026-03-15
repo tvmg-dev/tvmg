@@ -387,7 +387,7 @@ void getRunTimeInfo()
             TaskStatus_t *task = &taskStatusArray[ t ];
 
             ulStatsAsPercentage = task->ulRunTimeCounter / ulTotalRunTime;
-            TVMG_MSG( "%s tt %d tt %d - stk %d Core %d",
+            TVMG_MSG( "%s tt %d %% %d - stk %d Core %d",
                               task->pcTaskName,
                               task->ulRunTimeCounter,
                               ulStatsAsPercentage,
@@ -508,6 +508,9 @@ bool  isDebugEnabled()
 void setUdpDebugState( DebugState state )
 {
    {
+      // Need to take the lock here, but not when we set registry as that will
+      // be calling into the debug system and the loggingMutex isn't recursive 
+
       std::lock_guard<std::mutex> lock(loggingMutex);
 
       if ( state == DEBUG_ON )
@@ -527,14 +530,7 @@ DebugState getUdpDebugState()
 {
    std::lock_guard<std::mutex> lock(loggingMutex);
 
-   DebugState state = DEBUG_OFF;
-
-   if ( logToUDP == isTrue )
-   {
-      state = DEBUG_ON;
-   }
-
-   return state;
+   return ( logToUDP == isTrue ? DEBUG_ON : DEBUG_OFF );
 }
 
 void msgLog( LOGGING_LEVEL level,const char *format,... )
@@ -620,8 +616,8 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    }
 
    // we should really take the network mutex here for UDP, beware of deadly
-   // embrace, i.e. we can't in the one core lock network & logging and
-   // the other core lock logging, then network.
+   // embrace, i.e. we can't in the one task lock network & logging and
+   // the other task lock logging, then network.
    // this could introduce significant hold off's in UDP enabled runtime
    // as some activity when networking lock is held can be several seconds
    // So for now - we don't take the NW mutex and hope UDP broadcast on 1

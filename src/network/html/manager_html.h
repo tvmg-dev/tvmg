@@ -131,7 +131,7 @@ const char manager_html[] = R"rawliteral(
      <form method="POST" action="/reset"><input type="submit" value="Reset" onclick="return confirm('WARNING: Pressing OK will immediately reset to defaults and restart')"></form>
     </div>
    </fieldset>
-
+   <div id="last-upd">Firmware %VERSION% &copy; 2026 Peter Walton</div>
   </div>
  </body>
 </html>

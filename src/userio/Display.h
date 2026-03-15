@@ -35,9 +35,15 @@ public:
       NONE
    };
 
-   Display() {};
+   enum ScreenSaverMode {
+      Disabled,
+      Enabled,
+      Pending
+   };
+
+   Display( uint32_t heartbeatMS  = 0 );
    virtual ~Display() {};
-   virtual void  initialise();
+   virtual void  initialise() = 0;
 
    virtual void  setMeasurement( Measurement *measurement ) = 0;
    virtual void  setNetworking( Networking *network ) = 0;
@@ -48,6 +54,19 @@ public:
    virtual void  updateLine( uint8_t lineNum,const char *line,bool isForLog = true ) = 0;
    virtual void  clear() = 0;
    virtual void  show( ScreenType type ) = 0;
+   virtual void  doUpdate();
+   
+   const char *screenToString( ScreenType type );
+   
+   void startHeartbeat();
+   static void setScreenSaverMode( ScreenSaverMode mode );
+   static ScreenSaverMode getScreenSaverMode();
+
+   ScreenSaverMode m_ssMode;
+
+private:
+   uint32_t m_heartbeatMS;
+
 };
 
 #endif

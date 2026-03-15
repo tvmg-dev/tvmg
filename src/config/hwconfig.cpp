@@ -8,7 +8,18 @@
 
 #include <SD.h>
 
+#include <Preferences.h>
+#include <map>
+#include <rtc.h>
+#include <soc/rtc.h>
+#include <hal/wdt_hal.h>
+#include <rtc_wdt.h>
+
 #include "src/config/Config.h"
+
+#include "src/userio/Indicator.h"
+
+
 
 // For modbus, what are the transmit & receive pins - using h/w serial #2
 // The RS485 - TTL module has its TX connected to ESP's RX, and obviously
@@ -245,6 +256,250 @@ bool  boardHasSDCard()
    return( false );
 }
 
+//------------------------------------------------------------------------------
+// For reboot management
+
+// mapping reboot codes to strings
+static std::map<RebootType,String> s_appRebootMap = {
+   { POWER_CYCLE,"Power Cycle" },
+   { BOOT_NO_CONFIG,"No Config" },
+   { BOOT_NO_WIFI,"No WiFi" },
+   { BOOT_NO_NTP,"No NTP" },
+   { BOOT_IN_SETUP,"During Setup" },
+   { LOST_WIFI,"Lost WiFi" },
+   { SERVER_REBOOT,"Server Reboot" },
+   { SERVER_RESET,"Server Reset" },
+   { SERVER_OTA_UPDATE,"OTA Update" },
+   { LOOP_MUTEX,"Mutex Failure" },
+   { ESP32_PANIC,"ESP32 Panic" },
+   { ESP32_WATCHDOG,"ESP32 Watchdog" },
+   { APP_24D_RESET,"24 day reset" },
+   { UNKNOWN,"Unknown" }
+};
+
+static std::map<esp_reset_reason_t,String> s_esp32RebooMap = {
+   { ESP_RST_POWERON,"Power Cycle" },
+   { ESP_RST_EXT,"External Pin" },
+   { ESP_RST_PWR_GLITCH,"Power Glitch" },
+   { ESP_RST_PANIC,"Core Panic" },
+   { ESP_RST_INT_WDT,"Interrupt Watcdog" },
+   { ESP_RST_TASK_WDT,"Task Watchdog" },
+   { ESP_RST_WDT,"Other Watchdog" },
+   { ESP_RST_SW,"App Reset" },
+};
+
+#define  MINIMUM_RUNTIME_SECS (10 * 60)
+#define  ALLOWED_FAST_RESETS  10
+
+RTC_NOINIT_ATTR   uint32_t s_softResets;
+RTC_NOINIT_ATTR   uint32_t s_lastResetSeconds;
+
+static const char k_nvsNamespace[] = "sysinfo";
+
+#define  ALLOWED_EARLY_RESETS (ALLOWED_FAST_RESETS + 5)
+#define  MAGIC_WORD  0xFACEFEED
+
+RTC_NOINIT_ATTR   uint32_t s_earlyResets;
+RTC_NOINIT_ATTR   uint32_t s_magicResetWord;
+
+// flag kept across calls to wasFastReboot()
+static bool s_wasFastReboot = false;
+
+// persistent helpers
+
+bool isFactoryReset()
+{
+   int32_t rebootReason;
+   getPersistentInt( k_rebootType,&rebootReason,0 );
+   return ( rebootReason == SERVER_RESET );
+}
+
+bool didRebootNoWiFi()
+{
+   int32_t rebootReason;
+   getPersistentInt( k_rebootType,&rebootReason,0 );
+   return ( rebootReason == BOOT_NO_WIFI );
+}
+
+void setFactoryReset()
+{
+   Preferences pref;
+   if ( !pref.begin( k_nvsNamespace ) )
+   {
+      TVMG_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+   }
+   else
+   {
+      pref.clear();
+      pref.end();
+      setPersistentInt( k_rebootType,SERVER_RESET );
+   }
+
+   Indicator *apModeIndicator = Indicator::getIndicator( Indicator::SYSTEM,SYSTEM_AP_ID );
+   if (apModeIndicator)
+   {
+      apModeIndicator->off();
+   }
+}
+
+bool getPersistentInt( const String &key,int32_t *value,int32_t defValue )
+{
+   bool ok = false;
+   Preferences pref;
+   *value = defValue;
+   if ( !pref.begin( k_nvsNamespace ) )
+   {
+      TVMG_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+   }
+   else
+   {
+      *value = pref.getInt( key.c_str(),defValue );
+      pref.end();
+      ok = (*value != defValue );
+   }
+   return ok;
+}
+
+void setPersistentInt( const String &key,int32_t value )
+{
+   Preferences pref;
+   if ( !pref.begin( k_nvsNamespace ) )
+   {
+      TVMG_ERROR( "Failed to start nvs %s",k_nvsNamespace );
+   }
+   else
+   {
+      size_t ret = pref.putInt( key.c_str(),value );
+      if ( ret != 4 )
+      {
+         TVMG_ERROR( "Failed to write %d to %s",value,key.c_str() );
+      }
+      pref.end();
+   }
+}
+
+String getESPRebootReason( esp_reset_reason_t code )
+{
+   auto it = s_esp32RebooMap.find( code );
+   if ( it == s_esp32RebooMap.end() )
+   {
+      return String("ESP32 unknown reset cause");
+   }
+   return it->second;
+}
+
+String getAppRebootReason( RebootType code )
+{
+   auto it = s_appRebootMap.find( code );
+   if ( it == s_appRebootMap.end() )
+   {
+      return String("App unknown reset cause");
+   }
+   return it->second;
+}
+
+String getRebootReason( RebootType *type )
+{
+   RebootType reboot;
+   int32_t rebootReason;
+   String appReason;
+
+   esp_reset_reason_t espReason = esp_reset_reason();
+   (void) getPersistentInt( k_rebootType,&rebootReason );
+   if ( rebootReason == -1 )
+      rebootReason = SERVER_OTA_UPDATE;
+
+   uint64_t us = esp_rtc_get_time_us();
+   uint32_t secs = static_cast<uint32_t>(us / 1000000UL);
+   int32_t lastCycleSecs = secs - s_lastResetSeconds;
+
+   reboot = static_cast<RebootType>(rebootReason);
+   appReason = getAppRebootReason(reboot);
+
+   TVMG_MSG("\n---------INITIAL------------");
+   TVMG_MSG("ESP32 Reset    : %s",getESPRebootReason( espReason ).c_str());
+   TVMG_MSG("ESP32 Code     : %d",espReason);
+   TVMG_MSG("Current Time   : %u",secs);
+   TVMG_MSG("Last Duration  : %d\n",lastCycleSecs);
+   TVMG_MSG("App Reset      : %s",appReason.c_str());
+   TVMG_MSG("Soft Resets    : %u",s_softResets);
+   TVMG_MSG("Last Reset @   : %u",s_lastResetSeconds);
+   TVMG_MSG("-----------------------------\n");
+
+   switch( espReason )
+   {
+      case ESP_RST_POWERON:
+      case ESP_RST_EXT:
+      case ESP_RST_PWR_GLITCH:
+            reboot = POWER_CYCLE;
+            break;
+      case ESP_RST_PANIC:
+            reboot = ESP32_PANIC;
+            break;
+      case ESP_RST_INT_WDT:
+      case ESP_RST_TASK_WDT:
+      case ESP_RST_WDT:
+            if ( reboot != SERVER_OTA_UPDATE )
+            {
+               reboot = ESP32_WATCHDOG;
+            }
+            break;
+      case ESP_RST_SW:
+            break;
+      default:
+            reboot = UNKNOWN;
+            break;
+   }
+
+   if ( reboot == POWER_CYCLE || reboot == SERVER_OTA_UPDATE || reboot == SERVER_REBOOT  || reboot == SERVER_RESET )
+   {
+      TVMG_DEBUG( "Resetting soft reboot data" );
+      s_softResets = 0;
+      s_earlyResets = 0;
+      lastCycleSecs = 0;
+   }
+
+   s_lastResetSeconds = secs;
+
+   if ( lastCycleSecs > MINIMUM_RUNTIME_SECS )
+   {
+      TVMG_DEBUG( "Long last cycle, resetting data" );
+      s_softResets = 0;
+      s_earlyResets = 0;
+   }
+
+   s_softResets++;
+
+   TVMG_MSG("\n-----------NEW---------------");
+   TVMG_MSG("ESP32 Reset    : %s",getESPRebootReason( espReason ).c_str());
+   TVMG_MSG("ESP32 Code     : %d",espReason);
+   TVMG_MSG("Current Time   : %u",secs);
+   TVMG_MSG("Last Duration  : %d\n",lastCycleSecs);
+   TVMG_MSG("App Reset      : %s",appReason.c_str());
+   TVMG_MSG("Soft Resets    : %u",s_softResets);
+   TVMG_MSG("Last Reset @   : %u",s_lastResetSeconds);
+   TVMG_MSG("Early Resets   : %u",s_earlyResets);
+   TVMG_MSG("-----------------------------\n");
+
+   if ( s_softResets >= ALLOWED_FAST_RESETS )
+   {
+      TVMG_ERROR( "Too many fast resets" );
+      s_wasFastReboot = true;
+   }
+
+   *type = reboot;
+
+   appReason += " (ESP32 - ";
+   appReason += getESPRebootReason( espReason );
+   appReason += ")";
+
+   return appReason;
+}
+
+bool wasFastReboot()
+{
+   return s_wasFastReboot;
+}
 // A fault has arisen such that we never entered the reboot detection logic that would
 // ordinarily place the system in AP mode.  There must have been some very early
 // fault that's causing continuous rebooting.
@@ -269,4 +524,76 @@ bool boardHalt()
       delay( 5000 );
    }
 #endif
+}
+
+static bool s_isRebootRequired = false;
+
+
+void hwReset()
+{
+   TVMG_MSG( "HW Reset" );
+
+   // Code essentially from https://github.com/espressif/arduino-esp32/issues/10795
+   // we trigger a RTC watchdog in 250 ms
+
+   wdt_hal_context_t rwdt_ctx;
+
+   rwdt_ctx.inst = WDT_RWDT;
+   rwdt_ctx.rwdt_dev = RWDT_DEV_GET();
+
+   wdt_hal_init(&rwdt_ctx, WDT_RWDT, 0, false);
+   uint32_t stage_timeout_ticks = (uint32_t)((uint64_t)250 * rtc_clk_slow_freq_get_hz() / 1000);
+   wdt_hal_write_protect_disable(&rwdt_ctx);
+   wdt_hal_config_stage(&rwdt_ctx, WDT_STAGE0, stage_timeout_ticks, WDT_STAGE_ACTION_RESET_RTC);
+   wdt_hal_enable(&rwdt_ctx);
+   wdt_hal_write_protect_enable(&rwdt_ctx);
+
+   delay( 500 );
+
+   TVMG_DEBUG( "out hwReset" );
+}
+
+void reboot()
+{
+   setPersistentInt( k_rebootType,SERVER_REBOOT );
+
+   // We turn off any AP mode indicator here, as we may be soft resetting 
+
+   Indicator *apModeIndicator = Indicator::getIndicator( Indicator::SYSTEM,SYSTEM_AP_ID );
+   if (apModeIndicator)
+   {
+      apModeIndicator->off();
+   }
+
+   delay( 500 );
+   ESP.restart();
+}
+
+
+void    setRebootRequired()
+{
+   s_isRebootRequired = true;
+}
+
+bool isRebootRequired()
+{
+   return s_isRebootRequired;
+}
+
+void  checkEarlyRebootFailure()
+{
+   if ( s_magicResetWord != MAGIC_WORD )
+   {
+      s_earlyResets = 0;
+      s_magicResetWord = MAGIC_WORD;
+   }
+   
+   s_earlyResets++;
+
+   // halt the board if real trouble
+
+   if ( s_earlyResets >= ALLOWED_EARLY_RESETS )
+   {
+      boardHalt();
+   }
 }

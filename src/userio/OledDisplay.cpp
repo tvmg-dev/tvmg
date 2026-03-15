@@ -6,7 +6,8 @@
  * See the LICENSE file in the project root for full license text.
  */
 
-#ifdef TVMG_OLED
+#if defined(TVMG_OLED)
+
 #include <Wire.h>
 #include <WiFi.h>
 #include <SD.h>
@@ -34,55 +35,9 @@ extern Storage *storageModule;
 
 #define  DISPLAY_CALLBACK_TIMER_MS  1000
 #define  DISPLAY_UPDATE_MS          5000
-#define  SCREENSAVER_MS             (5 * 60 * 1000)
 
-void  updateCallback( void *params )
-{
-   static uint32_t lastUpdateMillis = 0;
-
-   uint32_t currentMillis = millis();
-
-   OledDisplay *display = static_cast<OledDisplay *>(params);
-
-   if ( !display )
-   {
-      return;
-   }
-
-   // Is the screensaver active, if it is update
-
-   int screenSaver = GET_REGISTRY_INT( USERIO_SCREENSAVER );
-
-   if ( screenSaver == 1 )
-   {
-      display->updateScreensaver();
-      return;
-   }
-
-   // If screensaver not been set and we're beyond the screen save period then start
-   // the screen saving.
-
-   if ( screenSaver == -1 && currentMillis >= SCREENSAVER_MS )
-   {
-      SET_REGISTRY_INT_VOLATILE( USERIO_SCREENSAVER,1 );
-      display->updateScreensaver();
-      return;
-   }
-
-   // Otherwise we jump to next display if past our update period
-
-   if ( display && currentMillis - lastUpdateMillis >= DISPLAY_UPDATE_MS ) 
-   {
-      START_TIMING( "UserIO Show Screen" );
-      display->showNext();
-      END_TIMING;
-      lastUpdateMillis = currentMillis;
-   }
-}
-
-OledDisplay::OledDisplay() : Display(),
+OledDisplay::OledDisplay() : Display( DISPLAY_CALLBACK_TIMER_MS ),
         m_oled( nullptr ),
-        m_isScreenSaving( false ),
         m_currentScreen( NONE ),
         m_currentLines(),
         m_measurement( nullptr ),
@@ -95,6 +50,8 @@ OledDisplay::OledDisplay() : Display(),
         m_mutex(nullptr)
 {
    TVMG_MSG( "OLED Display Startup" );
+
+   m_ssMode = Pending;
 
    // create a recursive mutex for protecting i2c access to the OLED board
    m_mutex = xSemaphoreCreateRecursiveMutex();
@@ -159,33 +116,15 @@ void OledDisplay::initialise()
 
       resetDisplay();
    }
-
-   // Create our timer callback
-
-   esp_timer_handle_t userioTimer;
-
-   const esp_timer_create_args_t args = {
-      .callback = &updateCallback,
-      .arg = this,
-      .name = "userIOUpdate" };
-
-   if ( esp_timer_create(&args, &userioTimer) != ESP_OK )
-   {
-      TVMG_ERROR( "Failed to start OLED callback timer" );
-   }
-   else
-   {
-      esp_timer_start_periodic(userioTimer, DISPLAY_CALLBACK_TIMER_MS * 1000);
-   }
 }
 
 void  OledDisplay::resetDisplay()
 {
    OledDisplay::LockGuard guard(*this);
 
-   m_isScreenSaving = false;
-
    m_oled->clearBuffer();
+   m_oled->sendBuffer();
+
    m_oled->setFont(u8g2_font_6x10_tf);
    m_oled->setFontRefHeightExtendedText();
    m_oled->setDrawColor(1);
@@ -661,7 +600,7 @@ void  OledDisplay::show( ScreenType type )
 
    // If we're in screensaver mode then simply update that
 
-   if ( m_isScreenSaving )
+   if ( m_ssMode == Enabled )
    {
       return;
    }
@@ -780,7 +719,9 @@ bool  OledDisplay::setNextScreen()
       }
    }
 
-   return (retVal);
+   TVMG_DEBUG( "Screen : %s %s",screenToString( m_currentScreen ),(retVal ? "ok" : "nok") );
+   
+   return retVal;
 }
 
 void  OledDisplay::showNext()
@@ -792,27 +733,10 @@ void  OledDisplay::showNext()
       return;
    }
 
-   // The timer callback to this method means screensaver must be off.
-   // If we've been in screensave then exit that mode and we need to reset the panel 
-   // otherwise garbled text output
+   // Find the next screen we can display, then update - always be one screen available
 
-   if ( m_isScreenSaving == true )
-   {
-      resetDisplay();
-   }
-
-   // Find the next screen we can display, then update
-
-   while ( ! setNextScreen() )
-   {
-      TVMG_DEBUG( "Try screen %d",m_currentScreen );
-   }
-
-   show( m_currentScreen );
-}
-
-void  OledDisplay::refresh()
-{
+   while ( ! setNextScreen() );
+    
    show( m_currentScreen );
 }
 
@@ -827,20 +751,13 @@ void  OledDisplay::updateScreensaver()
    
    OledDisplay::LockGuard guard(*this);
 
-   if ( !m_isScreenSaving )
-   {
-      m_oled->clearBuffer();
-      m_oled->sendBuffer();
-      m_isScreenSaving = true;
-   }
-
    setIndicator( 13,1,on );
    on = !on;
 }
 
 void OledDisplay::setIndicator(uint8_t column, uint8_t row, bool state)
 {
-   if ( !m_isScreenSaving )
+   if ( m_ssMode != Enabled )
    {
       return;
    }
@@ -852,8 +769,47 @@ void OledDisplay::setIndicator(uint8_t column, uint8_t row, bool state)
    
    // tx = tile x (pixel/8), ty = tile y (pixel/8)
    // A 16x8 box is 2 tiles wide, 1 tile high.
+
    m_oled->updateDisplayArea(column, row, 2, 1);
 }
+
+void OledDisplay::doUpdate()
+{
+   static uint32_t lastUpdateMillis = 0;
+   static bool firstTick = true;
+   static ScreenSaverMode lastMode = Pending;
+
+   uint32_t currentMillis = millis();
+   
+   // First timer callback, so setup our mode & reset the display 
+   if ( firstTick )
+   {
+      firstTick = false;
+      lastMode = m_ssMode;
+      resetDisplay();
+   }
+
+   // If it's a mode change then reset the display
+   if ( lastMode != m_ssMode )
+   {
+      resetDisplay();
+      lastMode = m_ssMode;
+   }
+
+   // Display screen save if enabled or show the next screen if past the update period.
+   if ( m_ssMode == Enabled )
+   {
+      updateScreensaver();
+   }
+   else if ( currentMillis - lastUpdateMillis > DISPLAY_UPDATE_MS )
+   {
+      START_TIMING( "OLED Show Screen" );
+      showNext();
+      END_TIMING;
+      lastUpdateMillis = currentMillis;
+   }
+}
+
 
 #endif
 

@@ -67,14 +67,13 @@ function espbuild()
   local localLibraryPath="${win_docs}/Arduino/libraries"
 
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-      echo "Linux environment"
+      printf "Linux environment\n"
       localLibraryPath="$(pwd)/libraries"
       dockerUser="-u $(id -u):$(id -g)"
   fi
 
   if [ ! -d "$localCachePath" ]; then printf "Make cache directory: $localCachePath\n"; mkdir -p "$localCachePath"; fi
-
-  printf "\n\n${localOutputPath}\n\n"
+  printf "Using: ${localOutputPath}\n\n"
 
   # When arduino-cli is generating dependencies then the MMD compiler option may place 2 short
   # header paths on 1 line in the '.d' deps file which arduino-cli then fails to parse correctly.
@@ -152,7 +151,7 @@ function espbuild()
     mkdir -p "${windows_dest}"
     cp "${localOutputPath}/${boardName}"* "${windows_dest}"
 
-    printf "\n${windows_dest} updated\n\n"
+    printf "\nWindows: ${windows_dest} updated\n\n"
   fi
 
   return $status

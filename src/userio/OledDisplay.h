@@ -39,10 +39,10 @@ public:
    void  updateLine( uint8_t lineNum,const char *line,bool isForLog = true ) override;
    void  clear() override;;
    void  show( ScreenType type ) override;;
+   void  doUpdate() override;
 
    void  setIndicator(uint8_t column, uint8_t row, bool state);
    void  showNext();
-   void  refresh();
    void  updateScreensaver() ;
 
 private:
@@ -63,7 +63,6 @@ private:
    void  unlockDisplay();
 
    OLED_BOARD *         m_oled;
-   bool                 m_isScreenSaving;
    ScreenType           m_currentScreen;
    DisplayLine          m_currentLines[ MAX_DISPLAY_ROWS ];
    Measurement *        m_measurement;

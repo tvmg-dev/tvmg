@@ -803,12 +803,9 @@ float TemperatureModule::fetchOpenWeather( const String &url )
       START_TIMING( "OW GET" );
 
       int httpResponse = http.GET();
-      if ( httpResponse > 0 )
+      if ( httpResponse == HTTP_CODE_OK  )
       {
          String resp = http.getString();
-
-         resp.replace( ":true",":1" );
-         resp.replace( ":false",":0" );
 
          cJSON *root = cJSON_Parse( resp.c_str() );
          if ( root )

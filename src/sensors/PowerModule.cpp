@@ -17,7 +17,7 @@
 PowerModule::PowerModule( ModbusMaster *modbus )
            : m_modbus( modbus ),
              m_sensors(),
-             m_numLocalSensors( 0 ),
+             m_numSensors( 0 ),
              m_millisLastAquisition( -POWER_MIN_SAMPLING_PERIOD_MS ),
              m_indicator( nullptr )
 {
@@ -43,11 +43,11 @@ PowerModule::PowerModule( ModbusMaster *modbus )
             PrivateSensor *pwrSensor;
             String name = getStringFromcJSON( sensor,"name" );
 
-            pwrSensor = &m_sensors[ m_numLocalSensors ];
+            pwrSensor = &m_sensors[ m_numSensors ];
 
-            pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numLocalSensors );
+            pwrSensor->m_address = getIntFromcJSON( sensor,"address",m_numSensors );
             pwrSensor->m_data.m_emonFeedId = getIntFromcJSON( sensor,"emonFeedId",0 );
-            pwrSensor->m_data.m_id = getIntFromcJSON( sensor,"id",m_numLocalSensors );
+            pwrSensor->m_data.m_id = getIntFromcJSON( sensor,"id",m_numSensors );
 
             pwrSensor->m_data.m_power = POWER_INVALID;
             pwrSensor->m_data.m_energy = ENERGY_INVALID;
@@ -58,14 +58,14 @@ PowerModule::PowerModule( ModbusMaster *modbus )
 
             TVMG_DEBUG( "Power: name %s address %u",name.c_str(),pwrSensor->m_address );
             TVMG_DEBUG( "Id %u,  feed %u",pwrSensor->m_data.m_id,pwrSensor->m_data.m_emonFeedId );
-            m_numLocalSensors++;
+            m_numSensors++;
          }
       }
    }
 
-   if ( m_numLocalSensors )
+   if ( m_numSensors )
    {
-      TVMG_MSG( "Registered %d power sensors",m_numLocalSensors );
+      TVMG_MSG( "Registered %d power sensors",m_numSensors );
       m_indicator = Indicator::getIndicator( Indicator::POWER,0 );
    }
 }
@@ -90,11 +90,11 @@ void PowerModule::initialise()
 
 void PowerModule::sample()
 {
-   if ( millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS )
+   if ( m_numSensors && millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS )
    {
       START_TIMING( "PowerModule Sample" );
 
-      for ( int i = 0; i < m_numLocalSensors; i++ )
+      for ( int i = 0; i < m_numSensors; i++ )
       {
          (void) getPower( i );
       }
@@ -107,7 +107,7 @@ void PowerModule::sample()
 
 PowerSensor  *PowerModule::readNextSensor( uint8_t index )
 {
-   if ( index < m_numLocalSensors )
+   if ( index < m_numSensors )
    {
       return( &m_sensors[ index ].m_data );
    }
@@ -134,7 +134,7 @@ bool PowerModule::getPower( uint8_t index )
    uint8_t  modbusResult;
    bool     readOk = false;
 
-   if ( index < m_numLocalSensors && m_sensors[ index ].m_isValid && m_modbus )
+   if ( index < m_numSensors && m_sensors[ index ].m_isValid && m_modbus )
    {
       const char *name = getSensorName( POWER,m_sensors[ index ].m_data.m_id ).c_str();
 

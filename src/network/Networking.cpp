@@ -676,7 +676,7 @@ Networking::Networking( NetworkingInfoCallback infoCallback )
 
    // read the emocms API key from config
 
-   char *emonKey = GET_REGISTRY_STRING( EMONCMS_APIKEY );
+   const char *emonKey = GET_REGISTRY_STRING( EMONCMS_APIKEY );
    if ( emonKey )
    {
       s_emoncmsApiKey = String( emonKey );

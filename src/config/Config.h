@@ -21,92 +21,53 @@ extern const char *k_versionStr;
 #define MAX_KEY_LENGTH       32
 #define MAX_VALUE_LENGTH     48
 
-extern void    setRegistryEntry( char *key,char *value, bool shouldPersist = false );
-extern void    setRegistryInt( char *key,int32_t value, bool shouldPersist = false );
-extern int32_t getRegistryInt( char *key );
-extern char    *getRegistryString( char *key );
-
-extern void    hwReset();
-extern void    reboot();
-extern void    setRebootRequired();
-extern bool    isRebootRequired();
-extern void    checkEarlyRebootFailure();
-
-// for nvs data
-
-inline constexpr  char k_rebootCounter[] = "rebootCount";
-inline constexpr  char k_rebootType[] = "rebootType";
-inline constexpr  char k_watchdogCause[] = "wdogReason";
-inline constexpr  char k_noNetworkCounter[] = "noNetwork";
-
 #define CONFIG_DEF_TO_STR( x ) #x
 
-/* registry macros: The non-volatile versions update the config.json file */
+/* registry macros: The non-volatile setters update the config.json file */
 
-#define SET_REGISTRY_INT_VOLATILE(x,y) setRegistryInt(CONFIG_DEF_TO_STR(x), y, false)
-#define SET_REGISTRY_INT(x,y)          setRegistryInt(CONFIG_DEF_TO_STR(x), y, true)
+#define GET_REGISTRY_INT( x )          Config::getRegistryInt( CONFIG_DEF_TO_STR( x ) )
+#define GET_REGISTRY_STRING( x )       Config::getRegistryString( CONFIG_DEF_TO_STR( x ) )
 
-#define SET_REGISTRY_VOLATILE(x,y)     setRegistryEntry(CONFIG_DEF_TO_STR(x), y, false)
-#define SET_REGISTRY(x,y)              setRegistryEntry(CONFIG_DEF_TO_STR(x), y, true)
+#define SET_REGISTRY_INT_VOLATILE(x,y) Config::setRegistryInt(CONFIG_DEF_TO_STR(x), y, true)
+#define SET_REGISTRY_INT(x,y)          Config::setRegistryInt(CONFIG_DEF_TO_STR(x), y, false)
 
-#define GET_REGISTRY_INT( x )    getRegistryInt( CONFIG_DEF_TO_STR( x ) )
-#define GET_REGISTRY_STRING( x ) getRegistryString( CONFIG_DEF_TO_STR( x ) )
-
-enum RebootType {
-   POWER_CYCLE = 0,
-   BOOT_NO_CONFIG,
-   BOOT_NO_WIFI,
-   BOOT_NO_NTP,
-   BOOT_IN_SETUP,
-   LOST_WIFI,
-   SERVER_REBOOT,
-   SERVER_RESET,
-   SERVER_OTA_UPDATE,
-   LOOP_MUTEX,
-   ESP32_PANIC,
-   ESP32_WATCHDOG,
-   APP_24D_RESET,
-   UNKNOWN
-};
-
-typedef struct {
-   uint8_t  keyInt;
-   char     key[ MAX_KEY_LENGTH ];
-   char     value[ MAX_VALUE_LENGTH ];
-} KeyValue;
+#define SET_REGISTRY_VOLATILE(x,y)     Config::setRegistryEntry(CONFIG_DEF_TO_STR(x), y, true)
+#define SET_REGISTRY(x,y)              Config::setRegistryEntry(CONFIG_DEF_TO_STR(x), y, false)
 
 class Config
 {
 public:
+   typedef struct {
+      char     key[ MAX_KEY_LENGTH ];
+      char     value[ MAX_VALUE_LENGTH ];
+      char     volatileValue[ MAX_VALUE_LENGTH ];
+   } KeyValue;
+
    Config();
    ~Config();
 
    void  initialise();
    bool  isRegistryAvailable();
 
-   bool    isFactoryReset();
-   void    setFactoryReset();
-
-   String  getESPRebootReason( esp_reset_reason_t code );
-   String  getAppRebootReason( RebootType code );
-   String  getRebootReason( RebootType *type );
-   bool    wasFastReboot();
-   bool    didRebootNoWiFi();
-
-   bool    getPersistentInt( const String &key,int32_t *value,int32_t defValue = -1 );
-   void    setPersistentInt( const String &key,int32_t value );
-
    static Config  * instance( bool create = false );
-   static uint8_t   numRegistryEntries;
-   static KeyValue  m_entries[ MAX_REGISTRY_ENTRIES ];
+
+   static void setRegistryEntry( const char *key,const char *value,bool isVolatile );
+   static void setRegistryInt( const char *key,int32_t value,bool isVolatile );
+
+   static int32_t getRegistryInt( const char *key );
+   static const char   *getRegistryString( const char *key );
 
 private:
    bool readRegistryFromFile();
    bool readRegistryFromFlatFile();
-   bool loadFromJSON();
-   bool migrateFromFlatFile();
 
-   bool m_isRegistryOk;
-   bool m_wasFastReboot;
+   bool loadFromJSON();
+   bool writeRegistryToJSON();
+
+   int  findKey( const char *key );
+
+   KeyValue m_entries[ MAX_REGISTRY_ENTRIES ];
+   uint8_t  m_numRegistryEntries;
+   bool     m_isRegistryOk;
 };
 #endif

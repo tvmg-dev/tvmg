@@ -43,7 +43,7 @@ public:
    ModbusMaster *getModbus();
    void sample();
    PowerSensor *readNextSensor( uint8_t index );
-   bool     getPower( uint8_t index );
+   bool getPower( uint8_t index );
 
 private:
    typedef struct {
@@ -54,7 +54,7 @@ private:
 
    ModbusMaster   *m_modbus;
    PrivateSensor  m_sensors[ MAX_POWER_SENSORS ];
-   uint8_t        m_numLocalSensors;
+   uint8_t        m_numSensors;
    int32_t        m_millisLastAquisition;       // milliseconds since last acquisition
    Indicator      *m_indicator;
 };

@@ -32,6 +32,8 @@ public:
    void  updateLine( uint8_t lineNum,const char *line,bool isForLog ) override;
    void  clear() override {}
    void  show( ScreenType type ) override { (void) type; }
+   void  doUpdate() override;
+
 
    void setLed(int led, bool on);
    void startLedHeartbeat(int led, uint32_t onMillis, uint32_t offMillis);

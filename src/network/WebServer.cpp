@@ -25,6 +25,8 @@
 #include "src/config/Config.h"
 #include "src/core/Measurement.h"
 
+#include "src/userio/Display.h"
+
 #include "src/network/WebServer.h"
 #include "src/network/html/common_css.h"
 #include "src/network/html/edit_html.h"
@@ -564,15 +566,18 @@ const char *runtimeInfoButton = R"raw(
 
 void WebServer::generateOptionsSection()
 {
+#if defined(TVMG_OLED) || defined(TVMG_WAVESHARE_LCDB)
    optionsSection = initialSSaverCheckbox;
 
    // Has the screen saver been disabled ?
 
-   int32_t ssaverState = GET_REGISTRY_INT( USERIO_SCREENSAVER );
-   if ( ssaverState == 0 )
+   if ( Display::getScreenSaverMode() == Display::Disabled )
    {
       optionsSection.replace( "checked","" );
    }
+#else
+   optionsSection = "";
+#endif
 
    // Show the debug section, we can add lines here as required
 
@@ -592,8 +597,6 @@ void WebServer::generateOptionsSection()
 void WebServer::initialise()
 {
    TVMG_DEBUG( "WebServer::initialise" );
-
-   generateOptionsSection();
 
    setupAsyncServer();
 }
@@ -863,7 +866,7 @@ void WebServer::setupControlHandlers()
 
       // reset files (set to defaults) and set factor reset marker, then reboot
       resetFS();
-      Config::instance()->setFactoryReset();
+      setFactoryReset();
 
       request->send(200);
 
@@ -920,6 +923,7 @@ void WebServer::setupMiscHandlers()
    m_webServer->on("/manager", HTTP_GET, [this](AsyncWebServerRequest *request)
    {
       AUTHENTICATE;
+      generateOptionsSection();
 
       request->send_P(200, "text/html", manager_html, processor);
    });
@@ -1059,17 +1063,18 @@ void WebServer::setupMiscHandlers()
 
 void  WebServer::handleCheckbox( const String &item,const String &state )
 {
-   bool active = (state == "1" );
+   bool active = (state == "1");
 
    TVMG_MSG( "Checkbox item %s state (%s)",item.c_str(),state.c_str() );
 
    if ( item == "ssaver" )
    {
-      SET_REGISTRY_INT_VOLATILE( USERIO_SCREENSAVER,active );
+      Display::ScreenSaverMode mode = (active ? Display::Enabled : Display::Disabled );
+      Display::setScreenSaverMode( mode );
    }
    else if ( item == "udpdebug" )
    {
-      setUdpDebugState( (active ? DEBUG_ON : DEBUG_OFF ) );
+      setUdpDebugState( (active ? DEBUG_ON : DEBUG_OFF) );
    }
 
    generateOptionsSection();

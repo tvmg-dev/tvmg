@@ -129,7 +129,7 @@ void ShellyPowerModule::initialise()
 
 void ShellyPowerModule::sample()
 {
-   if ( millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS )
+   if ( m_numSensors && millis() - m_millisLastAquisition > POWER_MIN_SAMPLING_PERIOD_MS )
    {
       START_TIMING( "ShellyPowerModule Sample" );
 
@@ -221,7 +221,6 @@ bool ShellyPowerModule::getPower( uint8_t index )
 
 cJSON *ShellyPowerModule::getData( const String &query )
 {
-   String resp;
    cJSON *json = nullptr;
 
    START_TIMING( query );
@@ -234,16 +233,14 @@ cJSON *ShellyPowerModule::getData( const String &query )
    http.setTimeout( 4000 );
 
    int httpResponse = http.GET();
-   if ( httpResponse > 0 )
+   if ( httpResponse == HTTP_CODE_OK  )
    {
-      resp = http.getString();
-      resp.replace( ":true",":1" );
-      resp.replace( ":false",":0" );
-   }
+      String resp = http.getString();
 
-   if ( resp.length() )
-   {
-      json = cJSON_Parse( resp.c_str() );
+      if ( resp.length() )
+      {
+         json = cJSON_Parse( resp.c_str() );
+      }
    }
 
    END_TIMING;

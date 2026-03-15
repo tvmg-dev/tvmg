@@ -163,9 +163,9 @@ void newConfiguration( void )
 
       display->clear();
 
-      if ( !config->isFactoryReset() )
+      if ( !isFactoryReset() )
       {
-         if ( config->wasFastReboot() )
+         if ( wasFastReboot() )
          {
             snprintf( line,MAX_DISPLAY_COLUMNS,"Fast Reboot Error" );
          }
@@ -173,7 +173,7 @@ void newConfiguration( void )
          {
             int32_t  numNoWifi;
 
-            config->getPersistentInt( k_noNetworkCounter,&numNoWifi,0 );
+            getPersistentInt( k_noNetworkCounter,&numNoWifi,0 );
             snprintf( line,MAX_DISPLAY_COLUMNS,"No WiFi count %d",numNoWifi );
          }
       }
@@ -194,7 +194,7 @@ void newConfiguration( void )
 
    // Clear the no WiFi counter, so we can try and reboot again if possible
 
-   config->setPersistentInt( k_noNetworkCounter,0 );
+   setPersistentInt( k_noNetworkCounter,0 );
 
    while( 1 )
    {
@@ -376,21 +376,21 @@ String handleBootReason()
    // Bump the reboot count
 
    int32_t  rebootCount;
-   (void) config->getPersistentInt( k_rebootCounter,&rebootCount,0 );
+   (void) getPersistentInt( k_rebootCounter,&rebootCount,0 );
    rebootCount++;
-   config->setPersistentInt( k_rebootCounter,rebootCount );
+   setPersistentInt( k_rebootCounter,rebootCount );
 
    // Get the reboot reason
 
    RebootType rebootReason;
-   String     rebootStr = config->getRebootReason( &rebootReason );
+   String     rebootStr = getRebootReason( &rebootReason );
 
    // Brief display of reboot reason
 
    display->updateLine( 0,"Reboot Reason" );
    snprintf( line,MAX_DISPLAY_COLUMNS,"Code : %d",rebootReason );
    display->updateLine( 1,line );
-   snprintf( line,MAX_DISPLAY_COLUMNS,"%s",config->getAppRebootReason( rebootReason ).c_str() );
+   snprintf( line,MAX_DISPLAY_COLUMNS,"%s",getAppRebootReason( rebootReason ).c_str() );
    display->updateLine( 3,line );
 
    delay( 2000 );
@@ -398,7 +398,7 @@ String handleBootReason()
 
    // If we fast booted then drop to AP mode again
 
-   if ( config->wasFastReboot() )
+   if ( wasFastReboot() )
    {
       newConfiguration();
    }
@@ -429,16 +429,16 @@ String handleBootReason()
 void startNetworking()
 {
    char line[ MAX_DISPLAY_COLUMNS ];
-   char *ssid = GET_REGISTRY_STRING( WIFI_SSID );
+   const char *ssid = GET_REGISTRY_STRING( WIFI_SSID );
 
    display->updateLine( 0,"Starting Networking..." );
    display->updateLine( 1,"SSID :" );
    display->updateLine( 2,ssid );
 
    // If no WIFI_SSID then we just jump straight to new config
-   if ( ssid && !strcmp( ssid,"unknown" ) )
+   if ( ssid && strlen( ssid ) == 0 )
    {
-      config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
+      setPersistentInt( k_rebootType,BOOT_NO_WIFI );
       delay( 500 );
 
       newConfiguration();
@@ -446,7 +446,7 @@ void startNetworking()
 
    // set reboot reason to no-wifi so if we fail here we detect it
 
-   config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
+   setPersistentInt( k_rebootType,BOOT_NO_WIFI );
 
    networking = new Networking( networkingInfoCallback );
    display->setNetworking( networking );
@@ -457,10 +457,10 @@ void startNetworking()
    {
       int32_t  failedReboots;
 
-      config->getPersistentInt( k_noNetworkCounter,&failedReboots,0 );
+      getPersistentInt( k_noNetworkCounter,&failedReboots,0 );
       failedReboots++;
 
-      config->setPersistentInt( k_noNetworkCounter,failedReboots );
+      setPersistentInt( k_noNetworkCounter,failedReboots );
 
       snprintf( line,MAX_DISPLAY_COLUMNS," Failure %u",failedReboots );
       display->updateLine( 4,line );
@@ -470,7 +470,7 @@ void startNetworking()
 
       if ( failedReboots >= MAX_FAILED_WIFI_ATTEMPTS )
       {
-         config->setPersistentInt( k_rebootType,BOOT_NO_WIFI );
+         setPersistentInt( k_rebootType,BOOT_NO_WIFI );
          delay( 2000 );
 
          newConfiguration();
@@ -482,7 +482,7 @@ void startNetworking()
    }
    else
    {
-      config->setPersistentInt( k_noNetworkCounter,0 );
+      setPersistentInt( k_noNetworkCounter,0 );
    }
 
    // show network status
@@ -503,7 +503,7 @@ void startNetworking()
       networking->sendEmail( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
                   "Heat Pump Monitoring - Startup NTP fault",msg );
 
-      config->setPersistentInt( k_rebootType,BOOT_NO_NTP );
+      setPersistentInt( k_rebootType,BOOT_NO_NTP );
 
       delay( 5000 );
       ESP.restart();
@@ -620,7 +620,7 @@ void handleBootEmail( const String &rebootStr )
    emailMsg += "\n\n";
 
    int32_t  rebootCount;
-   (void) config->getPersistentInt( k_rebootCounter,&rebootCount,0 );
+   (void) getPersistentInt( k_rebootCounter,&rebootCount,0 );
 
    emailMsg += "Reboot count : ";
    emailMsg += String( rebootCount,DEC );
@@ -750,7 +750,7 @@ void setup( void )
    config = Config::instance( true );
    selectHardware();
 
-   // We're going to rename the sensors.dat and lg.dat if to json extensions
+   // We're going to rename the sensors.dat and lg.dat if exist to json extensions
 
    if ( tvmgFileSys.exists( "/lg.dat" ) )
    {
@@ -789,16 +789,17 @@ void setup( void )
    // working here.
 
    config->initialise();
+   
    if ( ! config->isRegistryAvailable() )
    {
-      config->setPersistentInt( k_rebootType,BOOT_NO_CONFIG );
+      setPersistentInt( k_rebootType,BOOT_NO_CONFIG );
       newConfiguration();
    }
 
    // If this is a result of factory reset, then new configuration too,
    // otherwise we can move on as normal and start networking.
 
-   if ( config->isFactoryReset() )
+   if ( isFactoryReset() )
    {
       newConfiguration();
    }
@@ -807,7 +808,7 @@ void setup( void )
 
    // set reboot type that we got to setup, i.e. past WiFi & NTP etc
 
-   config->setPersistentInt( k_rebootType,BOOT_IN_SETUP );
+   setPersistentInt( k_rebootType,BOOT_IN_SETUP );
 
    TVMG_MSG( "Version: %s",k_versionStr );
    TVMG_MSG( "Arduino Board: %s", ARDUINO_BOARD );
@@ -835,7 +836,11 @@ void setup( void )
 
    // And we now set the reboot marker as hopefully next is a power cycle
 
-   config->setPersistentInt( k_rebootType,POWER_CYCLE );
+   setPersistentInt( k_rebootType,POWER_CYCLE );
+
+   // Start the heartbeat timer for the display (status indicators etc)
+   
+   display->startHeartbeat();
 }
 
 // ---------------------------------------------------------------------
@@ -850,7 +855,7 @@ void handleAnyOTAUpdate()
 {
    if ( networking->hasUpdated() )
    {
-      config->setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
+      setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
 
       delay( 1500 );
       hwReset();
@@ -884,7 +889,7 @@ bool isNetworkOk()
       else if ( millis() - networkLost > NETWORK_ALLOWED_DISCONNECTED_MS )
       {
          TVMG_ERROR( "Lost network, need to reboot" );
-         config->setPersistentInt( k_rebootType,LOST_WIFI );
+         setPersistentInt( k_rebootType,LOST_WIFI );
          networkOk = false;
       }
    }
@@ -945,7 +950,7 @@ void loop(void)
    if ( Networking::takeNetworkMutex( NETWORK_ALLOWED_BUSY_MS ) != 1 )
    {
       TVMG_ERROR( "Timeout on network mutex, rebooting..." );
-      config->setPersistentInt( k_rebootType,LOOP_MUTEX );
+      setPersistentInt( k_rebootType,LOOP_MUTEX );
       restartRequired = true;
    }
 
@@ -968,7 +973,7 @@ void loop(void)
    if ( currentMillis > ( 24 * 24 * 3600 * 1000) )
    {
       TVMG_MSG( "24 day reboot %d",currentMillis );
-      config->setPersistentInt( k_rebootType,APP_24D_RESET );
+      setPersistentInt( k_rebootType,APP_24D_RESET );
       restartRequired = true;
    }
 

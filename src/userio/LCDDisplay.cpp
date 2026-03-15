@@ -87,6 +87,9 @@
 
 #include "src/userio/LCDDisplay.h"
 
+// Time period for display callback to handle LED indicators
+#define  LCD_DISPLAY_CALLBACK_TIMER_MS 100
+
 // ---------------------------------------------------------------------------
 // LED status bar layout configuration
 // ---------------------------------------------------------------------------
@@ -213,10 +216,6 @@ static uint32_t bounceCallbacks = 0;
 static void* activeBuffer = NULL;
 static void* passiveBuffer = NULL;
 static bool isActiveBufBlack = false;
-
-// For screen saver, kick in after 5 minutes
-#define  SCREENSAVER_MS             (5 * 60 * 1000)
-static bool screenSaverActive = false;
 
 /**
  * @brief RGB LCD VSYNC event callback prototype
@@ -359,7 +358,7 @@ void controlBacklight( bool on )
    Wire.endTransmission();
 }
 
-void setupWS()
+void setupLCD()
 {
    String initStr("Initializing LCD.  Free Heap : ");
    initStr += String(ESP.getFreeHeap());
@@ -487,7 +486,7 @@ static constexpr uint16_t convertToRGB565(uint32_t rgb888)
                      (((rgb888) & 0x0000F8) >> 3));
 }
 
-// lazily initialise the LED table; called by every public function
+// initialise the LED table
 static void ledsInit(void)
 {
    static bool ledsInitialised = false;
@@ -495,6 +494,7 @@ static void ledsInit(void)
    {
       return;
    }
+
    for (int i = 0; i < LED_COUNT; i++)
    {
       leds[i].isRunningHeartBeat = false;
@@ -537,100 +537,14 @@ static void regenStatusLine(void)
    }
 }
 
-// periodic timer - checks for heartbeat changes on any led that's in that mode
-
-static void heatbeatTimerCallback(void* arg)
-{
-   (void)arg;
-
-   uint32_t now = millis();
-   bool changed = false;
-
-   // Handle screen saver mode changes
-
-   int screenSaver = GET_REGISTRY_INT( USERIO_SCREENSAVER );
-
-   if ( screenSaver == 1 )
-   {
-      if ( !screenSaverActive )
-      {
-         controlBacklight( false );
-         screenSaverActive = true;
-      }
-      return;
-   }
-   else if ( screenSaver == 0 && screenSaverActive )
-   {
-      controlBacklight( true );
-      screenSaverActive = false;
-      return;
-   }
-   if ( screenSaver == -1 && now >= SCREENSAVER_MS )
-   {
-      SET_REGISTRY_INT_VOLATILE( USERIO_SCREENSAVER,1 );
-      controlBacklight( false );
-      screenSaverActive = true;
-      return;
-   }
-
-   // If we're here then we need to perform any indicator heartbeats 
-
-   for (int i = 0; i < LED_COUNT; i++)
-   {
-      if (!leds[i].isRunningHeartBeat)
-      {
-         continue;
-      }
-      uint32_t period = leds[i].isActive ? leds[i].onMillis : leds[i].offMillis;
-      if (period < 200)  // enforce minimum
-      {
-         period = 200;
-      }
-
-      if ((uint32_t)(now - leds[i].lastChangedMillis) >= period)
-      {
-         leds[i].isActive = !leds[i].isActive;
-         leds[i].lastChangedMillis = now;
-         changed = true;
-      }
-   }
-
-   if (changed)
-   {
-      regenStatusLine();
-   }
-}
-
-static void startHeatbeatTimer(void)
-{
-   static esp_timer_handle_t heartbeatTimer = nullptr;
-
-   if (heartbeatTimer)
-   {
-      return;
-   }
-
-   ledsInit();
-
-   const esp_timer_create_args_t args =
-       {.callback = &heatbeatTimerCallback,
-        .name = "led_hb"};
-
-   if ( esp_timer_create(&args, &heartbeatTimer) == ESP_OK )
-   {
-      /* fire every 100ms; nothing magic about the interval, it just needs to be
-         short enough to honour the 200ms minimum isRunningHeartBeat period. */
-      esp_timer_start_periodic(heartbeatTimer, 100 * 1000);
-   }
-}
-
 // public API -------------------------------------------------------------
 
 static LcdDisplay* s_lcdInstance = nullptr;
 
-LcdDisplay::LcdDisplay() : Display()
+LcdDisplay::LcdDisplay() : Display( LCD_DISPLAY_CALLBACK_TIMER_MS )
 {
    s_lcdInstance = this;
+   m_ssMode = Pending;
 }
 
 LcdDisplay::~LcdDisplay()
@@ -649,8 +563,58 @@ LcdDisplay* LcdDisplay::getInstance()
 void LcdDisplay::initialise()
 {
    TVMG_MSG("initialise LCD display");
-   setupWS();
-   startHeatbeatTimer();
+   setupLCD();
+   ledsInit();
+}
+
+void LcdDisplay::doUpdate()
+{
+   static ScreenSaverMode lastMode = Pending;
+
+   // If it's a mode change then switch screen saver on/off
+   if ( lastMode != m_ssMode )
+   {
+      if ( m_ssMode == Enabled )
+      {
+         controlBacklight( false );
+      }
+      else if ( m_ssMode == Disabled )
+      {
+         controlBacklight( true );
+      }
+   }
+
+   // Can return if screensaving, otherwise update any indicators 
+   if ( m_ssMode != Enabled )
+   {
+      bool changed = false;
+      uint32_t now = millis();
+
+      for (int i = 0; i < LED_COUNT; i++)
+      {
+         if (!leds[i].isRunningHeartBeat)
+         {
+            continue;
+         }
+         uint32_t period = leds[i].isActive ? leds[i].onMillis : leds[i].offMillis;
+         if (period < 200)  // enforce minimum
+         {
+            period = 200;
+         }
+
+         if ((uint32_t)(now - leds[i].lastChangedMillis) >= period)
+         {
+            leds[i].isActive = !leds[i].isActive;
+            leds[i].lastChangedMillis = now;
+            changed = true;
+         }
+      }
+
+      if (changed)
+      {
+         regenStatusLine();
+      }
+   }
 }
 
 void  LcdDisplay::updateLine( uint8_t lineNum,const char *line,bool isForLog )
@@ -734,76 +698,4 @@ void LcdDisplay::setLedColour(int led, uint32_t rgb888)
    }
 }
 
-void loopWS()
-{
-   static uint32_t last_update = 0;
-   static uint32_t lastBounce = 0;
-   static uint32_t lastVsyncs = 0;
-   static uint32_t lastLong = 0;
-   static uint32_t lastBounceTime = 0;
-   static uint32_t count = 0;
-
-   static uint8_t red = 8;
-   static uint8_t green = 4;
-
-   if (millis() - last_update > 5000)
-   {
-      count++;
-
-      {
-         startHeatbeatTimer();
-
-#if 0
-         startLedHeartbeat(LED_STATUS, 400, 600);
-         startLedHeartbeat(LED_AP, 4000, 2000);
-         startLedHeartbeat(LED_OTA, 4000, 2000);
-         startLedHeartbeat(LED_SENSOR1, 4000, 2000);
-         startLedHeartbeat(LED_SENSOR2, 4000, 2000);
-         startLedHeartbeat(LED_SENSOR3, 4000, 2000);
-         startLedHeartbeat(LED_SENSOR4, 4000, 2000);
-         startLedHeartbeat(LED_SENSOR5, 4000, 2000);
-#endif
-      }
-
-#if defined(WALKING_BLUE_BITTEST)
-      Serial.printf("0x%02x 0x%02x\n", red, green);
-      for (int i = 0; i < LED_COUNT; i++)
-      {
-         uint32_t colour = (red << 16) | (green << 8) | (1 << i);
-         uint16_t r565c = convertToRGB565(colour);
-         Serial.printf("0x%06x - 0x%04x : ", colour, r565c);
-         setLedColour(i, colour);
-      }
-      Serial.printf("\n");
-
-      red = red * 2;
-      green = green * 2;
-
-      if (!red)
-      {
-         red = 8;
-      }
-      if (!green)
-      {
-         green = 4;
-      }
-#endif
-
-      last_update = millis();
-
-      Serial.printf("Bounce callbacks : %d %d\n", bounceCallbacks,
-                    bounceCallbacks - lastBounce);
-      Serial.printf("vsyncs %d %d\n", vsyncs, vsyncs - lastVsyncs);
-      Serial.printf("long %d %d\n", longCallbacks, longCallbacks - lastLong);
-      Serial.printf("bounce %d %d\n", bounceTime, bounceTime - lastBounceTime);
-      Serial.printf("max time %d\n", maxTimeInBounce);
-
-      lastVsyncs = vsyncs;
-      lastBounce = bounceCallbacks;
-      lastLong = longCallbacks;
-      lastBounceTime = bounceTime;
-
-      delay(100);  // short delay, doesn't need to be short really
-   }
-}
 #endif
