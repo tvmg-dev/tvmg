@@ -4,6 +4,7 @@ function espbuild()
   local boardName=""
   local factoryMode=false   # Changed default to false
   local buildMain=true      # Added to toggle main image compilation
+  local releaseMode=false   # New release option
   local cleanRequested=false # Track if -c or -a was used
   local verbosity="--verbose"
   local dockerUser=""
@@ -17,6 +18,7 @@ function espbuild()
         printf " -c : clean (remove specific board cache and output folders)\n"
         printf " -f : build factory image only\n"
         printf " -a : clean, main image and factory image (all)\n"
+        printf " -r : release, copy binary to ~/projects/otatest/binaries with version suffix\n"
         return 0
         ;;
       -c)
@@ -31,6 +33,9 @@ function espbuild()
         cleanRequested=true
         factoryMode=true
         buildMain=true
+        ;;
+      -r)
+        releaseMode=true
         ;;
       -factory)
         factoryMode=true
@@ -132,6 +137,25 @@ function espbuild()
         mv "$source_bin" "$target_bin"
         printf "\n\nSuccess, generated: $target_bin\n\n"
         status=0
+
+        if [ "$releaseMode" = true ]; then
+          local version=$(perl -nle 'print $1 and exit if /^\s*const\s+char\s*\*\s*k_versionStr\s*=\s*"([^"]*)"/;' src/config/Config.cpp)
+          if [ -z "$version" ]; then
+            printf "Error: could not extract k_versionStr from src/config/Config.cpp\n"
+            return 1
+          fi
+
+          local releaseDir="$HOME/projects/otatest/binaries"
+          mkdir -p "$releaseDir"
+
+          local release_bin="${releaseDir}/${boardName}-${version}.bin"
+          cp -p "$target_bin" "$release_bin"
+          printf "Release binary copied to: %s\n" "$release_bin"
+
+          local release_md5="${release_bin}.md5"
+          md5sum "$release_bin" | awk '{print $1}' > "$release_md5"
+          printf "Release checksum written to: %s\n" "$release_md5"
+        fi
       fi
     else
       printf "\n\nBuild failed with exit code $status\n\n"

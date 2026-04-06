@@ -258,10 +258,6 @@ uint32_t bounceTime = 0;
  * @return Whether a high priority task has been waken up by this function
  */
 
-#if defined(FLUSH_CACHE)
-extern "C" void Cache_WriteBack_Addr(uint32_t addr, uint32_t size);
-#endif
-
 static bool IRAM_ATTR bounceCallback(esp_lcd_panel_handle_t panel,
                                      void* bounce_buf, int pos_px,
                                      int len_bytes, void* user_ctx)
@@ -627,11 +623,6 @@ void  LcdDisplay::updateLine( uint8_t lineNum,const char *line,bool isForLog )
    }
 }
 
-/**
- * @brief set or clear an LED immediately
- *
- * Calling this will cancel any isRunningHeartBeat that was running on the same LED.
- */
 void LcdDisplay::setLed(int led, bool on)
 {
    if (led < 0 || led >= LED_COUNT)
@@ -644,15 +635,6 @@ void LcdDisplay::setLed(int led, bool on)
    regenStatusLine();
 }
 
-/**
- * @brief start a isRunningHeartBeat animation on the given LED
- *
- * @param led led to control
- * @param onMillis how long the LED stays on each cycle (>=200)
- * @param offMillis how long the LED stays off each cycle (>=200)
- *
- * The LED will start in the "on" state when this call is made.
- */
 void LcdDisplay::startLedHeartbeat(int led, uint32_t onMillis, uint32_t offMillis)
 {
    if (led < 0 || led >= LED_COUNT)
@@ -677,12 +659,6 @@ void LcdDisplay::startLedHeartbeat(int led, uint32_t onMillis, uint32_t offMilli
    regenStatusLine();
 }
 
-/**
- * @brief change the colour used when an LED is illuminated
- *
- * @param led index of LED (use the LedId enum)
- * @param rgb888 24‑bit colour value (0xRRGGBB)
- */
 void LcdDisplay::setLedColour(int led, uint32_t rgb888)
 {
    if (led < 0 || led >= LED_COUNT)

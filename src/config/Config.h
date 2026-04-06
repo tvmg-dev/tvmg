@@ -17,9 +17,9 @@ extern const char *k_versionStr;
 
 #define SAMPLING_PERIOD_MS 30000
 
-#define MAX_REGISTRY_ENTRIES 32
+#define MAX_REGISTRY_ENTRIES 50
 #define MAX_KEY_LENGTH       32
-#define MAX_VALUE_LENGTH     48
+#define MAX_VALUE_LENGTH     80
 
 #define CONFIG_DEF_TO_STR( x ) #x
 
@@ -38,9 +38,9 @@ class Config
 {
 public:
    typedef struct {
-      char     key[ MAX_KEY_LENGTH ];
-      char     value[ MAX_VALUE_LENGTH ];
-      char     volatileValue[ MAX_VALUE_LENGTH ];
+      String key;
+      String value;
+      String volatileValue;
    } KeyValue;
 
    Config();

@@ -656,11 +656,11 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
 
       vTaskGetInfo( NULL,&taskStatus,pdTRUE,eInvalid );
 
-      // get stack watermark for current task, current core and largest block
-      // available from the heap (which will be less than the free heap size)
+      // get stack watermark for current task, current core - the amount of free heap and lowest
+      // heap recorded.
 
-//      sprintf( line,"[%u,%s,%u,%u] - ",xPortGetCoreID(),taskStatus.pcTaskName,taskStatus.usStackHighWaterMark,largestFreeInternalBlock() / 1024 );
-      sprintf( line,"[%u,%s,%u,%u] - ",xPortGetCoreID(),taskStatus.pcTaskName,taskStatus.usStackHighWaterMark,freeKiB() );
+      snprintf( line, sizeof( line ), "[%u,%s,%u,%u,%u] - ", xPortGetCoreID(), taskStatus.pcTaskName, taskStatus.usStackHighWaterMark,
+                  ( esp_get_free_heap_size() >> 10 ), ( esp_get_minimum_free_heap_size() >> 10 ) );
 
       debugString += line;
    }

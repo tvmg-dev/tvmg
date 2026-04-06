@@ -18,6 +18,19 @@ class WebServer;
 class Emailer;
 class UserIO;
 
+class NetworkMutexGuard
+{
+public:
+   NetworkMutexGuard( uint32_t timeoutMS = 10000 );
+   ~NetworkMutexGuard();
+   bool acquired();
+
+   // Prevent copying to avoid double-releasing
+   NetworkMutexGuard( const NetworkMutexGuard& ) = delete;
+   NetworkMutexGuard& operator=( const NetworkMutexGuard& ) = delete;
+private:
+   bool m_acquired;
+};
 class Networking
 {
 public:

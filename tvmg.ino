@@ -32,26 +32,28 @@
 
 #include "src/network/Networking.h"
 #include "src/network/WebServer.h"
+#include "src/network/Update.h"
 
 #include "src/network/ModbusTCP.h"
 
 // ---------------------------------------------------------------------
 
-HardwareSerial    *hwSerial = nullptr;
-ModbusMaster      *modbusMaster = nullptr;
-TemperatureModule *tempModule = nullptr;
-PowerModule       *powerModule = nullptr;
-ShellyPowerModule *shellyPowerModule = nullptr;
-ModbusTCP         *modbusTCP = nullptr;
-Storage           *storageModule = nullptr;
-HeatMeterModule   *heatMeterModule = nullptr;
-Display           *display = nullptr;
-Measurement       *measurement = nullptr;
-Config            *config = nullptr;
-Networking        *networking = nullptr;
-LGHeatPump        *lgThermaV = nullptr;
-LGHeatPumpSimulator  *lgSimulator = nullptr;
-Indicator         *systemIndicator = nullptr;
+HardwareSerial* hwSerial = nullptr;
+ModbusMaster* modbusMaster = nullptr;
+TemperatureModule* tempModule = nullptr;
+PowerModule* powerModule = nullptr;
+ShellyPowerModule* shellyPowerModule = nullptr;
+ModbusTCP* modbusTCP = nullptr;
+Storage* storageModule = nullptr;
+HeatMeterModule* heatMeterModule = nullptr;
+Display* display = nullptr;
+Measurement* measurement = nullptr;
+Config* config = nullptr;
+Networking* networking = nullptr;
+LGHeatPump* lgThermaV = nullptr;
+LGHeatPumpSimulator* lgSimulator = nullptr;
+Indicator* systemIndicator = nullptr;
+UpdateManager* s_updateManager = nullptr;
 
 // Amount of time we can have the network mutex held before the loop()
 // can proceed.  If this is exceeded then will reboot.
@@ -436,7 +438,7 @@ void startNetworking()
    display->updateLine( 2,ssid );
 
    // If no WIFI_SSID then we just jump straight to new config
-   if ( ssid && strlen( ssid ) == 0 )
+   if ( ssid == nullptr || strlen( ssid ) == 0 )
    {
       setPersistentInt( k_rebootType,BOOT_NO_WIFI );
       delay( 500 );
@@ -844,17 +846,19 @@ void setup( void )
 }
 
 // ---------------------------------------------------------------------
-// handleAnyOTAUpdate
+// handleAnyUpdate
 //
-// If OTA update has occurred, if so then we go for a hard reset
+// If an update has occurred, if so then we go for a hard reset
 // which takes ~ 250ms for the watchdog to kick in, so we delay
 // initially to let the webserver service the GET response, and
 // then delay after the reset which will cycle the chip
 
-void handleAnyOTAUpdate()
+void handleAnyUpdate()
 {
    if ( networking->hasUpdated() )
    {
+      TVMG_MSG( "Update completed - rebooting" );
+
       setPersistentInt( k_rebootType,SERVER_OTA_UPDATE );
 
       delay( 1500 );
@@ -911,16 +915,11 @@ bool  loopTestRequired = false;
 
 void  loopTest()
 {
-#if 0
-
-   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Current Data","Sample Data","/20251225.dat" );
-//   networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"Sensor Data","Sensors","/sensors.json",true );
-
-   handleDataLogs();
-#endif
+   TVMG_DEBUG( "Loop test" );
+   loopTestRequired = false;
 }
 
-void loop(void)
+void loop()
 {
    static uint32_t targetMillis = 0,deltaMillis,currentMillis;
    static bool     didDailyUpdate = false;
@@ -954,8 +953,20 @@ void loop(void)
       restartRequired = true;
    }
 
-   // Check if we've updated, we'll reset if OTA has occurred
-   handleAnyOTAUpdate();
+   // run any debugging test, setup by webserver for picking up in the loop
+
+   if ( loopTestRequired )
+   {
+      TVMG_DEBUG( "loop test");
+      loopTest();
+   }
+
+   // check for updates being available, if in auto-mode will update the firmware, otherwise
+   // its advertised as available for a manual update via the webserver
+   s_updateManager->checkForOtaUpdate();
+
+   // Check if we've updated, we'll reset if update has occurred
+   handleAnyUpdate();
 
    // Check for reboot requested, doing this in the loop task to
    // allow the webserver to respond
@@ -1010,14 +1021,6 @@ void loop(void)
       didDailyUpdate = false;
    }
    END_TIMING;
-
-   // run any debugging test, setup by webserver for picking up in the loop
-
-   if ( loopTestRequired )
-   {
-      loopTest();
-      loopTestRequired = false;
-   }
 
    // If we have an heat pump simulator then perform housekeeping
    if ( lgSimulator )

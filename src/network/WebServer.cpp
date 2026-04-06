@@ -28,6 +28,7 @@
 #include "src/userio/Display.h"
 
 #include "src/network/WebServer.h"
+#include "src/network/Update.h"
 #include "src/network/html/common_css.h"
 #include "src/network/html/edit_html.h"
 #include "src/network/html/history_html.h"
@@ -533,6 +534,7 @@ WebServer::~WebServer()
 {
    TVMG_DEBUG( "~WebServer()" );
 
+   delete m_updateManager;
    delete m_otaEvents;
    delete m_statusEvents;
    delete m_webServer;
@@ -601,9 +603,6 @@ void WebServer::initialise()
    setupAsyncServer();
 }
 
-int updatePos;
-int buffs;
-
 void WebServer::updateClients( const char *data )
 {
    if ( m_statusEvents )
@@ -626,7 +625,7 @@ void WebServer::setupAsyncServer()
    else
    {
       setupEventSources();
-      setupOTAHandler();
+      setupUpdateHandlers();
       setupFilesHandlers();
       setupControlHandlers();
       setupMiscHandlers();
@@ -637,131 +636,73 @@ void WebServer::setupAsyncServer()
    }
 }
 
+extern UpdateManager *s_updateManager;
+
 void WebServer::setupEventSources()
 {
    m_otaEvents = new AsyncEventSource( "/events" );
    m_webServer->addHandler( m_otaEvents );
 
+   m_updateManager = new UpdateManager( m_networking, m_otaEvents );
+   s_updateManager = m_updateManager;
+
    m_statusEvents = new AsyncEventSource( "/telemetry" );
    m_webServer->addHandler( m_statusEvents );
 }
 
-void WebServer::setupOTAHandler()
+void WebServer::setupUpdateHandlers()
 {
-   m_webServer->on("/update", HTTP_POST, [&](AsyncWebServerRequest *request)
-   {
-      // The response handler (called after upload completes)
-      // We just send a simple HTTP 200 to acknowledge the AJAX request.
-      // The manager UI is being updated separately in Javascript via the
-      // Send Server Events (SSE) '/events' stream.
+    // Check for update, returns json back to the client 
+    m_webServer->on("/check-update", HTTP_GET, [this](AsyncWebServerRequest *request)
+    {
+        UpdateManager::BinaryAsset asset = m_updateManager->getOtaAsset();
+        
+        if ( asset.url.length() > 0 )
+        {
+            String json = "{\"available\":true,\"version\":\"" + asset.version + "\"}";
+            request->send(200, "application/json", json);
+        }
+        else
+        {
+            request->send(200, "application/json", "{\"available\":false}");
+        }
+    });
 
-      bool ok = !Update.hasError();
-      request->send(200, "text/plain", ok ? "OK" : "FAIL");
+    m_webServer->on("/start-remote-update", HTTP_POST, [this](AsyncWebServerRequest *request)
+    {
+        // Respond immediately so the browser UI can switch to progress mode
+        request->send(200, "text/plain", "OK");
 
-      // Release the network mutex now that the transfer is done
-      Networking::releaseNetworkMutex();
-   },
-   [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-   {
-      // The upload handler (called for every chunk of the update file)
+        // Signal the UpdateManager/LoopTask to start the download using the pending asset
+        m_updateManager->triggerPendingOtaUpdate();
+    });
 
-      size_t totalSize = request->contentLength(); // Total file size for percentage
+    m_webServer->on("/update", HTTP_POST, [&](AsyncWebServerRequest *request)
+    {
+        // The response handler (called after upload completes)
+        bool ok = m_updateManager->finishLocalUpdate();
+        request->send(200, "text/plain", ok ? "OK" : "FAIL");
+    },
+    [&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+    {
+        // The upload handler (called for every chunk of the update file)
+        size_t totalSize = request->contentLength();
 
-      if (!index)
-      {
-         bool startedOk = false;
-         updatePos = 0;
-         buffs = 0;
+        if (!index)
+        {
+            // Start of upload
+            if (!m_updateManager->startLocalUpdate(filename, totalSize))
+            {
+                return;
+            }
+        }
 
-         if (Networking::takeNetworkMutex(10000) == 1)
-         {
-            TVMG_DEBUG( "OTA: Starting update for %s", filename.c_str() );
-            m_networking->setUpdateProgress(0, filename, false);
-
-            // Reset client via SSE
-            m_otaEvents->send( "0", "ota_progress", millis() );
-
-            // Start the internal Flash update process
-            startedOk = Update.begin( UPDATE_SIZE_UNKNOWN,U_FLASH );
-         }
-
-         if (!startedOk)
-         {
-            TVMG_ERROR( "Failed to start update" );
-            m_networking->setUpdateProgress( -1, filename, false );
-            Networking::releaseNetworkMutex();
-            // Signal failure to the client immediately
-            m_otaEvents->send( "failed:Could not begin update", "ota_state", millis() );
+        // Feed more data to the update
+        if (!m_updateManager->feedLocalUpdateData(data, len))
+        {
             return;
-         }
-      }
-
-      // Copy incoming data into the scratchBuffer
-      if ( !Update.hasError() )
-      {
-         size_t remainingInPacket = len;
-         size_t packetOffset = 0;
-
-         while (remainingInPacket > 0)
-         {
-            size_t spaceInBuffer = SCRATCH_BUFFER_SIZE - updatePos;
-            size_t canCopy = (remainingInPacket < spaceInBuffer) ? remainingInPacket : spaceInBuffer;
-
-            memcpy( &scratchBuffer[updatePos], &data[packetOffset], canCopy );
-
-            updatePos += canCopy;
-            packetOffset += canCopy;
-            remainingInPacket -= canCopy;
-
-            // When scratchBuffer is full, write it to Flash
-            if (updatePos == SCRATCH_BUFFER_SIZE)
-            {
-               Update.write(scratchBuffer, SCRATCH_BUFFER_SIZE);
-               buffs++;
-               updatePos = 0;
-
-               // Send progress percentage via SSE (e.g., "45")
-               if (totalSize > 0)
-               {
-                  int progress = (index + packetOffset) * 100 / totalSize;
-                  char progMsg[8];
-                  sprintf( progMsg, "%d", progress );
-                  m_otaEvents->send( progMsg, "ota_progress", millis() );
-                  m_networking->setUpdateProgress( progress, filename, false );
-               }
-            }
-         }
-
-         // Runs on the final packet
-         if (final)
-         {
-            // Write any remaining bytes left in the buffer
-            if (updatePos > 0)
-            {
-               Update.write(scratchBuffer, updatePos);
-            }
-
-            if (Update.end(true))
-            {
-               // SUCCESS: Tell the browser to start its reboot countdown
-               m_otaEvents->send( "100", "ota_progress", millis() );
-               m_otaEvents->send( "reboot", "ota_state", millis() );
-               m_networking->setUpdateProgress(index + len, filename, true);
-               TVMG_MSG( "OTA Success. Total written: %d bytes", (buffs * SCRATCH_BUFFER_SIZE) + updatePos );
-            }
-            else
-            {
-               // FAILURE: Send the specific error message to the browser
-               String errorStr = Update.errorString();
-               String sseFailMsg = "failed:" + (errorStr.length() ? errorStr : "Flash Error");
-               m_otaEvents->send( sseFailMsg.c_str(), "ota_state", millis() );
-
-               m_networking->setUpdateProgress(-1, filename, true);
-               TVMG_ERROR( "OTA Failed %s",errorStr.c_str() );
-            }
-         }
-      }
-   });
+        }
+    });
 }
 
 void WebServer::setupFilesHandlers()
@@ -856,6 +797,8 @@ void WebServer::setupFilesHandlers()
    }, uploadFile);
 }
 
+extern bool loopTestRequired;
+
 void WebServer::setupControlHandlers()
 {
    m_webServer->on("/reset", HTTP_POST, [](AsyncWebServerRequest *request)
@@ -887,14 +830,12 @@ void WebServer::setupControlHandlers()
       request->send( 200,"text/plain","OK" );
    });
 
-   m_webServer->on("/runtimeinfo", HTTP_POST, [](AsyncWebServerRequest *request)
+   m_webServer->on("/runtimeinfo", HTTP_POST, [this](AsyncWebServerRequest *request)
    {
       AUTHENTICATE;
 
       getRunTimeInfo();
       debugSensorNameMap();
-
-      extern bool loopTestRequired;
 
       loopTestRequired = true;
 
@@ -1051,9 +992,10 @@ void WebServer::setupMiscHandlers()
          {
             // cause task watchog
             uint32_t start = millis();
+            int dummy = 0;
             while( millis() - start < 180000 )
             {
-               buffs++;
+               dummy++;
             }
          }
       }

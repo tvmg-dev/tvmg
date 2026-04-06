@@ -12,6 +12,7 @@
 #include <ESPAsyncWebServer.h>
 
 class Networking;
+class UpdateManager;
 
 class WebServer
 {
@@ -25,7 +26,7 @@ private:
    void generateOptionsSection();
    void setupAsyncServer();
    void setupEventSources();
-   void setupOTAHandler();
+   void setupUpdateHandlers();
    void setupFilesHandlers();
    void setupControlHandlers();
    
@@ -36,6 +37,7 @@ private:
    AsyncEventSource  *m_otaEvents;
    AsyncEventSource  *m_statusEvents;
    Networking        *m_networking;
+   UpdateManager     *m_updateManager;
    String            m_hiddenPage;
    File              m_downloadFile;
 };

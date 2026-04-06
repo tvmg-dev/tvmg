@@ -288,6 +288,9 @@ static std::map<esp_reset_reason_t,String> s_esp32RebooMap = {
    { ESP_RST_SW,"App Reset" },
 };
 
+// The RTC_NOINIT_ATTR is a data region that is not reset on soft reboot so can
+// be used to store data across such reboots.
+
 #define  MINIMUM_RUNTIME_SECS (10 * 60)
 #define  ALLOWED_FAST_RESETS  10
 
@@ -295,6 +298,11 @@ RTC_NOINIT_ATTR   uint32_t s_softResets;
 RTC_NOINIT_ATTR   uint32_t s_lastResetSeconds;
 
 static const char k_nvsNamespace[] = "sysinfo";
+
+// An early reset is one where the device has simply not managed to survive long enough
+// for the standard fast reboot logic to start, so we set the allowed count greater
+// than the 'normal' allowed fast reboots so if that is exceeded then there's a
+// real issue.
 
 #define  ALLOWED_EARLY_RESETS (ALLOWED_FAST_RESETS + 5)
 #define  MAGIC_WORD  0xFACEFEED

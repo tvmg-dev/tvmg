@@ -239,9 +239,9 @@ File readyMailFile;
 // RAII for the network mutex where we take the network mutex and release
 // the web client
 
-struct NetworkMutexGuard
+struct NetworkGuard
 {
-   NetworkMutexGuard( int ms )
+   NetworkGuard( int ms )
    {
       isTaken = Networking::takeNetworkMutex( ms );
       if ( isTaken )
@@ -250,7 +250,7 @@ struct NetworkMutexGuard
       }
    }
 
-   ~NetworkMutexGuard() { if ( isTaken ) Networking::releaseNetworkMutex(); readyMailFile.close(); }
+   ~NetworkGuard() { if ( isTaken ) Networking::releaseNetworkMutex(); readyMailFile.close(); }
 
    bool isTaken;
 };
@@ -272,7 +272,7 @@ private:
    static void fileCallbackForFS(File &file, const char *path, readymail_file_operating_mode mode);
    static void fileCallbackForSD(File &file, const char *path, readymail_file_operating_mode mode);
 
-   String   setupConnection( const NetworkMutexGuard &guard,const char *recipient,const char *subject,SMTPMessage *smtpMsg );
+   String   setupConnection( const NetworkGuard &guard,const char *recipient,const char *subject,SMTPMessage *smtpMsg );
    void     closeConnection();
 
    String   getNameFromEMailAddress( const String &recipient );
@@ -412,7 +412,7 @@ void smtpCb(SMTPStatus status)
         TVMG_DEBUG("ReadyMail[smtp][%d]%s\n", status.state, status.text.c_str());
 }
 
-String   Emailer::setupConnection( const NetworkMutexGuard &guard,const char *recipient,const char *subject,SMTPMessage *smtpMsg )
+String   Emailer::setupConnection( const NetworkGuard &guard,const char *recipient,const char *subject,SMTPMessage *smtpMsg )
 {
    String sendString;
 
@@ -485,7 +485,7 @@ void Emailer::closeConnection()
 
 bool Emailer::sendEmail( const char *recipient,const char *subject,const String &msg )
 {
-   NetworkMutexGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
+   NetworkGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
    SMTPMessage smtpMsg;
    bool sentOk = false;
 
@@ -526,7 +526,7 @@ bool Emailer::sendEmailWithAttachment( const char *recipient,const char *subject
       return false;
    }
 
-   NetworkMutexGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
+   NetworkGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
    SMTPMessage smtpMsg;
    bool sentOk = false;
 
@@ -587,7 +587,7 @@ bool Emailer::sendEmailWithFileAsBody( const char *recipient,const char *subject
       return false;
    }
 
-   NetworkMutexGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
+   NetworkGuard guard( EMAIL_ACQUIRE_MUTEX_MS );
    SMTPMessage smtpMsg;
    bool sentOk = false;
 
@@ -1079,35 +1079,43 @@ void  Networking::releaseWebClient()
 void  Networking::setUpdateProgress( int percentComplete,const String &filename,bool finished )
 {
    static bool notifyUpdate = false;
+   static int lastPercentage = -1;
 
    if ( percentComplete != 0 )
    {
       notifyUpdate = false;
    }
 
-   // If update start fails then we get size -1 and finished is false
-
+   // If percentComplete is -1 then an error has occured, if finished is false then 
+   // failed to start, otherwise incomplete..
    if ( percentComplete == -1 )
    {
-      m_infoCallback( OTA_FAILED,"Failed to start OTA" );
+      if ( !finished )
+      {
+         m_infoCallback( OTA_FAILED,"Failed to start update" );
+      }
+      else
+      {
+         m_infoCallback( OTA_FAILED,"Failed to complete update" );
+      }
    }
    else if ( finished )
    {
       m_hasUpdated = true;
-      m_infoCallback( OTA_COMPLETE,"OTA Completed" );
+      m_infoCallback( OTA_COMPLETE,"Update Completed" );
    }
    else if ( !percentComplete )
    {
-      TVMG_MSG( "OTA update with %s",filename.c_str() );
-
       if ( !notifyUpdate )
       {
+         TVMG_MSG( "Update with %s",filename.c_str() );
+         
          m_hasUpdated = false;
          m_infoCallback( OTA_STARTED,filename );
          notifyUpdate = true;
       }
    }
-   else
+   else if ( percentComplete != lastPercentage )
    {
       TVMG_DEBUG( "OTA %d complete",percentComplete );
       m_infoCallback( OTA_PROGRESS, String( percentComplete ) );
@@ -1165,4 +1173,20 @@ void  Networking::releaseNetworkMutex()
    }
 }
 
+NetworkMutexGuard::NetworkMutexGuard( uint32_t timeoutMS )
+{
+   m_acquired = ( Networking::takeNetworkMutex( timeoutMS ) == 1 ? true : false );
+}
 
+NetworkMutexGuard::~NetworkMutexGuard()
+{
+   if ( m_acquired )
+   {
+      Networking::releaseNetworkMutex();
+   }
+}
+
+bool NetworkMutexGuard::acquired()
+{
+   return m_acquired;
+}

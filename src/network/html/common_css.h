@@ -49,7 +49,18 @@ const char common_css[] PROGMEM = R"rawliteral(
   input[type="submit"]:hover, .nav-btn:hover, .file-input-label:hover, select:hover {
       background: #f3f4f6; border-color: #9ca3af; color: #111827;
   }
-  #update-btn, .primary-btn { background: linear-gradient(to bottom, #4CAF50, #45a049) !important; color: white !important; border-color: #3d8b40 !important; }
+
+  /* Success/Action Buttons */
+  #update-btn, .primary-btn { 
+    background: linear-gradient(to bottom, #4CAF50, #45a049) !important; 
+    color: white !important; 
+    border-color: #3d8b40 !important; 
+  }
+  #update-btn:hover, .primary-btn:hover {
+    background: #45a049 !important;
+    border-color: #38803b !important;
+  }
+
   input[type="file"] { width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1; }
 
   /* Progress Bar */

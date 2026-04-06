@@ -16,24 +16,23 @@ const char manager_html[] = R"rawliteral(
   %STYLE%
 
   <script>
-   // Helper to show the filename after user selects a file
    function updateFileName(input, targetId) {
      const fileName = input.files.length ? input.files[0].name : "Choose File";
      document.getElementById(targetId).innerText = fileName;
    }
 
-   function startOTAUpdate() {
-    const input = document.getElementById('update');
-    if(!input.files.length) { alert("Select file"); return; }
+   function initiateOTA() {
     document.getElementById('ota_form').style.display = 'none';
     document.getElementById('ota_progress_ui').style.display = 'block';
     const bar = document.getElementById('ota_bar');
     const status = document.getElementById('ota_status');
     const source = new EventSource('/events');
+
     source.addEventListener('ota_progress', function(e) {
      const progress = parseInt(e.data);
      if(!isNaN(progress)) { bar.style.width = progress + '%%'; bar.innerHTML = progress + '%%'; }
     });
+
     source.addEventListener('ota_state', function(e) {
      if (e.data === "reboot") {
       source.close();
@@ -45,12 +44,49 @@ const char manager_html[] = R"rawliteral(
       location.reload();
      }
     });
+   }
+
+   function startOTAUpdate() {
+    const input = document.getElementById('update');
+    if(!input.files.length) { alert("Select file"); return; }
+    initiateOTA();
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
     formData.append("update", input.files[0]);
     xhr.open("POST", "/update", true);
     xhr.send(formData);
    }
+
+   async function pollForUpdates() {
+    try {
+     const response = await fetch('/check-update');
+     const data = await response.json();
+     const noneText = document.getElementById('remote-upd-none');
+     const foundBtn = document.getElementById('remote-upd-found');
+
+     if (data.available) {
+      noneText.style.display = 'none';
+      foundBtn.style.display = 'inline-flex'; // Using inline-flex to match unified button style
+      foundBtn.innerText = "Update Available (" + data.version + ")";
+     } else {
+      noneText.style.display = 'inline-block';
+      foundBtn.style.display = 'none';
+     }
+    } catch (e) { console.error("Update check failed", e); }
+   }
+
+   function triggerRemoteUpdate() {
+    if (confirm("Download and install the remote update now?")) {
+     initiateOTA();
+     fetch('/start-remote-update', { method: 'POST' });
+    }
+   }
+
+   // Run poller on load and every 60s
+   window.onload = () => {
+    pollForUpdates();
+    setInterval(pollForUpdates, 60000);
+   };
 
    function checkbox(el) {
     const xhr = new XMLHttpRequest();
@@ -83,16 +119,24 @@ const char manager_html[] = R"rawliteral(
     <div class="form-row" style="border:none; padding-top:8px; justify-content: flex-start;">
        <a href="/history" class="nav-btn">View Event Log &rarr;</a>
     </div>
-    <div id="ota_form" class="form-row" style="border:none; padding-top:8px;">
-      <span class="form-label" style="min-width:auto; color: #4CAF50; font-weight: bold;">Firmware Update</span>
-      <form style="justify-content: space-between;">
-        <label for="update" class="file-input-label" id="label_update">Choose .bin</label>
+
+    <div id="ota_form" class="form-row" style="border:none; padding-top:12px; display: flex; align-items: center; justify-content: space-between;">
+      <span class="form-label" style="min-width:auto; color: #4CAF50; font-weight: bold; flex: 0 0 12%%;">Updates</span>
+
+      <div style="flex: 0 0 38%%; text-align: center; border-right: 1px solid #ccc; margin-right: 15px; padding-right: 15px;">
+        <span id="remote-upd-none" style="color: #888; font-style: italic; font-size: 0.9em;">No remote update</span>
+        <button type="button" id="remote-upd-found" class="file-input-label primary-btn" style="display:none; border:none; cursor:pointer; width:100%%;" onclick="triggerRemoteUpdate()">Update Available</button>
+      </div>
+
+      <form style="flex: 1; display: flex; justify-content: flex-end; align-items: center; margin: 0;">
+        <label for="update" class="file-input-label" id="label_update" style="margin-right: 10px;">Choose Local .bin</label>
         <input type="file" id="update" name="update" accept=".bin" onchange="updateFileName(this, 'label_update')">
-        <button type="button" id="update-btn" onclick="startOTAUpdate()">Update!</button>
+        <button type="button" id="update-btn" onclick="startOTAUpdate()">Upload!</button>
       </form>
     </div>
+
     <div id="ota_progress_ui" style="display:none;">
-     <p id="ota_status" style="text-align:center;">Flashing...</p>
+     <p id="ota_status" style="text-align:center;">Updating Firmware...</p>
      <div class="progress-wrapper" style="display:block;"><div id="ota_bar" class="progress-bar">0%%</div></div>
     </div>
    </fieldset>
