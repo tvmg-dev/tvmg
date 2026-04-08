@@ -463,6 +463,13 @@ void UpdateManager::checkManifest()
 
          if ( cJSON_IsString( version ) && cJSON_IsString( md5 ) && cJSON_IsString( url ) )
          {
+            if ( strlen( version->valuestring ) == 0 || strlen( md5->valuestring) == 0 ||
+                                                         strlen( url->valuestring ) == 0 )
+            {
+               TVMG_WARN( "Invalid manifest data" );
+               return;
+            }
+
             bool isNew = false;
             if ( strcmp( version->valuestring, k_versionStr ) )
             {
@@ -583,6 +590,7 @@ void UpdateManager::checkForOtaUpdate()
 
    if ( updateRequired )
    {
+      Networking::releaseWebClient();
       performOtaUpdate();
    }
 }

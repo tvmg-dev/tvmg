@@ -45,7 +45,7 @@ HardwareConfig MasterDevice =
    -1,            // TouchButton1
    -1,            // TouchButton2
    -1,            // PWM GPIO
-   true           // has SD card
+   false          // has SD card
 };
 
 // T-Nodes use the integrated ESP32/OLED module
