@@ -62,7 +62,7 @@ UpdateManager::UpdateManager( Networking* networking, AsyncEventSource* otaEvent
    m_group = String( GET_REGISTRY_STRING( UPDATE_GROUP ) );
    if ( m_group.length() == 0 )
    {
-      m_group = "general";
+      m_group = "release";
    }
 
    m_otaAsset.url = "";
@@ -361,6 +361,10 @@ bool UpdateManager::isOtaManifestUpdated( String* outPayload )
       return false;
    }
 
+   // free the web client, and then get a new WiFiSecureClient for a HTTP request
+
+   Networking::releaseWebClient();
+
    WiFiClientSecure client;
    client.setInsecure();
    HTTPClient http;
@@ -539,8 +543,20 @@ bool UpdateManager::isTimeToCheck()
    int currentMin = timeinfo.tm_min;
    int currentSec = timeinfo.tm_sec;
 
-//   if ( currentMin == 15 || currentMin == 45 )
-   if ( shouldCheck || currentMin % 5 == 0 )
+   // If we're an alpha group then check every 5 minutes for expediency, otherwise 15 & 45 minutes 
+   // past the hour
+
+   bool validTime;
+   if ( m_group == "alpha" )
+   {
+      validTime = ( currentMin % 5 == 0 );
+   }
+   else
+   {
+      validTime = ( currentMin == 15 || currentMin == 45 );
+   }
+
+   if ( shouldCheck || validTime )
    {
       // Trigger only when we're beyond our random seconds 
       if ( currentSec > offsetSeconds && !alreadyPolledInPeriod )
@@ -552,6 +568,11 @@ bool UpdateManager::isTimeToCheck()
    else
    {
       alreadyPolledInPeriod = false;
+   }
+
+   if ( shouldCheck )
+   {
+      TVMG_MSG( "Should check manifest" );
    }
 
    return shouldCheck;

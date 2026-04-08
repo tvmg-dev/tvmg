@@ -10,7 +10,7 @@ REPO = "tvmg-dev/otatest"
 FIXED_TAG = "binaries"
 MANIFEST_NAME = "otamanifest.json"
 
-# Hardware ID to Filename Fragment Mapping
+# Hardware ID in manifest to binary filename map
 HW_MAP = {
     "TVMG-ESP32": "tvmg_esp32",
     "TVMG-ESP32S3-RS485": "tvmg_esp32s3",

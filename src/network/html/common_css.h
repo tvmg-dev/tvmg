@@ -41,7 +41,7 @@ const char common_css[] PROGMEM = R"rawliteral(
   /* Unified Modern Buttons */
   input[type="submit"], input[type="button"], button, .nav-btn, .file-input-label {
       display: inline-flex; align-items: center; justify-content: center;
-      padding: 0 12px; height: 26px; cursor: pointer; border-radius: 5px;
+      padding: 0 6px; height: 26px; cursor: pointer; border-radius: 5px;
       border: 1px solid #d1d5db; background: linear-gradient(to bottom, #ffffff, #f9fafb);
       color: #374151; font-size: 11px; font-weight: 600; text-decoration: none;
       white-space: nowrap; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.05);

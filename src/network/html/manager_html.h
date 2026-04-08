@@ -67,7 +67,7 @@ const char manager_html[] = R"rawliteral(
      if (data.available) {
       noneText.style.display = 'none';
       foundBtn.style.display = 'inline-flex'; // Using inline-flex to match unified button style
-      foundBtn.innerText = "Update Available (" + data.version + ")";
+      foundBtn.innerText = "Update (" + data.version + ")";
      } else {
       noneText.style.display = 'inline-block';
       foundBtn.style.display = 'none';
@@ -121,11 +121,11 @@ const char manager_html[] = R"rawliteral(
     </div>
 
     <div id="ota_form" class="form-row" style="border:none; padding-top:12px; display: flex; align-items: center; justify-content: space-between;">
-      <span class="form-label" style="min-width:auto; color: #4CAF50; font-weight: bold; flex: 0 0 12%%;">Updates</span>
+      <span class="form-label" style="min-width:auto; color: #4CAF50; font-weight: bold; flex: 0 0 6%%;">Updates</span>
 
-      <div style="flex: 0 0 38%%; text-align: center; border-right: 1px solid #ccc; margin-right: 15px; padding-right: 15px;">
+      <div style="flex: 0 0 16%%; text-align: center; border-right: 1px solid #ccc; margin-right: 2px; padding-right: 2px;">
         <span id="remote-upd-none" style="color: #888; font-style: italic; font-size: 0.9em;">No remote update</span>
-        <button type="button" id="remote-upd-found" class="file-input-label primary-btn" style="display:none; border:none; cursor:pointer; width:100%%;" onclick="triggerRemoteUpdate()">Update Available</button>
+        <button type="button" id="remote-upd-found" class="file-input-label primary-btn" style="display:none; border:none; cursor:pointer; width:85%%;" onclick="triggerRemoteUpdate()">Update Available</button>
       </div>
 
       <form style="flex: 1; display: flex; justify-content: flex-end; align-items: center; margin: 0;">
