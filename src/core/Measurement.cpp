@@ -647,13 +647,13 @@ void  Measurement::sendDailyUpdate()
       m_networking->sendEmailWithFileAsBody( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),"LG Event Log",LGSTATUS_LOG_HTML );
    }
 
-   // remove yesterday's and we rename current status to yesterday's.
-   if ( !tvmgFileSys.remove( LGSTATUS_YESTERDAY ) )
+   // remove yesterday's LG data and we rename current log to yesterday's.
+   if ( tvmgFileSys.exists( LGSTATUS_YESTERDAY ) && !tvmgFileSys.remove( LGSTATUS_YESTERDAY ) )
    {
       TVMG_WARN( "Failed to remove %s",LGSTATUS_YESTERDAY );
    }
 
-   if ( !tvmgFileSys.rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY ) )
+   if ( tvmgFileSys.exists( LGSTATUS_LOG_HTML ) &&  !tvmgFileSys.rename( LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY ) )
    {
       TVMG_WARN( "Failed to rename %s to %s",LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
    }

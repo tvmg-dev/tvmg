@@ -45,7 +45,7 @@ def handle_upload(args):
     for hw in devices_to_process:
         prefix = HW_MAP[hw]
         # Expecting format: prefix-version.bin
-        filename = f"{prefix}-{args.version}.bin"
+        filename = f"{args.version}-{prefix}.bin"
         local_path = os.path.join(args.dir, filename)
 
         if filename in existing_files:
