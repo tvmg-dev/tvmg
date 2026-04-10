@@ -1,9 +1,9 @@
 {
   "TVMG-ESP32": {
     "alpha": {
-      "v": "v26.04.01j",
-      "md5": "898d9f37a18aee539729d71783219b87",
-      "url": "https://github.com/tvmg-dev/tvmg/releases/download/binaries/tvmg_esp32-v26.04.01j.bin"
+      "v": "v26.04.01",
+      "md5": "56c3adfa10c501950d7feb7711fa67c6",
+      "url": "https://github.com/tvmg-dev/tvmg/releases/download/binaries/tvmg_esp32-v26.04.01.bin"
     },
     "beta": {
       "v": "v26.04.01g",
@@ -18,9 +18,9 @@
   },
   "TVMG-ESP32S3-RS485": {
     "alpha": {
-      "v": "v26.04.01e",
-      "md5": "7106fd44059d03442838d1abeab6a371",
-      "url": "https://github.com/tvmg-dev/otatest/releases/download/binaries/tvmg_esp32s3-v26.04.01e.bin"
+      "v": "v26.04.01",
+      "md5": "56369974680fb1c9bf8f63fd0f51f2e6",
+      "url": "https://github.com/tvmg-dev/tvmg/releases/download/binaries/tvmg_esp32s3-v26.04.01.bin"
     },
     "beta": {
       "v": "v26.04.01e",
@@ -35,9 +35,9 @@
   },
   "WS-ESP32-S3-Relay-1CH": {
     "alpha": {
-      "v": "v26.04.01e",
-      "md5": "8d4c44f976f7ee1653d920d5809f05f8",
-      "url": "https://github.com/tvmg-dev/otatest/releases/download/binaries/tvmg_wsrelay-v26.04.01e.bin"
+      "v": "v26.04.01",
+      "md5": "a3f44043034fe0296309566e05e4c781",
+      "url": "https://github.com/tvmg-dev/tvmg/releases/download/binaries/tvmg_wsrelay-v26.04.01.bin"
     },
     "beta": {
       "v": "v26.04.01e",
@@ -52,9 +52,9 @@
   },
   "WS-ESP32-S3-Touch-LCD-4.3B": {
     "alpha": {
-      "v": "v26.04.01e",
-      "md5": "bc60e9adb97c05cd6f23fab0c4a1e598",
-      "url": "https://github.com/tvmg-dev/otatest/releases/download/binaries/tvmg_wsharelcd-v26.04.01e.bin"
+      "v": "v26.04.01",
+      "md5": "fc0aecbd2b7538b84ff51101c9e013df",
+      "url": "https://github.com/tvmg-dev/tvmg/releases/download/binaries/tvmg_wsharelcd-v26.04.01.bin"
     },
     "beta": {
       "v": "v26.04.01e",

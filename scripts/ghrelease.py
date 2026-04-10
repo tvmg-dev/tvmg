@@ -19,7 +19,7 @@ HW_MAP = {
 }
 
 def run_gh(args):
-    """Executes GitHub CLI commands and returns output."""
+    """Executes GitHub CLI commands for the configured repository and returns output."""
     cmd = ["gh", "-R", REPO] + args
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result
@@ -149,7 +149,7 @@ def handle_remove(args):
 
     for asset in matching_assets:
         print(f"[*] Deleting {asset['name']}...")
-        res = run_gh(["api", f"repos/{REPO}/releases/assets/{asset['id']}", "--method", "DELETE"])
+        res = run_gh(["release", "delete-asset", FIXED_TAG, asset['name'], "--yes"])
         if res.returncode != 0:
             print(f"[!] Failed to delete {asset['name']}: {res.stderr}")
             sys.exit(1)
@@ -164,7 +164,7 @@ subparsers = parser.add_subparsers(dest="command", required=True)
 up_parser = subparsers.add_parser("upload")
 up_parser.add_argument("version", help="Version string (e.g., v26.04.01b)")
 up_parser.add_argument("--device", default="all", choices=list(HW_MAP.keys()) + ["all"])
-up_parser.add_argument("--dir", default="./builds", help="Local directory containing .bin files")
+up_parser.add_argument("--dir", default=".", help="Local directory containing .bin files")
 
 # Publish Command
 pub_parser = subparsers.add_parser("publish")

@@ -54,7 +54,7 @@ UpdateManager::UpdateManager( Networking* networking, AsyncEventSource* otaEvent
    m_otaManifestUrl = String( GET_REGISTRY_STRING( OTA_MANIFEST_URL ) );
    if ( m_otaManifestUrl.length() == 0 )
    {
-      m_otaManifestUrl = "https://github.com/tvmg-dev/otatest/releases/download/binaries/otamanifest.json";
+      m_otaManifestUrl = "https://github.com/tvmg-dev/tvmg/releases/download/binaries/otamanifest.json";
    }
    m_otaManifestUrl += "?t=";    // for forcing a non-cached GET in manifest retrieval
 
