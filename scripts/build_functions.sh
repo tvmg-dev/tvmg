@@ -145,16 +145,12 @@ function espbuild()
             return 1
           fi
 
-          local releaseDir="$HOME/projects/otatest/binaries"
+          local releaseDir="$HOME/projects/tvmg/binaries"
           mkdir -p "$releaseDir"
 
           local release_bin="${releaseDir}/${boardName}-${version}.bin"
           cp -p "$target_bin" "$release_bin"
           printf "Release binary copied to: %s\n" "$release_bin"
-
-          local release_md5="${release_bin}.md5"
-          md5sum "$release_bin" | awk '{print $1}' > "$release_md5"
-          printf "Release checksum written to: %s\n" "$release_md5"
         fi
       fi
     else

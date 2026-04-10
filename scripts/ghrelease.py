@@ -6,7 +6,7 @@ import argparse
 import hashlib
 
 # --- Configuration ---
-REPO = "tvmg-dev/otatest"
+REPO = "tvmg-dev/tvmg"
 FIXED_TAG = "binaries"
 MANIFEST_NAME = "otamanifest.json"
 
@@ -45,7 +45,7 @@ def handle_upload(args):
     for hw in devices_to_process:
         prefix = HW_MAP[hw]
         # Expecting format: prefix-version.bin
-        filename = f"{args.version}-{prefix}.bin"
+        filename = f"{prefix}-{args.version}.bin"
         local_path = os.path.join(args.dir, filename)
 
         if filename in existing_files:
@@ -102,7 +102,6 @@ def handle_publish(args):
             "md5": get_md5(filename),
             "url": f"https://github.com/{REPO}/releases/download/{FIXED_TAG}/{filename}"
         }
-        os.remove(filename)
 
     # Finalize
     with open(MANIFEST_NAME, "w") as f:
