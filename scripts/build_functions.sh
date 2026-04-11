@@ -32,9 +32,9 @@ function espbuild()
       -a)
         cleanRequested=true
         factoryMode=true
-        buildMain=true
         ;;
       -r)
+        cleanRequested=true
         releaseMode=true
         ;;
       -factory)

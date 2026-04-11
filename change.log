@@ -1,3 +1,4 @@
+v26.04.02 - Using now released public tvmg project as binaries host.
 v26.04.01 - New Cloud OTA update feature and public release support.
 v26.03.04 - Initial support for Shelly PM1G3 with Add-On accessory for DS18B20's.
             Self-contained Docker image with necessary libraries installed.

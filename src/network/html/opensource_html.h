@@ -70,7 +70,9 @@ Redistribution and use in source and binary forms, with or without modification,
    <fieldset style="text-align: center; padding: 15px;">
     <legend>Compliance & Source Code</legend>
     In compliance with LGPL 3.0, build tools and sources are available at:<br><br>
-    <a class="oss-link" href="https://github.com/tvmg-dev/tvmg/tree/main/oss" target="_blank">github.com/tvmg-dev/tvmg/tree/main/oss</a>
+    <a class="oss-link" href="https://tvmg-dev.github.io/tvmg/docs/oss/attribution.html" target="_blank">tvmg-dev.github.io/tvmg/docs/oss/attribution.html</a>
+    <br>
+    <a class="oss-link" href="https://tvmg-dev.github.io/tvmg/docs/oss/licenses.html" target="_blank">tvmg-dev.github.io/tvmg/docs/oss/licenses.html</a>
    </fieldset>
 
    <div id="last-upd">Firmware %VERSION% &copy; 2026 Peter Walton</div>
