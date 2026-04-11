@@ -83,7 +83,7 @@ static String           s_emoncmsApiKey;
 static uint32_t emonSendRequests = 0,emonQFailures = 0, emonSendFailures = 0;
 
 // Example feed data insertion -
-// https://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=***REMOVED***
+// https://emoncms.org/feed/insert.json?id=0&time=0&value=100&apikey=abcdef
 
 struct   EmonData {
    uint32_t emonFeedId;
