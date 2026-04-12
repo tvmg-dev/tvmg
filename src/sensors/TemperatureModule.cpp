@@ -549,12 +549,16 @@ bool TemperatureModule::getTemperatures()
             ShellyAddOnSensor shellySensor = m_sensors[ i ].m_shelly;
 
             float temp = TEMPERATURE_INVALID;
-            if ( ShellyPowerModule::getTemperature( shellySensor.m_shellyParentId, 
+            if ( !ShellyPowerModule::getTemperature( shellySensor.m_shellyParentId, 
                                                       shellySensor.m_shellyId,&temp ) )
             {
-               m_sensors[ i ].m_data.m_temp = temp;
+               TVMG_ERROR( "Failed to get Shelly temp for %s",name );
+            }
+            else
+            {
                TVMG_DEBUG( "Raw temperature of %s : %.2f",name,m_sensors[ i ].m_data.m_temp );
             }
+            m_sensors[ i ].m_data.m_temp = temp;
          }
       }
       END_TIMING;

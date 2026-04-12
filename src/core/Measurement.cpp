@@ -432,7 +432,7 @@ char * Measurement::getSampleJSON()
          CJSON_CHECK_PTR( child = cJSON_AddObjectToObject( parent,name ) );
 
          CJSON_ADD_NUM( child,"power",sensor.m_power,(sensor.m_power > POWER_INVALID) );
-         CJSON_ADD_NUM( child,"energy",sensor.m_energy,(sensor.m_power > POWER_INVALID) );
+         CJSON_ADD_NUM( child,"energy",sensor.m_energy,(sensor.m_energy > ENERGY_INVALID) );
       }
 
       for ( int i = 0; i < m_lastSample.m_shellyPowerSensors.size(); i++ )
@@ -443,7 +443,7 @@ char * Measurement::getSampleJSON()
          CJSON_CHECK_PTR( child = cJSON_AddObjectToObject( parent,name ) );
 
          CJSON_ADD_NUM( child,"power",sensor.m_power,(sensor.m_power > POWER_INVALID) );
-         CJSON_ADD_NUM( child,"energy",sensor.m_energy,(sensor.m_power > POWER_INVALID) );
+         CJSON_ADD_NUM( child,"energy",sensor.m_energy,(sensor.m_energy > ENERGY_INVALID) );
       }
    }
 
@@ -455,7 +455,7 @@ char * Measurement::getSampleJSON()
          const HeatMeterSensor &sensor = m_lastSample.m_heatMeterSensors[ i ];
          const char *name = getSensorName( HEATMETER,sensor.m_id ).c_str();
 
-         bool isValid = (sensor.m_power != HM_POWER_ERROR );
+         bool isValid = (sensor.m_power != HM_POWER_ERROR);
 
          CJSON_CHECK_PTR( child = cJSON_AddObjectToObject( parent,name ) );
 

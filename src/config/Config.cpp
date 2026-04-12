@@ -10,7 +10,7 @@
 
 #include <cJSON.h>
 
-const char* k_versionStr = "v26.04.02";
+const char* k_versionStr = "v26.04.03";
 
 static Config* s_instance = nullptr;
 

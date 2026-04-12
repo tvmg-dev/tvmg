@@ -1,26 +1,29 @@
+v26.04.03 - Fix energy reporting.
+          - Shelly devices using more consistent approach for API 2+.
+          - OSS license/attribution moved to GitHub pages.
 v26.04.02 - Using now released public tvmg project as binaries host.
 v26.04.01 - New Cloud OTA update feature and public release support.
-v26.03.04 - Initial support for Shelly PM1G3 with Add-On accessory for DS18B20's.
-            Self-contained Docker image with necessary libraries installed.
-            Configuration re-factored to separate h/w and registry handling.
-            Improved Display management for common s/w with LCD/OLED devices.
+v26.03.04 - Initial support for Shelly PM1G3 with Add-On accessory for DS18B20.
+          - Self-contained Docker image with necessary libraries installed.
+          - Configuration re-factored to separate h/w and registry handling.
+          - Improved Display management for common s/w with LCD/OLED devices.
 v26.03.03 - OSS preparation - md files created, device serves info page.
 v26.03.02 - Build improvements.
             Debug macros renamed.
 v26.03.01 - Use MCPWM capture block for PWM.
-            Flashing script allows upload only option.
+          - Flashing script allows upload only option.
 v26.02.08 - Early boot log support (with optional email).
-            Fast boot failure - board halt if fails arise before config
+          - Fast boot failure - board halt if fails arise before config
             processing put the device into AP mode. 
-            Flat config.dat replaced with json, and sensor/lg configs now using
+          - Flat config.dat replaced with json, and sensor/lg configs now using
             json extension.
-            Waveshare relay board fully operational.
+          - Waveshare relay board fully operational.
 v26.02.07 - Protect OLED from multi-thread access.
-            Initial Waveshare Relay board support (ESP32S3 with RS485).
-            Fix flash programmer (python) flash size detection.
+          - Initial Waveshare Relay board support (ESP32S3 with RS485).
+          - Fix flash programmer (python) flash size detection.
 v26.02.06 - New Indicators - used in LCD and also in OLED screensaver.
-            Fast detect no SSID `configured for entry into AP mode.
-            LCD not using PSRAM due to system impact, using SRAM bounce buffers
+          - Fast detect no SSID configured for entry into AP mode.
+          - LCD not using PSRAM due to system impact, using SRAM bounce buffers
             only to maintain functionality (SPI bus contention occurs).
 v26.02.05 - Flash programmer - force image bank for app only update.
           - UserIO updates only via control.
@@ -49,12 +52,12 @@ v26.01.04 - Try to avoid glitches in DHW and target temperature data for
           - Pull any RS485 enable low as early as possible during boot.
 v26.01.03 - Fix live LG event view - force data reload via dummy parameter.
           - Support LG modbus event replay for testing.
-            Requires additional library for modbus slave, modbus-esp8266.
+          - Requires additional library for modbus slave, modbus-esp8266.
 v26.01.02 - Fix the Date field when sending email
 v26.01.01 - Fix LG event log timestamps
 v25.12.14 - LG event log processing improvements, 600 events per log,
             add new CSS for error conditions.
-            Defensive closure of File's used by ReadyMail sending.
+          - Defensive closure of File's used by ReadyMail sending.
 v25.12.13 - Rotate LG logs on daily update irrespective of email state.
           - Remove labels from each row of the current event view.
 v25.12.12 - Fix incorrect FS type for LG daily email.
@@ -72,13 +75,13 @@ v25.12.08 - HTML format for LG event log, sent in email and new page
           - LG event log limited to 480 events/day (protect flash).
 v25.12.07 - New look and feel and improved client HTML/Javascript for a
             more coherrent experience and a more modern look.
-            Fix SD daily update (file not starting at the update time).
-            Fix the default h/w selection if no .hid file present.
-            Early S3 RGB Led support.
+          - Fix SD daily update (file not starting at the update time).
+          - Fix the default h/w selection if no .hid file present.
+          - Early S3 RGB Led support.
 v25.12.06 - Webserver reboot directly when in AP mode.
-            Support esp32s3 gadget, UserIO to console.
+          - Support esp32s3 gadget, UserIO to console.
 v25.12.05 - Send stored data at daily update time.
-            Rework the boards.txt to separate out custom boards from
+          - Rework the boards.txt to separate out custom boards from
             original Espressif esp32 release.
 v25.12.04 - Fix webserver reboot from No WiFi on boot failure.
             Add Shelly data to stored samples.
@@ -86,59 +89,63 @@ v25.12.04 - Fix webserver reboot from No WiFi on boot failure.
 v25.12.03 - Add timeouts to Shelly and OpenWeather HTTP requests.
 v25.12.02 - Support Shelly EM and PMG3 energy monitors via their local
             HTTP servers.
-            Support OpenWeather HTTP API to fetch local outdoor temp.
-            Don't attempt a Dallas 1-wire acquisition if no DS18B20's
+          - Support OpenWeather HTTP API to fetch local outdoor temp.
+          - Don't attempt a Dallas 1-wire acquisition if no DS18B20's
             found on the bus.
-            Embed SSL certificates for emoncms and OpenWeather as opposed
+          - Embed SSL certificates for emoncms and OpenWeather as opposed
             to using files in SPIFFS.
 v25.11.01 - Fix reset processing
 v25.09.08 - UDP remote. Add new AsyncUDP instance in networking for listening
             for temp. broadcast messages.  When sampling temps don't set
             invalid temperatures for remote sensors (would need timer to
             set invalid ideally).
-            UPS3 heat meter - power of zero is valid.
-            UDP loggging, limit msg to CONFIG_TCP_MSS size (1436 bytes)
-            Reboot page restyle
+          - UPS3 heat meter - power of zero is valid.
+          - UDP loggging, limit msg to CONFIG_TCP_MSS size (1436 bytes)
+          - Reboot page restyle
 v25.09.07 - UDP remote: Async_udp library needs patching to prevent call to
             ::listen() failing if the UDP task already exists
 v25.09.06 - Reboot : New html for reboot, which occurs in loop thread after
             flag set from webserver.
-            LG - any modbus error invalidates all register values in a sample.
-            Measurement Sample.  Now has vectors for the 4 sensor types.
-            Mutex protected last sample.  Sampling of sensors is independent
+          - LG - any modbus error invalidates all register values in a sample.
+          - Measurement Sample.  Now has vectors for the 4 sensor types.
+          - Mutex protected last sample.  Sampling of sensors is independent
             of reading them.
-            Debug/Message level changes to improve consistency.
-            UserIO uses its own Sample instance to populate the display.
-            No calls are made to sensor types to obtain additional data.
-            UPS3 heat meter detects pump off condition.  If poor quality
+          - Debug/Message level changes to improve consistency.
+          - UserIO uses its own Sample instance to populate the display.
+          - No calls are made to sensor types to obtain additional data.
+          - UPS3 heat meter detects pump off condition.  If poor quality
             flow rate detected then not sent to emon (if number of PWM
             samples is < 70% of possible number, likely affected by context
             switching).
-            Temperatures - remote data protected by new mutex.
+          - Temperatures - remote data protected by new mutex.
 v25.09.05 - Memory improvements:
                Stack size reductions (async_tcp, userIO, arduino_events)
                Map sensor type + ID to name
-            Don't show LG data on OLED if sample has modbus error
+          - Don't show LG data on OLED if sample has modbus error
 v25.09.04 - Ensure manager webpage is in sync with current settings
 v25.09.03 - Fix file upload, now returns to manager screen
-            Fix statistics send in daily email (% calc. error)
-            Only measure one sensor per sample period, record sample stats
-            Oled display processing moved to separate thread
-            Replaced temperature sensor mutex with sample mutex
-            Debug section added to webserver for development diagnostics
-            Reduced memory footprint of config to reclaim ~2kB
+          - Fix statistics send in daily email (% calc. error)
+          - Only measure one sensor per sample period, record sample stats
+          - Oled display processing moved to separate thread
+          - Replaced temperature sensor mutex with sample mutex
+          - Debug section added to webserver for development diagnostics
+          - Reduced memory footprint of config to reclaim ~2kB
 v25.09.02 - Display screen saver (due to some OLED's appearing to fade)
-            Fix File upload return to home page, new checkbox for display screen saver
-            Heat Meter and Power Meter measurements at 15s intervals
-            Internal structural changes, improved separation of concerns
-v25.09.01 - Rebuild due to upgrade/downgrade Arduino CLI and esp32.
-            Now back to Arduino 2.3.4 and esp32 3.1.0
+          - Fix File upload return to home page, new checkbox for display 
+            screen saver
+          - Heat Meter and Power Meter measurements at 15s intervals
+          - Internal structural changes, improved separation of concerns
+v25.09.01 - Rebuild due to upgrade/downgrade Arduino CLI and esp32. Now back to
+            Arduino 2.3.4 and esp32 3.1.0
 v25.08.05 - Set master modbus to slave mode during boot
 v25.08.04 - Change temp from 60 to 75 deg for detecting DS18B20 error
-v25.08.03 - fix brace matching in json file, initial support for Waveshare LCD,file hierarchy changes
+v25.08.03 - fix brace matching in json file, initial support for Waveshare LCD,
+            file hierarchy changes
 v25.08.02 - Fix modbus stats percentage calculation in daily email update
-v25.08.01 - Defensive changes to prevent invalid bad data sent to emon (modbus read error, bad DS18B20 data)
-v25.02.01 - LG 1000 event log limit resets on daily basis. 24 day reboot reason added
+v25.08.01 - Defensive changes to prevent invalid bad data sent to emon (modbus
+            read error, bad DS18B20 data)
+v25.02.01 - LG 1000 event log limit resets on daily basis. 24 day reboot reason
+            added
 v25.01.21 - email communication statistics no longer cummulative
 v25.01.20 - Single email with lg data
 v25.01.19 - not released
@@ -149,6 +156,7 @@ v25.01.15 - fix temperatures recorded when device is lost off the 1-Wire bus
 v25.01.14 - Reset handling improvements, board select via file, debug webpage
 v25.01.13 - fast boot detection (prevent flash wear on continuous cycling)
 v25.01.11 - rework temperatures, reset handling, improved serial debug at boot
-v25.01.10 - new reboot code BOOT_SETUP for error in setup, OLED display reboot cause
+v25.01.10 - new reboot code BOOT_SETUP for error in setup, OLED display reboot 
+            cause
 v25.01.9  - use nvs for entering AP mode when failed 3 reboots on current network
 

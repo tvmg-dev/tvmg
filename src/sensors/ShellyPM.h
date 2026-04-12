@@ -10,6 +10,7 @@
 #define SHELLY_POWER_MODULE_H
 
 #include <vector>
+#include <cJSON.h>
 
 #include "src/config/Config.h"
 
@@ -58,8 +59,9 @@ private:
    } PrivateSensor;
 
    cJSON *getData( const String &query );
+   void getTemperatures( PrivateSensor *sensor,cJSON *json );
    bool getEM( PrivateSensor *sensor );
-   bool getPMG3( PrivateSensor *sensor );
+   bool getPMMiniG3( PrivateSensor *sensor );
    bool getEMG3( PrivateSensor *sensor );
    bool getPM1G3( PrivateSensor *sensor );
 
