@@ -2,4 +2,4 @@
 # Installation Top Level
 ---
 
-[LG Connection]({% link docs/install/lg-connection.md %})
+[LG Connection]({{ '/docs/install/lg-connection' | relative_url }})
