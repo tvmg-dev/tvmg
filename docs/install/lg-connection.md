@@ -14,14 +14,14 @@ From the LG installation manual the relevant terminal block connections are show
 ### Series 3 : Case 2 (up to August 2020)
 
 <div style="display: flex; gap: 20px; align-items: flex-start; justify-content: center;">
-  <img src="{% link docs/install/images/series-3-case2-doc.jpg %}" style="max-height: 400px; width: auto;">
-  <img src="{% link docs/install/images/series-3-case2-photo.jpg %}" style="max-height: 200px; width: auto;">
+  <img src="{{ '/docs/install/images/series-3-case2-doc.jpg' | relative_url }}" style="max-height: 400px; width: auto;">
+  <img src="{{ '/docs/install/images/series-3-case2-photo.jpg' | relative_url }}" style="max-height: 200px; width: auto;">
 </div>
 
 ### Series 3 : Case 1 (From August 2020)
 
 <div style="display: flex; gap: 20px; align-items: flex-start; justify-content: center;">
-  <img src="{% link docs/install/images/series-3-case1.jpg %}" style="max-height: 400px; width: auto;">
+  <img src="{{ '/docs/install/images/series-3-case1.jpg' | relative_url }}" style="max-height: 400px; width: auto;">
 </div>
 
 
