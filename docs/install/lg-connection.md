@@ -1,5 +1,6 @@
 ---
 # LG connectivity
+permalink: /docs/install/lg-connection/
 ---
 
 # LG Connections

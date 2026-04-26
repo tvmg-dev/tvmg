@@ -69,3 +69,5 @@ A developer can use this software and modify accordingly, taking into account th
 This may appear daunting, especially to non-technical individuals.  But it is enlightening  to monitor the LG in realtime, with detailed charts.  The operation of your system may then be a pleasant surprise or a bit of a shock.
 
 [Installation Instructions]({{ '/docs/install/installation/' | relative_url }})
+
+PW2
