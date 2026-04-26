@@ -35,7 +35,7 @@ There are of course some basic requirements in order to use this software.
 - The controller requires a power supply.  A USB charger and type-C connector can be used.
 - The device requires a good 2.4 GHz WiFi connection, and it is recommended that the home router assigns the same IP address to it.
 - A computer to one-time flash the initial image to the controller via USB.
-- A computer/phone/table that can connect to the device's 2.4 GHz WiFi Access Point to perform initial configuration.
+- A computer/phone/tablet that can connect to the device's 2.4 GHz WiFi Access Point to perform initial configuration.
 - An email account that can be configured to send and receive emails.  GMail for example can be used for such purposes.
 
 It is highly recommended that an emoncms account is provided so data can be sent to the account data 'feeds'.  The current cost of a single feed is £1 (+ VAT) per annum, subject of course to [emoncms.org](https://emoncms.org/) pricing.  It may be possible to use a self-hosted emoncms account but this cannot be guaranteed.  The homeowner can of course decide which data items should be sent to the cloud.
