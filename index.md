@@ -22,14 +22,14 @@ This monitoring system can also obtain data from the following sources:
 - DS18B20 temperature probes (requires additional hardware)
 - Grundfos UPS3 recirculator pump as part of a "poor man's heat meter" (requires additional hardware)
 
-The data is collected every 30s and can be sent to a private account on [emoncms.org](https://emoncms.org/) where the data can be visualised in charts, added to dashboards and used in the heatpump application on that site.  Once the data is in the cloud then the historical data can be easily navigated in the site's charts.
+The data is collected every 30s and can be sent to a private account on [emoncms.org](https://emoncms.org/){:target="_blank" rel="noopener noreferrer"} where the data can be visualised in charts, added to dashboards and used in the heatpump application on that site.  Once the data is in the cloud then the historical data can be easily navigated in the site's charts.
 
-The device software can be configured to send a daily email to the homeowner, and that will show the LG events that have been detected, for example when the compressor starts or stops, the current temperatures, defrosts etc.  This event log is also available from the user interface provided by the device and viewed in a web browser.  This is a significant enhancement over the data logging feature that is available from the LG's remote controller.
+The device software can be configured to send a daily email to the homeowner, and that will show the LG events that have been detected, for example when the compressor starts or stops, the current temperatures, defrosts etc.  This event log is also available from the user interface provided by the device and viewed in a local web browser.  This is a significant enhancement over the data logging feature that is available from the LG's remote controller.
 
 ## Requirements
 
 There are of course some basic requirements in order to use this software.
-- A suitable controller.  The [Waveshare Industrial Relay](https://www.waveshare.com/esp32-s3-relay-1ch.htm) is recommended, and pre-built binary images are available for that device.  The device can automatically update to the latest software when available, or the homeowner can initiate an update via the web browser interface.
+- A suitable controller.  The [Waveshare Industrial Relay](https://www.waveshare.com/esp32-s3-relay-1ch.htm){:target="_blank" rel="noopener noreferrer"} is recommended, and pre-built binary images are available for that device.  The device can automatically update to the latest software when available, or the homeowner can initiate an update via the web browser interface.
 - A 2 wire connection between the controller and the LG outdoor unit.  Outdoor-rated CAT5 or CAT6 cable should be used for this connectivity. A 120 ohm resistor may be required between the LG's modbus terminals (given the low bitrate of the Modbus communication, and relatively short cable length, less than 50m, then a termination resistor is usually unnecessary).
 - The LG outdoor unit requires two DIP switches to be set to a specific position.
 - The controller requires a power supply.  A USB charger and type-C connector can be used.
@@ -38,9 +38,9 @@ There are of course some basic requirements in order to use this software.
 - A computer/phone/tablet that can connect to the device's 2.4 GHz WiFi Access Point to perform initial configuration.
 - An email account that can be configured to send and receive emails.  GMail for example can be used for such purposes.
 
-It is highly recommended that an emoncms account is provided so data can be sent to the account data 'feeds'.  The current cost of a single feed is £1 (+ VAT) per annum, subject of course to [emoncms.org](https://emoncms.org/) pricing.  It may be possible to use a self-hosted emoncms account but this cannot be guaranteed.  The homeowner can of course decide which data items should be sent to the cloud.
+It is highly recommended that an emoncms account is provided so data can be sent to the account data 'feeds'.  The current cost of a single feed is £1 (+ VAT) per annum, subject of course to [emoncms.org](https://emoncms.org/){:target="_blank" rel="noopener noreferrer"} pricing.  It may be possible to use a self-hosted emoncms account but this cannot be guaranteed.  The homeowner can of course decide which data items should be sent to the cloud.
 
-For a more comprehensive monitoring solution then the homeowner should obtain the [Shelly Plus Add On](https://www.shelly.com/products/shelly-plus-add-on) which requires a compatible Shelly power meter such as the [Shelly EM Gen3](https://shellystore.co.uk/product/shelly-em-gen3/).  (Note that other Shelly devices can host the add-on accessory).  The power meter can be used to obtain electrical power consumption information, such as that consumed by the heat pump.  The add-on accessory provides connectivity for DS18B20 temperature probes.  Note that these DS18B20 are readily available but are typically using poorly performing copies of the AnalogDevices (Maxim) silicon - [OpenEnergy Monitor shop](https://shop.openenergymonitor.com/) usually have genuine parts in stock.  
+For a more comprehensive monitoring solution then the homeowner should obtain the [Shelly Plus Add On](https://www.shelly.com/products/shelly-plus-add-on){:target="_blank" rel="noopener noreferrer"} which requires a compatible Shelly power meter such as the [Shelly EM Gen3](https://shellystore.co.uk/product/shelly-em-gen3/){:target="_blank" rel="noopener noreferrer"}.  (Note that other Shelly devices can host the add-on accessory).  The power meter can be used to obtain electrical power consumption information, such as that consumed by the heat pump.  The add-on accessory provides connectivity for DS18B20 temperature probes.  Note that these DS18B20 are readily available but are typically using poorly performing copies of the AnalogDevices (Maxim) silicon - [OpenEnergy Monitor shop](https://shop.openenergymonitor.com/){:target="_blank" rel="noopener noreferrer"} usually have genuine parts in stock.  
 
 With a complete setup then the homeowner would have access to the following:
 - Current LG operating mode, Fixed Heating, AI (and offset) or DHW
@@ -69,5 +69,3 @@ A developer can use this software and modify accordingly, taking into account th
 This may appear daunting, especially to non-technical individuals.  But it is enlightening  to monitor the LG in realtime, with detailed charts.  The operation of your system may then be a pleasant surprise or a bit of a shock.
 
 [Installation Instructions]({{ '/docs/install/installation/' | relative_url }})
-
-PW2
