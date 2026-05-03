@@ -9,6 +9,8 @@ This project is the result of a three-year journey that began with a subpar LG T
 
 Born out of necessity during the post-pandemic chip shortages, this cost-conscious monitoring tool was developed to bridge that data gap. The insights gained were transformative, allowing for a targeted redesign of the system's pipework. Today, the system operates at high efficiency, providing a consistently comfortable home. By open-sourcing this project, I hope to empower other LG homeowners to take control of their systems and achieve the same results.
 
+By design this is not a heat pump controller.  It does not write to LG registers, it merely reads them.
+
 P. Walton, April 2026
 
 ## System Overview
@@ -59,6 +61,12 @@ The series 4 models also provide flow rate information.  With this data then a s
 **Thermal power generation, and therefore COP, depends on the quality of data being recorded.**  If anti-freeze mixture is in use then the specific heat capacity of the fluid also has to be estimated and this introduces more inaccuracy.  Therefore the COP can only be a guide and cannot be used in place of a fully certified heat meter solution.  But it is useful to compare changes in efficiency when the homeowner adjusts settings, such as moving from fixed heating mode to weather compensation.
 
 **Safety Note:** The homeowner should of course take every precaution when installing any electrical equipment.
+
+## Features
+
+The benefit of monitoring the system is that sub-optimal behaviour can be more readily seen, not simply from having expensive electricity bills. Monitoring shows the effects of changes much quicker than can otherwise be seen. It facilitates change - can settings be modified to reduce cycling for example, what impact does a change have ?  Ultimately a howeowner wants the most cost effective system that meets their heating and hot water needs.  Cost efficiency may not mean that the system needs to have the most efficient behaviour, due to the impact of time of day tariffs, battery load shifting etc.  But generally the more efficient the heat pump is running the howewoner will enjoy more comfort for less cost than a less efficient system.
+
+[Features]({{ '/docs/features/features/' | relative_url }})
 
 ## Developers
 
