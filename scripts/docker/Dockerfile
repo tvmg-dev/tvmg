@@ -37,7 +37,7 @@ RUN cd /opt/arduino/packages/esp32/hardware/esp32/3.1.0 && \
     patch -p0 < /tmp/patches/arduino-esp32/esp-asyncudp.patch && \
     patch -p0 < /tmp/patches/arduino-esp32/esp-network.patch
 
-COPY get_libraries.sh /root/
+COPY get_libraries.sh ReadyMail-0.3.6.tar.gz /root/
 RUN /root/get_libraries.sh && rm -rf /tmp/patches && rm /root/get_libraries.sh
 
 # 5. Punch Permission Holes

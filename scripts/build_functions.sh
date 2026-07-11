@@ -9,6 +9,7 @@ function espbuild()
   local verbosity="--verbose"
   local dockerUser=""
   local numJobs=4
+  local releaseDir="$HOME/projects/tvmg/binaries"
 
   for arg in "$@"; do
     case $arg in
@@ -18,7 +19,7 @@ function espbuild()
         printf " -c : clean (remove specific board cache and output folders)\n"
         printf " -f : build factory image only\n"
         printf " -a : clean, main image and factory image (all)\n"
-        printf " -r : release, copy binary to ~/projects/otatest/binaries with version suffix\n"
+        printf " -r : release, copy binary to ${releaseDir} with version suffix\n"
         return 0
         ;;
       -c)
@@ -54,10 +55,10 @@ function espbuild()
   # Output paths - for the build cache and final artefacts
   local buildCache="build/${boardName}/cache"
   local buildOutput="build/${boardName}/output"
-  
+
   local localCachePath="$(pwd)/${buildCache}"
   local localOutputPath="$(pwd)/${buildOutput}"
-  
+
   # Handle cleaning for the specific board only
   if [ "$cleanRequested" = true ]; then
     printf "Cleaning build folders for: ${boardName}...\n"
@@ -89,7 +90,7 @@ function espbuild()
   local dockerBuildCache="${dockerRoot}/${buildCache}"
   local dockerOutputPath="${dockerRoot}/${buildOutput}"
   local dockerLibraries="/opt/arduino/libraries"
-  
+
   local arduinoESP32Root="/opt/arduino/packages/esp32/hardware/esp32/3.1.0"
 
   local DOCKER_BASE="MSYS_NO_PATHCONV=1 docker run ${dockerUser} --rm \
@@ -145,7 +146,6 @@ function espbuild()
             return 1
           fi
 
-          local releaseDir="$HOME/projects/tvmg/binaries"
           mkdir -p "$releaseDir"
 
           local release_bin="${releaseDir}/${boardName}-${version}.bin"
