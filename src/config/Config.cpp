@@ -101,7 +101,7 @@ static const KeyPathMapping k_keyMappings[] = {
    { "DEBUGPAGE_CPU0_TASKWDT","debug", "hardware", "DEBUGPAGE_CPU0_TASKWDT", "bool" },
    //    diagnostics
    { "HEAP_TEST_SIZE",        "debug", "diagnostics", "HEAP_TEST_SIZE", "int" },
-   { "ASSERT_FOR_FAST_BOOT",  "debug", "diagnostics", "ASSERT_FOR_FAST_BOOT", "int" },
+   { "ASSERT_FOR_FAST_BOOT",  "debug", "diagnostics", "ASSERT_FOR_FAST_BOOT", "bool" },
    { "EARLY_BOOT_LOG",        "debug", "diagnostics", "EARLY_BOOT_LOG", "bool" },
    { "SEND_BOOT_LOG",         "debug", "diagnostics", "SEND_BOOT_LOG", "bool" },
     { nullptr, nullptr, nullptr, nullptr, nullptr }  // Sentinel

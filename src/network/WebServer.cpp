@@ -65,7 +65,8 @@ const char* param_download_path = "download_path";
 const char* param_edit_textarea = "edit_textarea";
 const char* param_save_path = "save_path";
 
-// For authentication
+// For authentication - but we'll bypass it as not changing passwords anywhere
+#if 0
 #define AUTHENTICATE \
 do \
    if(!request->authenticate(http_username, http_password)) \
@@ -73,6 +74,13 @@ do \
       return request->requestAuthentication(); \
    } \
 while( 0 )
+#else
+#define AUTHENTICATE \
+do {} \
+while( 0 )
+#endif
+
+
 
 //----------------------------------------------------------------------
 // Additional section for options purposes
