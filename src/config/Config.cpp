@@ -10,7 +10,7 @@
 
 #include <cJSON.h>
 
-const char* k_versionStr = "v26.04.03";
+const char* k_versionStr = "v26.04.04a";
 
 static Config* s_instance = nullptr;
 
@@ -43,66 +43,63 @@ static const KeyPathMapping k_keyMappings[] = {
    { "OTA_MANIFEST_URL",     "update", "delivery", "OTA_MANIFEST_URL", "string" },
    { "UPDATE_MODE",          "update", "delivery", "UPDATE_MODE", "string" },
    { "UPDATE_GROUP",         "update", "delivery", "UPDATE_GROUP", "string" },
-    // network
-    //    wifi
+   // network
+   //    wifi
    { "WIFI_SSID",             "network", "wifi", "WIFI_SSID", "string" },
    { "WIFI_PASSWORD",         "network", "wifi", "WIFI_PASSWORD", "string" },
    { "WIFI_CONNECT_TIMEOUT",  "network", "wifi", "WIFI_CONNECT_TIMEOUT", "int" },
-    //    mdns
+   //    mdns
    { "MDNS_NAME",             "network", "mdns", "MDNS_NAME", "string" },
-    //    ntp
+   //    ntp
    { "NTP_UPDATE_TIMEOUT",    "network", "ntp", "NTP_UPDATE_TIMEOUT", "int" },
-    //    udp
+   //    udp
    { "BROADCAST_UDP_PORT",    "network", "udp", "BROADCAST_UDP_PORT", "int" },
    { "LISTEN_UDP_PORT",       "network", "udp", "LISTEN_UDP_PORT", "int" },
 
-    // email
-    //    smtp
+   // email
+   //    smtp
    { "SMTP_HOST",             "email", "smtp", "SMTP_HOST", "string" },
    { "SMTP_PORT",             "email", "smtp", "SMTP_PORT", "int" },
-    //    account
+   //    account
    { "ACCOUNT_EMAIL",         "email", "account", "ACCOUNT_EMAIL", "string" },
    { "ACCOUNT_PASSWORD",      "email", "account", "ACCOUNT_PASSWORD", "string" },
-    //    delivery
+   //    delivery
    { "SEND_EMAILS",           "email", "delivery", "SEND_EMAILS", "bool" },
    { "RECIPIENT_EMAIL",       "email", "delivery", "RECIPIENT_EMAIL", "string" },
    { "DAILY_EMAIL_HOUR",      "email", "delivery", "DAILY_EMAIL_HOUR", "int" },
 
-    // logging
-    //    output
-    { "ENABLE_SERIAL_LOGGING", "logging", "output", "ENABLE_SERIAL_LOGGING", "bool" },
+   // logging
+   //    output
+   { "ENABLE_SERIAL_LOGGING", "logging", "output", "ENABLE_SERIAL_LOGGING", "bool" },
    { "UDP_LOGGING_ENABLE",    "logging", "output", "UDP_LOGGING_ENABLE", "bool" },
    { "LOG_TO_UDP_PORT",       "logging", "output", "LOG_TO_UDP_PORT", "int" },
-    //    levels
+   //    levels
    { "DEBUG_LEVEL_ENABLED",   "logging", "levels", "DEBUG_LEVEL_ENABLED", "bool" },
    { "LOG_TIMESTAMP",         "logging", "levels", "LOG_TIMESTAMP", "bool" },
    { "LOG_TIMING",            "logging", "levels", "LOG_TIMING", "bool" },
    { "LOG_MEMSTATS",          "logging", "levels", "LOG_MEMSTATS", "bool" },
-   { "LOG_HP_MODBUS",         "logging", "levels", "LOG_HP_MODBUS", "bool" },
 
-    // integrations
-    //    emoncms
+   // integrations
+   //    emoncms
    { "UPDATE_EMONCMS",        "integrations", "emoncms", "UPDATE_EMONCMS", "bool" },
    { "EMONCMS_APIKEY",        "integrations", "emoncms", "EMONCMS_APIKEY", "string" },
    { "EMON_INSECURE",         "integrations", "emoncms", "EMON_INSECURE", "bool" },
-    //    openweather
+   //    openweather
    { "OPENWEATHER_INSECURE",  "integrations", "openweather", "OPENWEATHER_INSECURE", "bool" },
 
-    // ui
-    //    display
+   // ui
+   //    display
    { "USERIO_SCREENSAVER",    "ui", "display", "USERIO_SCREENSAVER", "bool" },
 
-    // debug
-    //    web
+   // debug
+   //    web
    { "HIDDEN_WEB_PAGE",       "debug", "web", "HIDDEN_WEB_PAGE", "string" },
-    { "WEBPAGE_DEBUG_SECTION", "debug", "web", "WEBPAGE_DEBUG_SECTION", "bool" },
+   { "WEBPAGE_DEBUG_SECTION", "debug", "web", "WEBPAGE_DEBUG_SECTION", "bool" },
    { "SHOW_ALL_FILES",        "debug", "web", "SHOW_ALL_FILES", "bool" },
-    // debug
-    //    hardware
+   //    hardware
    { "DEBUGPAGE_HWRESET",     "debug", "hardware", "DEBUGPAGE_HWRESET", "bool" },
    { "DEBUGPAGE_CPU0_TASKWDT","debug", "hardware", "DEBUGPAGE_CPU0_TASKWDT", "bool" },
-    // debug
-    //    diagnostics
+   //    diagnostics
    { "HEAP_TEST_SIZE",        "debug", "diagnostics", "HEAP_TEST_SIZE", "int" },
    { "ASSERT_FOR_FAST_BOOT",  "debug", "diagnostics", "ASSERT_FOR_FAST_BOOT", "int" },
    { "EARLY_BOOT_LOG",        "debug", "diagnostics", "EARLY_BOOT_LOG", "bool" },

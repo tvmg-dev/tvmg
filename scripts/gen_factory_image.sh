@@ -10,6 +10,19 @@ function generate_factory_image() {
     local out_dir="build/${board_name}/output"
     local fs_src_root="filesystems/${board_name}"
 
+    printf "\nFactory Image Generation for: $board_name\n\n"
+
+    # Validate filesystem folder exists and is not empty
+    if [[ ! -d "$fs_src_root" ]]; then
+        printf "Error: Filesystem folder not found: $fs_src_root\n" >&2
+        return 1
+    fi
+
+    if [[ -z "$(ls -A "$fs_src_root")" ]]; then
+        printf "Error: Filesystem folder is empty: $fs_src_root\n" >&2
+        return 1
+    fi
+
     # Identify sketch from current working directory
     local sketch_name=$(basename "$(pwd)")
     local part_bin="${out_dir}/${sketch_name}.ino.partitions.bin"
@@ -21,8 +34,6 @@ function generate_factory_image() {
         printf "Error: Missing build artifacts in $out_dir"
         return 1
     fi
-
-    printf "\nFactory Image Generation for: $board_name\n\n"
 
     # Extract Bootloader Header Metadata (the source of 'truth')
     local header_hex=$(od -An -N4 -t x1 "$boot_bin" | tr -d ' ')

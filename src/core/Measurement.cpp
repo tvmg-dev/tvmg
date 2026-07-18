@@ -657,13 +657,6 @@ void  Measurement::sendDailyUpdate()
    {
       TVMG_WARN( "Failed to rename %s to %s",LGSTATUS_LOG_HTML,LGSTATUS_YESTERDAY );
    }
-
-   // Send the register log if it exists
-   if ( tvmgFileSys.exists( LGREGISTERS_LOG ) )
-   {
-      m_networking->sendEmailWithAttachment( GET_REGISTRY_STRING( RECIPIENT_EMAIL ),
-                        "HP Modbus Registers","Modbus Registers",LGREGISTERS_LOG );
-   }
 }
 
 bool  Measurement::didDailyUpdate()

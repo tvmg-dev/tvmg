@@ -43,7 +43,6 @@ static bool *isFalse = &isFalseVal;
 static bool *serialLoggingEnabled = nullptr;
 static bool *logToUDP = nullptr;
 static bool *debugLevelEnabled = nullptr;
-static bool *hpModBusEnabled = nullptr;
 static bool *logTimestamps = nullptr;
 static bool *logTiming = nullptr;
 static bool *logMemStats = nullptr;
@@ -542,7 +541,6 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
    {
       serialLoggingEnabled = isFalse;
       debugLevelEnabled = isFalse;
-      hpModBusEnabled = isFalse;
       logTimestamps = isFalse;
       logTiming = isFalse;
       logToUDP = isFalse;
@@ -572,18 +570,6 @@ void msgLog( LOGGING_LEVEL level,const char *format,... )
       if ( GET_REGISTRY_INT( LOG_MEMSTATS ) == 1 )
       {
          logMemStats = isTrue;
-      }
-
-      if ( GET_REGISTRY_INT( LOG_HP_MODBUS ) == 1 )
-      {
-         if( ! boardHasSDCard() )
-         {
-            Serial.println( "Can't debug log HP modbus to file, no SD" );
-         }
-         else
-         {
-            hpModBusEnabled = isTrue;
-         }
       }
 
       int32_t port = GET_REGISTRY_INT( LOG_TO_UDP_PORT );
