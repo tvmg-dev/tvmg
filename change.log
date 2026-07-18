@@ -1,3 +1,6 @@
+v26.04.04 - Build fix for tag changes in ReadyMail repo.
+            Abort factory image generation on lack of filesystem.
+            Avoid local webserver authentication.
 v26.04.03 - Fix energy reporting.
           - Shelly devices using more consistent approach for API 2+.
           - OSS license/attribution moved to GitHub pages.
